@@ -22,3 +22,4 @@ Arranque de la fase 0. El proyecto iba a vivir en `OneDrive\Documentos`, y habí
 
 - Hay que clonar/abrir el proyecto desde `C:\dev\gestor-dnd`, no desde OneDrive.
 - Actualizar pnpm = cambiar `packageManager` y reinstalar el pnpm global.
+- **Instalaciones globales: hazlas desde una terminal de Windows, fuera de la app de Claude.** La app de escritorio es un paquete MSIX y Windows redirige lo que escribe en `AppData` a su carpeta privada (`AppData\Local\Packages\Claude_...\LocalCache`). Un `npm install -g` lanzado por Claude no es visible para tus terminales.
