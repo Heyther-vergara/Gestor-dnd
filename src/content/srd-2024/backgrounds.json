@@ -1,0 +1,68 @@
+[
+  {
+    "id": "acolyte",
+    "packageId": "srd-2024",
+    "type": "background",
+    "name": "Acolyte",
+    "description": "",
+    "effects": [],
+    "data": {
+      "abilityOptions": [
+        "int",
+        "wis",
+        "cha"
+      ],
+      "featId": "magic-initiate",
+      "skillProficiencies": [
+        "insight",
+        "religion"
+      ],
+      "toolProficiency": "Calligrapher's Supplies",
+      "equipment": "Choose A or B: (A) Calligrapher's Supplies, Book (prayers), Holy Symbol, Parchment (10 sheets), Robe, 8 GP; or (B) 50 GP"
+    }
+  },
+  {
+    "id": "sage",
+    "packageId": "srd-2024",
+    "type": "background",
+    "name": "Sage",
+    "description": "",
+    "effects": [],
+    "data": {
+      "abilityOptions": [
+        "con",
+        "int",
+        "wis"
+      ],
+      "featId": "magic-initiate",
+      "skillProficiencies": [
+        "arcana",
+        "history"
+      ],
+      "toolProficiency": "Calligrapher's Supplies",
+      "equipment": "Choose A or B: (A) Quarterstaff, Calligrapher's Supplies, Book (history), Parchment (8 sheets), Robe, 8 GP; or (B) 50 GP"
+    }
+  },
+  {
+    "id": "soldier",
+    "packageId": "srd-2024",
+    "type": "background",
+    "name": "Soldier",
+    "description": "",
+    "effects": [],
+    "data": {
+      "abilityOptions": [
+        "str",
+        "dex",
+        "con"
+      ],
+      "featId": "savage-attacker",
+      "skillProficiencies": [
+        "athletics",
+        "intimidation"
+      ],
+      "toolProficiency": "Choose one kind of Gaming Set (see \"Equipment\")",
+      "equipment": "Choose A or B: (A) Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP; or (B) 50 GP"
+    }
+  }
+]

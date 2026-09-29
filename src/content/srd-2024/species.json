@@ -1,0 +1,118 @@
+[
+  {
+    "id": "dwarf",
+    "packageId": "srd-2024",
+    "type": "species",
+    "name": "Dwarf",
+    "description": "",
+    "effects": [],
+    "data": {
+      "size": [
+        "medium"
+      ],
+      "speed": 30,
+      "traits": [
+        {
+          "name": "Darkvision (120 ft.)",
+          "description": "You have Darkvision with a range of 120 feet.",
+          "effects": [
+            {
+              "target": "senses.darkvision",
+              "op": "max",
+              "value": 120
+            }
+          ]
+        },
+        {
+          "name": "Dwarven Resilience",
+          "description": "You have Resistance to Poison damage. You also have Advantage on saving throws you make to avoid or end the Poisoned condition.",
+          "effects": []
+        },
+        {
+          "name": "Dwarven Toughness",
+          "description": "Your Hit Point maximum increases by 1, and it increases by 1 again whenever you gain a level.",
+          "effects": [
+            {
+              "target": "hp.max-per-level",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "name": "Stonecunning",
+          "description": "As a Bonus Action, you gain Tremorsense with a range of 60 feet for 10 minutes. You must be on a stone surface or touching a stone surface to use this Tremorsense. The stone can be natural or worked.\nYou can use this Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.",
+          "effects": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "human",
+    "packageId": "srd-2024",
+    "type": "species",
+    "name": "Human",
+    "description": "",
+    "effects": [],
+    "data": {
+      "size": [
+        "medium",
+        "small"
+      ],
+      "speed": 30,
+      "traits": [
+        {
+          "name": "Resourceful",
+          "description": "You gain Heroic Inspiration whenever you finish a Long Rest.",
+          "effects": []
+        },
+        {
+          "name": "Skillful",
+          "description": "You gain proficiency in one skill of your choice.",
+          "effects": []
+        },
+        {
+          "name": "Versatile",
+          "description": "You gain an Origin feat of your choice (see \"Feats\"). Skilled is recommended.",
+          "effects": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "halfling",
+    "packageId": "srd-2024",
+    "type": "species",
+    "name": "Halfling",
+    "description": "",
+    "effects": [],
+    "data": {
+      "size": [
+        "small"
+      ],
+      "speed": 30,
+      "traits": [
+        {
+          "name": "Brave",
+          "description": "You have Advantage on saving throws you make to avoid or end the Frightened condition.",
+          "effects": []
+        },
+        {
+          "name": "Halfling Nimbleness",
+          "description": "You can move through the space of any creature that is a size larger than you, but you can't stop in the same space.",
+          "effects": []
+        },
+        {
+          "name": "Luck",
+          "description": "When you roll a 1 on the d20 of a D20 Test, you can reroll the die, and you must use the new roll.",
+          "effects": []
+        },
+        {
+          "name": "Naturally Stealthy",
+          "description": "You can take the Hide action even when you are obscured only by a creature that is at least one size larger than you.",
+          "effects": []
+        }
+      ]
+    }
+  }
+]

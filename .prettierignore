@@ -5,3 +5,5 @@ coverage
 pnpm-lock.yaml
 next-env.d.ts
 AGENTS.md
+# JSON generado por scripts/import-srd-2024.mts
+src/content/srd-2024/*.json
