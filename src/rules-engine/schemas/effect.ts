@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { abilitySchema } from "./common";
+
 // Ruta del valor afectado: "ac", "speed", "proficiency.skill.stealth"…
 const targetSchema = z
   .string()
@@ -22,12 +24,24 @@ export const numericOps = [
   "max",
 ] as const;
 
-const numericEffectSchema = z.strictObject({
-  target: targetSchema,
-  op: z.enum(numericOps),
-  value: z.number(),
-  condition: conditionSchema,
-});
+// Valor final = value + suma de los modificadores de `abilities`, con tope opcional `maxAbilityBonus`.
+// SRD 5.2.1 "Armaduras": cota de malla 16 · armadura de cuero 11 + Des · media 14 + Des (máx. 2).
+const numericEffectSchema = z
+  .strictObject({
+    target: targetSchema,
+    op: z.enum(numericOps),
+    value: z.number(),
+    abilities: z.array(abilitySchema).min(1).optional(),
+    maxAbilityBonus: z.int().min(0).optional(),
+    condition: conditionSchema,
+  })
+  .refine(
+    (effect) => effect.maxAbilityBonus === undefined || effect.abilities,
+    {
+      message: "maxAbilityBonus requiere abilities",
+      path: ["maxAbilityBonus"],
+    },
+  );
 
 // "grant" concede algo sin valor numérico (una competencia, un sentido, un rasgo).
 const grantEffectSchema = z.strictObject({
