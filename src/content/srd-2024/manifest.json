@@ -1,0 +1,9 @@
+{
+  "id": "srd-2024",
+  "name": "SRD 5.2.1",
+  "edition": "2024",
+  "author": "Wizards of the Coast",
+  "version": "5.2.1",
+  "visibility": "public",
+  "source": "srd"
+}

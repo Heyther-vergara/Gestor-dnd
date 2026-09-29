@@ -21,18 +21,21 @@ pnpm dev                     # http://localhost:3000
 
 ## Comandos
 
-| Comando             | Qué hace                            |
-| ------------------- | ----------------------------------- |
-| `pnpm dev`          | Servidor de desarrollo              |
-| `pnpm build`        | Build de producción                 |
-| `pnpm lint`         | ESLint                              |
-| `pnpm typecheck`    | Genera tipos de rutas y corre `tsc` |
-| `pnpm test`         | Tests unitarios (Vitest)            |
-| `pnpm format`       | Formatea con Prettier               |
-| `pnpm format:check` | Comprueba el formato (lo usa CI)    |
+| Comando               | Qué hace                            |
+| --------------------- | ----------------------------------- |
+| `pnpm dev`            | Servidor de desarrollo              |
+| `pnpm build`          | Build de producción                 |
+| `pnpm lint`           | ESLint                              |
+| `pnpm typecheck`      | Genera tipos de rutas y corre `tsc` |
+| `pnpm test`           | Tests unitarios (Vitest)            |
+| `pnpm format`         | Formatea con Prettier               |
+| `pnpm format:check`   | Comprueba el formato (lo usa CI)    |
+| `pnpm content:import` | Regenera el JSON del SRD 2024       |
 
 ## Licencia del contenido
 
-Este proyecto usará material del System Reference Document 5.1 y 5.2.1 de Wizards of the Coast LLC, disponible bajo licencia [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode). La atribución completa estará en la página de créditos de la app.
+Este proyecto usa material del System Reference Document 5.1 y 5.2.1 de Wizards of the Coast LLC, disponible bajo licencia [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode). La atribución completa estará en la página de créditos de la app.
+
+Los datos del SRD 2024 se convierten desde [5e-bits/5e-database](https://github.com/5e-bits/5e-database) (licencia MIT). Ver `docs/decisions/0002-srd-2024-source.md`.
 
 No es un producto oficial ni está afiliado a Wizards of the Coast.

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "magic-initiate",
+    "packageId": "srd-2024",
+    "type": "feat",
+    "name": "Magic Initiate",
+    "description": "You gain the following benefits.\n**Two Cantrips.** You learn two cantrips of your choice from the Cleric, Druid, or Wizard spell list. Intelligence, Wisdom, or Charisma is your spellcasting ability for this feat's spells (choose when you select this feat).\n**Level 1 Spell.** Choose a level 1 spell from the same list you selected for this feat's cantrips. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have.\n**Spell Change.** Whenever you gain a new level, you can replace one of the spells you chose for this feat with a different spell of the same level from the chosen spell list.",
+    "effects": [],
+    "data": {
+      "category": "origin",
+      "repeatable": true
+    }
+  },
+  {
+    "id": "savage-attacker",
+    "packageId": "srd-2024",
+    "type": "feat",
+    "name": "Savage Attacker",
+    "description": "You've trained to deal particularly damaging strikes. Once per turn when you hit a target with a weapon, you can roll the weapon's damage dice twice and use either roll against the target.",
+    "effects": [],
+    "data": {
+      "category": "origin",
+      "repeatable": false
+    }
+  }
+]
