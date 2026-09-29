@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# SRD de referencia (pesado; cada uno lo descarga de dndbeyond.com/srd)
+/docs/reference/*
+!/docs/reference/README.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

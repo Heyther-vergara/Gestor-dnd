@@ -4,6 +4,8 @@
 
 App web responsive de hojas de personaje compatibles con 5e (SRD 5.1 / 2014 y SRD 5.2.1 / 2024) con homebrew por paquetes. Plan completo, fases y pendientes: `docs/plan.md`. Decisiones: `docs/decisions/`.
 
+**Referencia de reglas:** SRD 5.2.1 oficial en español en `docs/reference/srd-5.2.1-es.pdf` (fuera de git). Busca con `grep` en `docs/reference/srd-5.2.1-es.txt` antes de implementar o testear una regla, y cita la regla en el test. No uses reglas de memoria ni de libros fuera del SRD.
+
 ## Cómo trabajar
 
 - Usuario principiante, proyecto de portafolio. Explica decisiones importantes en pocas palabras (qué y por qué).
