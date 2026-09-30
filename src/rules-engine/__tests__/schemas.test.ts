@@ -65,6 +65,48 @@ describe("effectSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // SRD 5.2.1, "Armaduras" (pág. 99) y conjuro "Armadura de mago".
+  it("accepts ability modifiers in a value (Armadura de mago: 13 + Des)", () => {
+    const result = effectSchema.safeParse({
+      target: "ac",
+      op: "base",
+      value: 13,
+      abilities: ["dex"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a cap on the ability bonus (armadura media: 14 + Des, máx. 2)", () => {
+    const result = effectSchema.safeParse({
+      target: "ac",
+      op: "base",
+      value: 14,
+      abilities: ["dex"],
+      maxAbilityBonus: 2,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a cap without abilities to cap", () => {
+    const result = effectSchema.safeParse({
+      target: "ac",
+      op: "base",
+      value: 14,
+      maxAbilityBonus: 2,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unknown ability", () => {
+    const result = effectSchema.safeParse({
+      target: "ac",
+      op: "base",
+      value: 10,
+      abilities: ["luck"],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("packageSchema", () => {

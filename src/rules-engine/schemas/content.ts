@@ -20,6 +20,7 @@ const levelFeatureSchema = traitSchema.extend({
 
 const classDataSchema = z.strictObject({
   hitDie: z.union([z.literal(6), z.literal(8), z.literal(10), z.literal(12)]),
+  // Basta con una: el guerrero ["str", "dex"] es "Fuerza o Destreza".
   primaryAbilities: z.array(abilitySchema).min(1),
   savingThrows: z.array(abilitySchema).length(2),
   skillChoices: z.strictObject({
