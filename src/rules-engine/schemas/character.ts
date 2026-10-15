@@ -41,6 +41,16 @@ const skillsChoiceSchema = z.strictObject({
 
 // SRD 5.2.1 "Crear un personaje": +2 a una y +1 a otra distinta, o +1 a las tres.
 // Que sean las tres del trasfondo y que no pasen de 20 lo comprueba el motor, que conoce el contenido.
+// SRD 5.2.1, glosario, "Pericia": duplica el bonificador por competencia en una
+// habilidad en la que ya sos competente. Siempre se elige (mago "Erudito",
+// pícaro), así que va como elección y no como efecto. Que seas competente en
+// la habilidad lo comprueba el motor.
+const expertiseChoiceSchema = z.strictObject({
+  ...choiceBase,
+  kind: z.literal("expertise"),
+  skills: z.array(skillSchema).min(1),
+});
+
 const abilityBonusChoiceSchema = z.strictObject({
   ...choiceBase,
   kind: z.literal("ability-bonus"),
@@ -62,6 +72,7 @@ const sizeChoiceSchema = z.strictObject({
 
 export const choiceSchema = z.discriminatedUnion("kind", [
   skillsChoiceSchema,
+  expertiseChoiceSchema,
   abilityBonusChoiceSchema,
   sizeChoiceSchema,
 ]);

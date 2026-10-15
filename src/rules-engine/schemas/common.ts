@@ -32,6 +32,28 @@ export const skillSchema = z.enum([
   "survival",
 ]);
 
+// SRD 5.2.1, "Cómo jugar", tabla "Habilidades": la característica que usa cada una.
+export const skillAbilities = {
+  acrobatics: "dex",
+  "animal-handling": "wis",
+  arcana: "int",
+  athletics: "str",
+  deception: "cha",
+  history: "int",
+  insight: "wis",
+  intimidation: "cha",
+  investigation: "int",
+  medicine: "wis",
+  nature: "int",
+  perception: "wis",
+  performance: "cha",
+  persuasion: "cha",
+  religion: "int",
+  "sleight-of-hand": "dex",
+  stealth: "dex",
+  survival: "wis",
+} as const satisfies Record<Skill, Ability>;
+
 export type Slug = z.infer<typeof slugSchema>;
 export type Edition = z.infer<typeof editionSchema>;
 export type Ability = z.infer<typeof abilitySchema>;

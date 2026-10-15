@@ -8,6 +8,10 @@ import {
   type Condition,
   type Content,
   type Effect,
+  type GrantTarget,
+  type Skill,
+  skillAbilities,
+  skillSchema,
 } from "../schemas";
 import {
   applyNumericEffects,
@@ -34,6 +38,13 @@ export const createContentIndex = (
 export type ComputedSheet = {
   abilities: Record<Ability, { score: number; modifier: number }>;
   ac: number;
+  proficiencyBonus: number;
+  savingThrows: Record<Ability, { modifier: number; proficient: boolean }>;
+  skills: Record<
+    Skill,
+    { ability: Ability; modifier: number; proficiency: SkillProficiency }
+  >;
+  passivePerception: number;
   // Problemas con los datos (contenido que falta, elecciones inválidas).
   // No rompen la hoja: lo afectado se ignora y la interfaz puede avisar.
   issues: string[];
@@ -44,11 +55,21 @@ export type ComputedSheet = {
 export const abilityModifier = (score: number): number =>
   Math.floor((score - 10) / 2);
 
+export type SkillProficiency = "none" | "proficient" | "expertise";
+
+// SRD 5.2.1, "Cómo jugar", tabla "Bonificador por competencia": +2 hasta el
+// nivel 4 y +1 cada 4 niveles después (5–8 → +3 … 17–20 → +6).
+export const proficiencyBonusForLevel = (level: number): number =>
+  2 + Math.floor((level - 1) / 4);
+
+const MAX_CHARACTER_LEVEL = 20;
+
 // SRD 5.2.1, "Crear un personaje": el aumento del trasfondo no puede subir
 // una puntuación por encima de 20.
 const BACKGROUND_BONUS_CAP = 20;
 
 const ABILITIES = abilitySchema.options;
+const SKILLS = skillSchema.options;
 
 export function calculateSheet(
   character: Character,
@@ -126,9 +147,13 @@ export function calculateSheet(
     collected.push(...item.effects);
   }
 
-  const effects: NumericEffect[] = collected
-    .filter(isNumericEffect)
-    .filter((e) => e.condition === undefined || conditionHolds[e.condition]);
+  const applicable = collected.filter(
+    (e) => e.condition === undefined || conditionHolds[e.condition],
+  );
+  const effects: NumericEffect[] = applicable.filter(isNumericEffect);
+  const granted = new Set<GrantTarget>(
+    applicable.flatMap((e) => (e.op === "grant" ? [e.target] : [])),
+  );
 
   // --- Puntuaciones de característica ---
   const scores = { ...character.baseAbilityScores };
@@ -179,7 +204,139 @@ export function calculateSheet(
     modifiers,
   );
 
-  return { abilities, ac, issues };
+  // --- Bonificador por competencia ---
+  // SRD 5.2.1, "Multiclase": se basa en el nivel total del personaje.
+  const totalLevel = character.classes.reduce((sum, c) => sum + c.level, 0);
+  if (totalLevel > MAX_CHARACTER_LEVEL) {
+    issues.push(
+      `El nivel total es ${totalLevel}; el máximo es ${MAX_CHARACTER_LEVEL}`,
+    );
+  }
+  const proficiencyBonus = proficiencyBonusForLevel(
+    Math.min(totalLevel, MAX_CHARACTER_LEVEL),
+  );
+
+  // --- Tiradas de salvación ---
+  // SRD 5.2.1, "Convertirse en <clase>", "Como personaje multiclase": las
+  // salvaciones solo las da la clase inicial, que es la primera de `classes`.
+  const startingClass = startingClassOf(character, contentIndex);
+  const savingThrows = Object.fromEntries(
+    ABILITIES.map((ability) => {
+      const proficient =
+        (startingClass?.data.savingThrows.includes(ability) ?? false) ||
+        granted.has(`proficiency.save.${ability}`);
+      const modifier = applyNumericEffects(
+        modifiers[ability] + (proficient ? proficiencyBonus : 0),
+        effectsFor(effects, `save.${ability}`),
+        modifiers,
+      );
+      return [ability, { modifier, proficient }];
+    }),
+  ) as ComputedSheet["savingThrows"];
+
+  // --- Habilidades ---
+  const proficientSkills = new Set<Skill>(
+    SKILLS.filter((skill) => granted.has(`proficiency.skill.${skill}`)),
+  );
+  // SRD 5.2.1, "Creación de personajes": el trasfondo da dos habilidades.
+  for (const skill of background?.data.skillProficiencies ?? []) {
+    proficientSkills.add(skill);
+  }
+
+  const ownedContentIds = new Set<string>([
+    character.speciesId,
+    character.backgroundId,
+    ...(background ? [background.data.featId] : []),
+    ...character.classes.map((c) => c.classId),
+  ]);
+
+  for (const choice of character.choices) {
+    if (choice.kind !== "skills") continue;
+    if (!ownedContentIds.has(choice.contentId)) {
+      issues.push(
+        `Habilidades elegidas de "${choice.contentId}", que tu personaje no tiene`,
+      );
+      continue;
+    }
+    // Si las ofrece una clase, se comprueban sus opciones y cuántas permite.
+    // La especie y las dotes todavía no declaran sus opciones en el contenido.
+    const cls = contentIndex.get(choice.contentId);
+    if (cls?.type === "class") {
+      const { count, options } = cls.data.skillChoices;
+      if (choice.skills.some((skill) => !options.includes(skill))) {
+        issues.push(
+          `La clase "${cls.id}" solo permite elegir ${options.join(", ")}`,
+        );
+        continue;
+      }
+      if (choice.skills.length > count) {
+        issues.push(`La clase "${cls.id}" permite elegir ${count} habilidades`);
+        continue;
+      }
+    }
+    for (const skill of choice.skills) proficientSkills.add(skill);
+  }
+
+  // SRD 5.2.1, glosario, "Pericia": solo en habilidades en las que ya sos
+  // competente, y no se acumula.
+  const expertSkills = new Set<Skill>();
+  for (const choice of character.choices) {
+    if (choice.kind !== "expertise") continue;
+    if (!ownedContentIds.has(choice.contentId)) {
+      issues.push(
+        `Pericia elegida de "${choice.contentId}", que tu personaje no tiene`,
+      );
+      continue;
+    }
+    for (const skill of choice.skills) {
+      if (proficientSkills.has(skill)) expertSkills.add(skill);
+      else issues.push(`Pericia en "${skill}" sin ser competente`);
+    }
+  }
+
+  // SRD 5.2.1, "El bonificador no se acumula": aunque la competencia venga de
+  // varios lados, el bonificador se suma una vez (o dos con pericia).
+  const skills = Object.fromEntries(
+    SKILLS.map((skill) => {
+      const ability = skillAbilities[skill];
+      const proficiency: SkillProficiency = expertSkills.has(skill)
+        ? "expertise"
+        : proficientSkills.has(skill)
+          ? "proficient"
+          : "none";
+      const multiplier = { none: 0, proficient: 1, expertise: 2 }[proficiency];
+      const modifier = applyNumericEffects(
+        modifiers[ability] + proficiencyBonus * multiplier,
+        effectsFor(effects, `skill.${skill}`),
+        modifiers,
+      );
+      return [skill, { ability, modifier, proficiency }];
+    }),
+  ) as ComputedSheet["skills"];
+
+  // SRD 5.2.1, "Rellena los números": Percepción pasiva = 10 + modificador
+  // para pruebas de Sabiduría (Percepción).
+  const passivePerception = 10 + skills.perception.modifier;
+
+  return {
+    abilities,
+    ac,
+    proficiencyBonus,
+    savingThrows,
+    skills,
+    passivePerception,
+    issues,
+  };
+}
+
+// La clase inicial es la primera de la lista. No repite el aviso si falta: ya
+// lo dio `find` al juntar los efectos.
+function startingClassOf(character: Character, contentIndex: ContentIndex) {
+  const first = contentIndex.get(character.classes[0].classId);
+  return first?.type === "class" &&
+    character.activePackageIds.includes(first.packageId)
+    ? first
+    : undefined;
 }
 
 function modifiersOf(scores: Record<Ability, number>): Modifiers {

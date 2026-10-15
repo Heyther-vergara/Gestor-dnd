@@ -10,6 +10,7 @@ import {
 import {
   type Character,
   characterSchema,
+  type Choice,
   type Content,
   contentSchema,
   type Effect,
@@ -188,7 +189,14 @@ const ringOfProtection = content({
   type: "item",
   name: "Anillo de protección",
   description: "",
-  effects: [{ target: "ac", op: "add", value: 1 }],
+  effects: [
+    { target: "ac", op: "add", value: 1 },
+    ...(["str", "dex", "con", "int", "wis", "cha"] as const).map((a) => ({
+      target: `save.${a}`,
+      op: "add",
+      value: 1,
+    })),
+  ],
   data: { category: "magic", requiresAttunement: true },
 });
 
@@ -203,7 +211,64 @@ const homebrewBelt = content({
   data: { category: "magic" },
 });
 
+// SRD 5.2.1, mago: competencia en salvaciones de Inteligencia y Sabiduría.
+// "Erudito" (nivel 2): pericia en una habilidad de conocimiento en la que ya
+// seas competente.
+const wizard = content({
+  id: "wizard",
+  packageId: "srd-2024",
+  type: "class",
+  name: "Mago",
+  description: "",
+  data: {
+    ...classData,
+    savingThrows: ["int", "wis"],
+    skillChoices: {
+      count: 2,
+      options: [
+        "arcana",
+        "history",
+        "insight",
+        "investigation",
+        "medicine",
+        "nature",
+        "religion",
+      ],
+    },
+    hitDie: 6,
+    features: [],
+  },
+});
+
+// Homebrew: concede competencias con efectos "grant".
+const sentinelCloak = content({
+  id: "sentinel-cloak",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Capa del centinela",
+  description: "Competencia en salvaciones de Sabiduría y en Sigilo",
+  effects: [
+    { target: "proficiency.save.wis", op: "grant" },
+    { target: "proficiency.skill.stealth", op: "grant" },
+  ],
+  data: { category: "magic" },
+});
+
+// Homebrew: +2 a Sigilo, para probar efectos numéricos sobre habilidades.
+const quietBoots = content({
+  id: "quiet-boots",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Botas silenciosas",
+  description: "+2 a Sigilo",
+  effects: [{ target: "skill.stealth", op: "add", value: 2 }],
+  data: { category: "magic" },
+});
+
 const index = createContentIndex([
+  wizard,
+  sentinelCloak,
+  quietBoots,
   dwarf,
   soldier,
   savageAttacker,
@@ -514,6 +579,302 @@ describe("calculateSheet: armor class", () => {
     it("does not apply with a shield", () => {
       expect(calculateSheet(monkWith(equipped("shield")), index).ac).toBe(15);
     });
+  });
+});
+
+describe("calculateSheet: proficiency bonus", () => {
+  // SRD 5.2.1, "Cómo jugar", tabla "Bonificador por competencia":
+  // hasta 4 → +2 · 5–8 → +3 · 9–12 → +4 · 13–16 → +5 · 17–20 → +6.
+  it.each([
+    [1, 2],
+    [4, 2],
+    [5, 3],
+    [8, 3],
+    [9, 4],
+    [12, 4],
+    [13, 5],
+    [16, 5],
+    [17, 6],
+    [20, 6],
+  ])("level %i → +%i", (level, bonus) => {
+    const sheet = calculateSheet(
+      makeCharacter({ classes: [{ classId: "fighter", level }] }),
+      index,
+    );
+    expect(sheet.proficiencyBonus).toBe(bonus);
+  });
+
+  // SRD 5.2.1, "Multiclase", "Bonificador por competencia": se basa en el nivel
+  // total del personaje. "Guerrere de nivel 3/pícare de nivel 2 … +3".
+  it("uses the total character level when multiclassing", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "fighter", level: 3 },
+          { classId: "wizard", level: 2 },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.proficiencyBonus).toBe(3);
+  });
+
+  it("reports a total level above 20", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "fighter", level: 15 },
+          { classId: "wizard", level: 10 },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.proficiencyBonus).toBe(6);
+    expect(sheet.issues).toHaveLength(1);
+  });
+});
+
+describe("calculateSheet: saving throws", () => {
+  // SRD 5.2.1, "Creación de personajes", "Rellena los números": en las
+  // salvaciones en las que sos competente, modificador + bonificador por
+  // competencia; en las demás, solo el modificador.
+  it("adds the proficiency bonus to the class saving throws", () => {
+    // Guerrero nivel 3 (+2): Fue 15 (+2) y Con 13 (+1) competentes.
+    const sheet = calculateSheet(makeCharacter(), index);
+    expect(sheet.savingThrows.str).toEqual({ modifier: 4, proficient: true });
+    expect(sheet.savingThrows.con).toEqual({ modifier: 3, proficient: true });
+    expect(sheet.savingThrows.dex).toEqual({ modifier: 2, proficient: false });
+    expect(sheet.savingThrows.int).toEqual({ modifier: -1, proficient: false });
+  });
+
+  // SRD 5.2.1, "Convertirse en bárbaro", "Como personaje multiclase": solo se
+  // obtienen algunos atributos de la clase nueva, y las salvaciones no están.
+  it("only uses the saving throws of the starting class", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "fighter", level: 3 },
+          { classId: "wizard", level: 2 },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.savingThrows.str.proficient).toBe(true);
+    expect(sheet.savingThrows.int.proficient).toBe(false);
+    expect(sheet.savingThrows.wis.proficient).toBe(false);
+  });
+
+  it("grants saving throw proficiency from effects", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("sentinel-cloak"),
+      }),
+      index,
+    );
+    expect(sheet.savingThrows.wis).toEqual({ modifier: 3, proficient: true });
+  });
+
+  // SRD 5.2.1, "Anillo de protección": +1 a la CA y a las tiradas de salvación.
+  it("applies numeric effects on saving throws", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        inventory: [
+          {
+            itemId: "ring-of-protection",
+            quantity: 1,
+            equipped: true,
+            attuned: true,
+          },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.savingThrows.str.modifier).toBe(5);
+    expect(sheet.savingThrows.dex.modifier).toBe(3);
+  });
+});
+
+describe("calculateSheet: skills", () => {
+  const fighterSkills: Choice = {
+    kind: "skills",
+    contentId: "fighter",
+    level: 1,
+    skills: ["perception", "athletics"],
+  };
+
+  // SRD 5.2.1, "Creación de personajes", "Rellena los números": en las
+  // habilidades en las que sos competente, modificador de la característica
+  // asociada + bonificador por competencia; en las demás, solo el modificador.
+  it("uses only the ability modifier without proficiency", () => {
+    const sheet = calculateSheet(makeCharacter(), index);
+    // Sigilo usa Destreza (tabla "Habilidades"): Des 14 → +2.
+    expect(sheet.skills.stealth).toEqual({
+      ability: "dex",
+      modifier: 2,
+      proficiency: "none",
+    });
+    expect(sheet.skills.arcana.modifier).toBe(-1);
+  });
+
+  // SRD 5.2.1, "Creación de personajes": el trasfondo da competencia en dos
+  // habilidades. Soldado: Atletismo e Intimidación.
+  it("adds the proficiency bonus to background skills", () => {
+    const sheet = calculateSheet(makeCharacter(), index);
+    expect(sheet.skills.athletics).toEqual({
+      ability: "str",
+      modifier: 4,
+      proficiency: "proficient",
+    });
+    expect(sheet.skills.intimidation.modifier).toBe(2);
+  });
+
+  it("adds the proficiency bonus to skills chosen from the class", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ choices: [fighterSkills] }),
+      index,
+    );
+    // Sab 12 (+1) + 2.
+    expect(sheet.skills.perception).toEqual({
+      ability: "wis",
+      modifier: 3,
+      proficiency: "proficient",
+    });
+    expect(sheet.issues).toEqual([]);
+  });
+
+  // SRD 5.2.1, "El bonificador no se acumula": Atletismo viene del trasfondo y
+  // de la clase, pero el bonificador se suma una sola vez.
+  it("does not add the proficiency bonus twice", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ choices: [fighterSkills] }),
+      index,
+    );
+    expect(sheet.skills.athletics.modifier).toBe(4);
+  });
+
+  it("ignores a class skill outside the class options", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        choices: [
+          {
+            kind: "skills",
+            contentId: "fighter",
+            level: 1,
+            skills: ["arcana"],
+          },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.skills.arcana.proficiency).toBe("none");
+    expect(sheet.issues).toHaveLength(1);
+  });
+
+  it("ignores more class skills than the class allows", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [{ classId: "wizard", level: 1 }],
+        choices: [
+          {
+            kind: "skills",
+            contentId: "wizard",
+            level: 1,
+            skills: ["arcana", "history", "nature"],
+          },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.skills.arcana.proficiency).toBe("none");
+    expect(sheet.issues).toHaveLength(1);
+  });
+
+  it("ignores skills chosen from content the character does not have", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        choices: [
+          { kind: "skills", contentId: "wizard", level: 1, skills: ["arcana"] },
+        ],
+      }),
+      index,
+    );
+    expect(sheet.skills.arcana.proficiency).toBe("none");
+    expect(sheet.issues).toHaveLength(1);
+  });
+
+  it("grants skill proficiency from effects and applies skill bonuses", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("sentinel-cloak", "quiet-boots"),
+      }),
+      index,
+    );
+    // Des +2, competencia +2, botas +2.
+    expect(sheet.skills.stealth).toEqual({
+      ability: "dex",
+      modifier: 6,
+      proficiency: "proficient",
+    });
+  });
+
+  describe("expertise", () => {
+    // Maga de nivel 2 (+2) con Int 16 (+3), competente en Conocimiento arcano
+    // e Historia, y "Erudito" en Conocimiento arcano.
+    const scholar = (expertise: ("arcana" | "nature")[]) =>
+      makeCharacter({
+        classes: [{ classId: "wizard", level: 2 }],
+        baseAbilityScores: { int: 16 },
+        choices: [
+          {
+            kind: "skills",
+            contentId: "wizard",
+            level: 1,
+            skills: ["arcana", "history"],
+          },
+          {
+            kind: "expertise",
+            contentId: "wizard",
+            level: 2,
+            skills: expertise,
+          },
+        ],
+      });
+
+    // SRD 5.2.1, glosario, "Pericia": el bonificador por competencia se duplica
+    // en las pruebas con esa habilidad.
+    it("doubles the proficiency bonus", () => {
+      const sheet = calculateSheet(scholar(["arcana"]), index);
+      expect(sheet.skills.arcana).toEqual({
+        ability: "int",
+        modifier: 7,
+        proficiency: "expertise",
+      });
+      expect(sheet.skills.history.modifier).toBe(5);
+      expect(sheet.issues).toEqual([]);
+    });
+
+    // SRD 5.2.1, glosario, "Pericia": la ganás en una habilidad en la que
+    // tengas competencia.
+    it("is ignored in a skill without proficiency", () => {
+      const sheet = calculateSheet(scholar(["nature"]), index);
+      expect(sheet.skills.nature.proficiency).toBe("none");
+      expect(sheet.skills.nature.modifier).toBe(3);
+      expect(sheet.issues).toHaveLength(1);
+    });
+  });
+
+  // SRD 5.2.1, "Rellena los números": Percepción pasiva = 10 + modificador
+  // para pruebas de Sabiduría (Percepción).
+  it("calculates passive Perception", () => {
+    const without = calculateSheet(makeCharacter(), index);
+    const withProficiency = calculateSheet(
+      makeCharacter({ choices: [fighterSkills] }),
+      index,
+    );
+    expect(without.passivePerception).toBe(11);
+    expect(withProficiency.passivePerception).toBe(13);
   });
 });
 

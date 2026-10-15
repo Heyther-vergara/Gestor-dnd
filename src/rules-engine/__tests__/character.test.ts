@@ -114,6 +114,31 @@ describe("characterSchema", () => {
     });
   });
 
+  it("accepts an expertise choice", () => {
+    const result = characterSchema.safeParse({
+      ...fighter,
+      choices: [
+        {
+          kind: "expertise",
+          contentId: "fighter",
+          level: 1,
+          skills: ["perception"],
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an expertise choice without skills", () => {
+    const result = characterSchema.safeParse({
+      ...fighter,
+      choices: [
+        { kind: "expertise", contentId: "fighter", level: 1, skills: [] },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects an unknown choice kind", () => {
     const result = characterSchema.safeParse({
       ...fighter,
