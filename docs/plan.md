@@ -200,6 +200,6 @@ Ajustes aplicados en la fase 0 (detalle en `docs/decisions/0001-project-location
 Pendientes para revisar en su fase:
 
 - **Fase 1 — SRD 5.2.1:** `5e-bits/5e-database` es principalmente SRD 5.1; el contenido 2024 probablemente hay que transcribirlo del PDF oficial (CC-BY-4.0).
-- **Fase 2 — Motor de reglas:** la CA tiene varias fórmulas base (armadura, Defensa sin armadura…) y se usa la mejor. El orden `base → set → add → multiply → min/max` necesita una etapa "elegir la base más alta".
+- **Fase 2 — Motor de reglas:** la CA tiene varias fórmulas base (armadura, Defensa sin armadura…) y se usa la mejor. El orden `base → set → add → multiply → min/max` necesita una etapa "elegir la base más alta". Resuelto en `docs/decisions/0003-effect-vocabulary-and-ac.md`: la CA sale solo de efectos y `target`/`condition` son listas cerradas.
 - **Fase 3 — Drizzle + RLS:** Drizzle conecta con un rol que se salta Row Level Security; la autorización debe hacerse en el servidor o con políticas explícitas. Escribir un ADR.
 - **Calendario:** 16 semanas a 8–10 h/semana es ajustado. La meta firme es el MVP (fase 4); las fases 5–7 son flexibles.

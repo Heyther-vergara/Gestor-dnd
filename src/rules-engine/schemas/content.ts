@@ -100,11 +100,11 @@ const itemDataSchema = z.strictObject({
     })
     .optional(),
   requiresAttunement: z.boolean().default(false),
+  // La CA de la armadura NO va acá: va en `effects` como { target: "ac", op: "base" }
+  // (ADR 0003). Acá queda solo lo que no es CA.
   armor: z
     .strictObject({
       armorCategory: z.enum(["light", "medium", "heavy"]),
-      baseAc: z.int().min(0),
-      dexCap: z.int().min(0).nullable(), // null = sin límite (armadura ligera)
       strengthRequirement: z.int().min(0).optional(),
       stealthDisadvantage: z.boolean(),
     })
@@ -152,11 +152,24 @@ export const contentSchema = z.discriminatedUnion("type", [
     type: z.literal("spell"),
     data: spellDataSchema,
   }),
-  z.strictObject({
-    ...contentBase,
-    type: z.literal("item"),
-    data: itemDataSchema,
-  }),
+  z
+    .strictObject({
+      ...contentBase,
+      type: z.literal("item"),
+      data: itemDataSchema,
+    })
+    .refine(
+      (item) =>
+        item.data.category !== "armor" ||
+        (item.data.armor !== undefined &&
+          item.effects.filter((e) => e.target === "ac" && e.op === "base")
+            .length === 1),
+      {
+        message:
+          'Una armadura necesita data.armor y exactamente un efecto { target: "ac", op: "base" }',
+        path: ["effects"],
+      },
+    ),
 ]);
 
 export type Content = z.infer<typeof contentSchema>;

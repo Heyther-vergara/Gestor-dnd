@@ -33,14 +33,25 @@ describe("effectSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  // SRD 5.2.1, monje "Movimiento sin armadura": +3 m si no llevás armadura ni escudo.
   it("accepts an optional condition", () => {
     const result = effectSchema.safeParse({
       target: "speed",
       op: "add",
       value: 10,
-      condition: "unarmored",
+      condition: "unarmored-no-shield",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects an unknown condition", () => {
+    const result = effectSchema.safeParse({
+      target: "speed",
+      op: "add",
+      value: 10,
+      condition: "naked",
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects a numeric op without a number value", () => {
@@ -55,6 +66,80 @@ describe("effectSchema", () => {
       value: 2,
     });
     expect(result.success).toBe(false);
+  });
+
+  // Vocabulario cerrado (ADR 0003): un typo ya no pasa la validación.
+  it("rejects a target outside the vocabulary (typo)", () => {
+    const result = effectSchema.safeParse({
+      target: "acc",
+      op: "add",
+      value: 1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    "ac",
+    "initiative",
+    "speed",
+    "hp.max",
+    "hp.max-per-level",
+    "senses.darkvision",
+    "spell.attack",
+    "spell.dc",
+    "ability.str",
+    "save.wis",
+    "skill.sleight-of-hand",
+  ])("accepts the numeric target %s", (target) => {
+    const result = effectSchema.safeParse({ target, op: "add", value: 1 });
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    "proficiency.skill.stealth",
+    "proficiency.save.con",
+    "proficiency.armor.shield",
+    "proficiency.weapon.martial",
+  ])("accepts the grant target %s", (target) => {
+    const result = effectSchema.safeParse({ target, op: "grant" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an unknown skill or ability inside a target", () => {
+    expect(
+      effectSchema.safeParse({ target: "skill.cooking", op: "add", value: 1 })
+        .success,
+    ).toBe(false);
+    expect(
+      effectSchema.safeParse({ target: "save.luck", op: "add", value: 1 })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects granting a numeric target", () => {
+    const result = effectSchema.safeParse({ target: "ac", op: "grant" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects adding a number to a proficiency", () => {
+    const result = effectSchema.safeParse({
+      target: "proficiency.skill.stealth",
+      op: "add",
+      value: 1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // SRD 5.2.1, bárbaro "Defensa sin armadura": 10 + Des + Con, también con escudo.
+  it("accepts Unarmored Defense as a conditional base AC", () => {
+    const result = effectSchema.safeParse({
+      target: "ac",
+      op: "base",
+      value: 10,
+      abilities: ["dex", "con"],
+      condition: "unarmored",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("rejects a malformed target", () => {
@@ -256,12 +341,70 @@ describe("contentSchema", () => {
         cost: { amount: 75, unit: "gp" },
         armor: {
           armorCategory: "heavy",
-          baseAc: 16,
-          dexCap: 0,
           strengthRequirement: 13,
           stealthDisadvantage: true,
         },
       },
+      // SRD 5.2.1 "Armaduras": la CA base con cota de malla es 16.
+      effects: [{ target: "ac", op: "base", value: 16 }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // ADR 0003: la CA de una armadura vive solo en sus efectos.
+  it("rejects AC stored in the armor data", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "chain-mail",
+      type: "item",
+      name: "Chain Mail",
+      data: {
+        category: "armor",
+        armor: {
+          armorCategory: "heavy",
+          baseAc: 16,
+          stealthDisadvantage: true,
+        },
+      },
+      effects: [{ target: "ac", op: "base", value: 16 }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an armor without a base AC effect", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "leather-armor",
+      type: "item",
+      name: "Leather Armor",
+      data: {
+        category: "armor",
+        armor: { armorCategory: "light", stealthDisadvantage: false },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // SRD 5.2.1 "Armaduras": armadura media 14 + Des (máx. 2).
+  it("accepts medium armor with a capped Dex bonus", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "scale-mail",
+      type: "item",
+      name: "Scale Mail",
+      data: {
+        category: "armor",
+        armor: { armorCategory: "medium", stealthDisadvantage: true },
+      },
+      effects: [
+        {
+          target: "ac",
+          op: "base",
+          value: 14,
+          abilities: ["dex"],
+          maxAbilityBonus: 2,
+        },
+      ],
     });
     expect(result.success).toBe(true);
   });
