@@ -31,4 +31,4 @@ Script `scripts/import-srd-2024.mts` (`pnpm content:import`) que descarga el JSO
 - No se modelan aún los **linajes** (subespecies: elfo, gnomo, tiflin…), por eso las especies elegidas son enano, humano y mediano. Pendiente para la v1.
 - La dote _Magic Initiate_ depende de una lista de conjuros (clérigo para acólito, mago para sabio); el trasfondo aún no guarda ese parámetro. Pendiente para la fase 3 (creador de personaje).
 - `toolProficiency` es texto libre; a veces es una elección ("Choose one kind of Gaming Set").
-- El vocabulario de `target` de los efectos se cierra en la fase 2.
+- ~~El vocabulario de `target` de los efectos se cierra en la fase 2.~~ Hecho en el ADR 0003.
