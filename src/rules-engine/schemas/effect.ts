@@ -44,6 +44,7 @@ export const conditionSchema = z.enum(["unarmored", "unarmored-no-shield"]);
 
 // Operaciones numéricas, en el orden en que el motor las aplica.
 // "base" propone un valor base; si hay varios (armadura, Defensa sin armadura), el motor usa el mayor.
+// "min" es un piso ("tu CA no puede ser menor que 16") y "max" un techo. Detalle en engine/effects.ts.
 export const numericOps = [
   "base",
   "set",
