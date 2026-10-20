@@ -18,7 +18,7 @@
           "effects": [
             {
               "target": "senses.darkvision",
-              "op": "max",
+              "op": "base",
               "value": 120
             }
           ]

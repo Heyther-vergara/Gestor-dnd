@@ -1,0 +1,1583 @@
+[
+  {
+    "id": "battleaxe",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Battleaxe",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 4,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "slashing"
+        },
+        "versatileDice": "1d10",
+        "properties": [
+          "versatile"
+        ],
+        "mastery": "topple"
+      }
+    }
+  },
+  {
+    "id": "blowgun",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Blowgun",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 1,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "loading"
+        ],
+        "mastery": "vex",
+        "range": {
+          "normal": 25,
+          "long": 100
+        }
+      }
+    }
+  },
+  {
+    "id": "breastplate",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Breastplate",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 14,
+        "abilities": [
+          "dex"
+        ],
+        "maxAbilityBonus": 2
+      }
+    ],
+    "data": {
+      "weight": 20,
+      "cost": {
+        "amount": 400,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "medium",
+        "stealthDisadvantage": false
+      }
+    }
+  },
+  {
+    "id": "chain-mail",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Chain Mail",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 16
+      }
+    ],
+    "data": {
+      "weight": 55,
+      "cost": {
+        "amount": 75,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "heavy",
+        "strengthRequirement": 13,
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "chain-shirt",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Chain Shirt",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 13,
+        "abilities": [
+          "dex"
+        ],
+        "maxAbilityBonus": 2
+      }
+    ],
+    "data": {
+      "weight": 14,
+      "cost": {
+        "amount": 50,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "medium",
+        "stealthDisadvantage": false
+      }
+    }
+  },
+  {
+    "id": "club",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Club",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 1,
+        "unit": "sp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d4",
+          "type": "bludgeoning"
+        },
+        "properties": [
+          "light"
+        ],
+        "mastery": "slow"
+      }
+    }
+  },
+  {
+    "id": "dagger",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Dagger",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 1,
+      "cost": {
+        "amount": 2,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d4",
+          "type": "piercing"
+        },
+        "properties": [
+          "finesse",
+          "light",
+          "thrown"
+        ],
+        "mastery": "nick",
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "dart",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Dart",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 0.25,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d4",
+          "type": "piercing"
+        },
+        "properties": [
+          "finesse",
+          "thrown"
+        ],
+        "mastery": "vex",
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "flail",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Flail",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "bludgeoning"
+        },
+        "properties": [],
+        "mastery": "sap"
+      }
+    }
+  },
+  {
+    "id": "glaive",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Glaive",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 6,
+      "cost": {
+        "amount": 20,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d10",
+          "type": "slashing"
+        },
+        "properties": [
+          "heavy",
+          "reach",
+          "two-handed"
+        ],
+        "mastery": "graze"
+      }
+    }
+  },
+  {
+    "id": "greataxe",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Greataxe",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 7,
+      "cost": {
+        "amount": 30,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d12",
+          "type": "slashing"
+        },
+        "properties": [
+          "heavy",
+          "two-handed"
+        ],
+        "mastery": "cleave"
+      }
+    }
+  },
+  {
+    "id": "greatclub",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Greatclub",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 10,
+      "cost": {
+        "amount": 2,
+        "unit": "sp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "bludgeoning"
+        },
+        "properties": [
+          "two-handed"
+        ],
+        "mastery": "push"
+      }
+    }
+  },
+  {
+    "id": "greatsword",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Greatsword",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 6,
+      "cost": {
+        "amount": 50,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "2d6",
+          "type": "slashing"
+        },
+        "properties": [
+          "heavy",
+          "two-handed"
+        ],
+        "mastery": "graze"
+      }
+    }
+  },
+  {
+    "id": "halberd",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Halberd",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 6,
+      "cost": {
+        "amount": 20,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d10",
+          "type": "slashing"
+        },
+        "properties": [
+          "heavy",
+          "reach",
+          "two-handed"
+        ],
+        "mastery": "cleave"
+      }
+    }
+  },
+  {
+    "id": "half-plate-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Half-Plate Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 15,
+        "abilities": [
+          "dex"
+        ],
+        "maxAbilityBonus": 2
+      }
+    ],
+    "data": {
+      "weight": 40,
+      "cost": {
+        "amount": 750,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "medium",
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "hand-crossbow",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Hand Crossbow",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 25,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d6",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "light",
+          "loading"
+        ],
+        "mastery": "vex",
+        "range": {
+          "normal": 30,
+          "long": 120
+        }
+      }
+    }
+  },
+  {
+    "id": "handaxe",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Handaxe",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "slashing"
+        },
+        "properties": [
+          "light",
+          "thrown"
+        ],
+        "mastery": "vex",
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "heavy-crossbow",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Heavy Crossbow",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 18,
+      "cost": {
+        "amount": 50,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d10",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "heavy",
+          "loading",
+          "two-handed"
+        ],
+        "mastery": "push",
+        "range": {
+          "normal": 100,
+          "long": 400
+        }
+      }
+    }
+  },
+  {
+    "id": "hide-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Hide Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 12,
+        "abilities": [
+          "dex"
+        ],
+        "maxAbilityBonus": 2
+      }
+    ],
+    "data": {
+      "weight": 12,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "light",
+        "stealthDisadvantage": false
+      }
+    }
+  },
+  {
+    "id": "javelin",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Javelin",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "piercing"
+        },
+        "properties": [
+          "thrown"
+        ],
+        "mastery": "slow",
+        "range": {
+          "normal": 30,
+          "long": 120
+        }
+      }
+    }
+  },
+  {
+    "id": "lance",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Lance",
+    "description": "Two-handed unless mounted",
+    "effects": [],
+    "data": {
+      "weight": 6,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d10",
+          "type": "piercing"
+        },
+        "properties": [
+          "heavy",
+          "reach",
+          "two-handed"
+        ],
+        "mastery": "topple"
+      }
+    }
+  },
+  {
+    "id": "leather-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Leather Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 11,
+        "abilities": [
+          "dex"
+        ]
+      }
+    ],
+    "data": {
+      "weight": 10,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "light",
+        "stealthDisadvantage": false
+      }
+    }
+  },
+  {
+    "id": "light-crossbow",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Light Crossbow",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 5,
+      "cost": {
+        "amount": 25,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d8",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "loading",
+          "two-handed"
+        ],
+        "mastery": "slow",
+        "range": {
+          "normal": 80,
+          "long": 320
+        }
+      }
+    }
+  },
+  {
+    "id": "light-hammer",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Light Hammer",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 2,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d4",
+          "type": "bludgeoning"
+        },
+        "properties": [
+          "light",
+          "thrown"
+        ],
+        "mastery": "nick",
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "longbow",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Longbow",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d8",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "heavy",
+          "two-handed"
+        ],
+        "mastery": "slow",
+        "range": {
+          "normal": 150,
+          "long": 600
+        }
+      }
+    }
+  },
+  {
+    "id": "longsword",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Longsword",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 3,
+      "cost": {
+        "amount": 15,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "slashing"
+        },
+        "versatileDice": "1d10",
+        "properties": [
+          "versatile"
+        ],
+        "mastery": "sap"
+      }
+    }
+  },
+  {
+    "id": "mace",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Mace",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "bludgeoning"
+        },
+        "properties": [],
+        "mastery": "sap"
+      }
+    }
+  },
+  {
+    "id": "maul",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Maul",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 10,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "2d6",
+          "type": "bludgeoning"
+        },
+        "properties": [
+          "heavy",
+          "two-handed"
+        ],
+        "mastery": "topple"
+      }
+    }
+  },
+  {
+    "id": "morningstar",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Morningstar",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 4,
+      "cost": {
+        "amount": 15,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "piercing"
+        },
+        "properties": [],
+        "mastery": "sap"
+      }
+    }
+  },
+  {
+    "id": "musket",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Musket",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 10,
+      "cost": {
+        "amount": 500,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d12",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "loading",
+          "two-handed"
+        ],
+        "mastery": "slow",
+        "range": {
+          "normal": 40,
+          "long": 120
+        }
+      }
+    }
+  },
+  {
+    "id": "padded-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Padded Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 11,
+        "abilities": [
+          "dex"
+        ]
+      }
+    ],
+    "data": {
+      "weight": 8,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "light",
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "pike",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Pike",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 6,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d10",
+          "type": "piercing"
+        },
+        "properties": [
+          "heavy",
+          "reach",
+          "two-handed"
+        ],
+        "mastery": "push"
+      }
+    }
+  },
+  {
+    "id": "pistol",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Pistol",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 3,
+      "cost": {
+        "amount": 250,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d10",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "loading"
+        ],
+        "mastery": "vex",
+        "range": {
+          "normal": 30,
+          "long": 90
+        }
+      }
+    }
+  },
+  {
+    "id": "plate-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Plate Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 18
+      }
+    ],
+    "data": {
+      "weight": 65,
+      "cost": {
+        "amount": 1500,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "heavy",
+        "strengthRequirement": 15,
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "quarterstaff",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Quarterstaff",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 4,
+      "cost": {
+        "amount": 2,
+        "unit": "sp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "bludgeoning"
+        },
+        "versatileDice": "1d8",
+        "properties": [
+          "versatile"
+        ],
+        "mastery": "topple"
+      }
+    }
+  },
+  {
+    "id": "rapier",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Rapier",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 25,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "piercing"
+        },
+        "properties": [
+          "finesse"
+        ],
+        "mastery": "vex"
+      }
+    }
+  },
+  {
+    "id": "ring-mail",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Ring Mail",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 14
+      }
+    ],
+    "data": {
+      "weight": 40,
+      "cost": {
+        "amount": 30,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "heavy",
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "scale-mail",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Scale Mail",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 14,
+        "abilities": [
+          "dex"
+        ],
+        "maxAbilityBonus": 2
+      }
+    ],
+    "data": {
+      "weight": 45,
+      "cost": {
+        "amount": 50,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "medium",
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "scimitar",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Scimitar",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 3,
+      "cost": {
+        "amount": 25,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "slashing"
+        },
+        "properties": [
+          "finesse",
+          "light"
+        ],
+        "mastery": "nick"
+      }
+    }
+  },
+  {
+    "id": "shield-item",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Shield",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "add",
+        "value": 2
+      }
+    ],
+    "data": {
+      "weight": 6,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "shield"
+    }
+  },
+  {
+    "id": "shortbow",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Shortbow",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 25,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d6",
+          "type": "piercing"
+        },
+        "properties": [
+          "ammunition",
+          "two-handed"
+        ],
+        "mastery": "vex",
+        "range": {
+          "normal": 80,
+          "long": 320
+        }
+      }
+    }
+  },
+  {
+    "id": "shortsword",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Shortsword",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "piercing"
+        },
+        "properties": [
+          "finesse",
+          "light"
+        ],
+        "mastery": "vex"
+      }
+    }
+  },
+  {
+    "id": "sickle",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Sickle",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 1,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d4",
+          "type": "slashing"
+        },
+        "properties": [
+          "light"
+        ],
+        "mastery": "nick"
+      }
+    }
+  },
+  {
+    "id": "sling",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Sling",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 1,
+        "unit": "sp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "ranged",
+        "damage": {
+          "dice": "1d4",
+          "type": "bludgeoning"
+        },
+        "properties": [
+          "ammunition"
+        ],
+        "mastery": "slow",
+        "range": {
+          "normal": 30,
+          "long": 120
+        }
+      }
+    }
+  },
+  {
+    "id": "spear",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Spear",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "simple",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d6",
+          "type": "piercing"
+        },
+        "versatileDice": "1d8",
+        "properties": [
+          "thrown",
+          "versatile"
+        ],
+        "mastery": "sap",
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "splint-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Splint Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 17
+      }
+    ],
+    "data": {
+      "weight": 60,
+      "cost": {
+        "amount": 200,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "heavy",
+        "strengthRequirement": 15,
+        "stealthDisadvantage": true
+      }
+    }
+  },
+  {
+    "id": "studded-leather-armor",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Studded Leather Armor",
+    "description": "",
+    "effects": [
+      {
+        "target": "ac",
+        "op": "base",
+        "value": 12,
+        "abilities": [
+          "dex"
+        ]
+      }
+    ],
+    "data": {
+      "weight": 13,
+      "cost": {
+        "amount": 45,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "armor",
+      "armor": {
+        "armorCategory": "light",
+        "stealthDisadvantage": false
+      }
+    }
+  },
+  {
+    "id": "trident",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Trident",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 4,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "piercing"
+        },
+        "versatileDice": "1d10",
+        "properties": [
+          "thrown",
+          "versatile"
+        ],
+        "mastery": "topple",
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  },
+  {
+    "id": "warhammer",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Warhammer",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 5,
+      "cost": {
+        "amount": 15,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "bludgeoning"
+        },
+        "versatileDice": "1d10",
+        "properties": [
+          "versatile"
+        ],
+        "mastery": "push"
+      }
+    }
+  },
+  {
+    "id": "war-pick",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "War Pick",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d8",
+          "type": "piercing"
+        },
+        "versatileDice": "1d10",
+        "properties": [
+          "versatile"
+        ],
+        "mastery": "sap"
+      }
+    }
+  },
+  {
+    "id": "whip",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Whip",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 3,
+      "cost": {
+        "amount": 2,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "weapon",
+      "weapon": {
+        "weaponCategory": "martial",
+        "attackType": "melee",
+        "damage": {
+          "dice": "1d4",
+          "type": "slashing"
+        },
+        "properties": [
+          "finesse",
+          "reach"
+        ],
+        "mastery": "slow"
+      }
+    }
+  }
+]

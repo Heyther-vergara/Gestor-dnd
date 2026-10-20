@@ -55,6 +55,8 @@ export type ComputedSheet = {
   };
   // En pies, como el contenido importado (30 pies = 9 m).
   speed: number;
+  // Alcance de la visión en la oscuridad en pies; 0 si no tiene.
+  darkvision: number;
   // Una entrada por clase con lanzamiento de conjuros, en el orden de `classes`.
   spellcasting: SpellcastingStats[];
   // Problemas con los datos (contenido que falta, elecciones inválidas).
@@ -417,6 +419,15 @@ export function calculateSheet(
     modifiers,
   );
 
+  // --- Visión en la oscuridad ---
+  // Sin rasgos es 0. La especie la da como "base" (enano: 120 pies) y otros
+  // efectos pueden sumarle alcance (ADR 0006).
+  const darkvision = applyNumericEffects(
+    0,
+    effectsFor(effects, "senses.darkvision"),
+    modifiers,
+  );
+
   // --- Lanzamiento de conjuros ---
   // SRD 5.2.1, "Rellena los números": CD = 8 + aptitud mágica + competencia;
   // ataque = aptitud mágica + competencia. "Multiclase": cada conjuro usa la
@@ -454,6 +465,7 @@ export function calculateSheet(
     hitPoints,
     hitDice,
     speed,
+    darkvision,
     spellcasting,
     issues,
   };
