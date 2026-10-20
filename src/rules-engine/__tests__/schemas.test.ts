@@ -260,6 +260,26 @@ describe("contentSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  // Antes era texto libre: "heavy-armor" pasaba y el motor nunca lo encontraba.
+  it("rejects an unknown armor training in a class", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "knight",
+      type: "class",
+      name: "Knight",
+      data: {
+        hitDie: 10,
+        primaryAbilities: ["str"],
+        savingThrows: ["str", "con"],
+        skillChoices: { count: 2, options: ["athletics", "history"] },
+        armorProficiencies: ["heavy-armor"],
+        weaponProficiencies: [],
+        features: [],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("defaults effects to an empty list", () => {
     const result = contentSchema.parse({
       ...base,

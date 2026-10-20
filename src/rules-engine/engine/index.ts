@@ -4,6 +4,8 @@
 import {
   type Ability,
   abilitySchema,
+  type ArmorTraining,
+  armorTrainingSchema,
   type Character,
   type Condition,
   type Content,
@@ -59,6 +61,9 @@ export type ComputedSheet = {
   darkvision: number;
   // Una entrada por clase con lanzamiento de conjuros, en el orden de `classes`.
   spellcasting: SpellcastingStats[];
+  // Consecuencias de la armadura equipada que no son un número de la hoja.
+  // La interfaz las muestra como avisos (ADR 0007).
+  armorPenalties: ArmorPenalties;
   // Problemas con los datos (contenido que falta, elecciones inválidas).
   // No rompen la hoja: lo afectado se ignora y la interfaz puede avisar.
   issues: string[];
@@ -78,7 +83,22 @@ export type SpellcastingStats = {
   ability: Ability;
   saveDc: number;
   attackBonus: number;
+  // false si llevás una armadura sin entrenamiento.
+  canCast: boolean;
 };
+
+export type ArmorPenalties = {
+  // SRD 5.2.1, "Entrenamiento con armaduras": desventaja en las pruebas con
+  // d20 de Fuerza o Destreza y no podés lanzar conjuros.
+  untrainedArmor: boolean;
+  // SRD 5.2.1, "Escudos": el escudo no suma a la CA.
+  untrainedShield: boolean;
+  // SRD 5.2.1, "Armaduras", "Fuerza": velocidad −3 m (10 pies).
+  insufficientStrength: boolean;
+};
+
+// SRD 5.2.1, "Armaduras", "Fuerza": la armadura reduce 3 m la velocidad.
+const HEAVY_ARMOR_SPEED_PENALTY = 10;
 
 // SRD 5.2.1, tabla "Puntos de golpe establecidos por clase": d12 → 7,
 // d10 → 6, d8 → 5, d6 → 4. Es la mitad del dado + 1.
@@ -132,12 +152,29 @@ export function calculateSheet(
   });
 
   // ADR 0003: "llevar armadura" y "portar escudo" salen de los objetos equipados.
-  const wearingArmor = equippedItems.some(
+  const wornArmor = equippedItems.filter(
     ({ item }) => item.data.category === "armor",
   );
-  const holdingShield = equippedItems.some(
+  const heldShields = equippedItems.filter(
     ({ item }) => item.data.category === "shield",
   );
+  const wearingArmor = wornArmor.length > 0;
+  const holdingShield = heldShields.length > 0;
+
+  // SRD 5.2.1, "Solo un tipo": una sola armadura y un solo escudo a la vez.
+  // Con dos armaduras se sigue usando la mejor base (ADR 0003); de los
+  // escudos se cuenta solo el primero.
+  if (wornArmor.length > 1) {
+    issues.push(
+      `Hay ${wornArmor.length} armaduras equipadas; solo se puede llevar una`,
+    );
+  }
+  if (heldShields.length > 1) {
+    issues.push(
+      `Hay ${heldShields.length} escudos equipados; solo se puede embrazar uno`,
+    );
+  }
+  const ignoredShields = new Set(heldShields.slice(1));
   const conditionHolds: Record<Condition, boolean> = {
     unarmored: !wearingArmor,
     "unarmored-no-shield": !wearingArmor && !holdingShield,
@@ -177,19 +214,58 @@ export function calculateSheet(
     }
   }
 
-  for (const { item, attuned } of equippedItems) {
+  // Los efectos del escudo dependen del entrenamiento, que a su vez sale de
+  // los demás efectos. Por eso se juntan aparte y se agregan después.
+  const shieldEffects: Effect[] = [];
+  for (const entry of equippedItems) {
+    const { item, attuned } = entry;
     // Un objeto que requiere sintonización no hace nada hasta sintonizarlo.
     if (item.data.requiresAttunement && !attuned) continue;
+    if (item.data.category === "shield") {
+      if (!ignoredShields.has(entry)) shieldEffects.push(...item.effects);
+      continue;
+    }
     collected.push(...item.effects);
   }
 
-  const applicable = collected.filter(
-    (e) => e.condition === undefined || conditionHolds[e.condition],
+  const applies = (e: Effect) =>
+    e.condition === undefined || conditionHolds[e.condition];
+  const grantsOf = (list: readonly Effect[]) =>
+    list.flatMap((e) => (applies(e) && e.op === "grant" ? [e.target] : []));
+  const granted = new Set<GrantTarget>(grantsOf(collected));
+
+  // --- Entrenamiento con armaduras ---
+  // SRD 5.2.1, "Entrenamiento con armaduras": lo dan la clase y otros rasgos.
+  // La clase inicial da todo su entrenamiento; las demás, solo el de
+  // "Como personaje multiclase".
+  const armorTraining = new Set<ArmorTraining>();
+  for (const { cls, starting } of ownedClasses) {
+    const list = starting
+      ? cls.data.armorProficiencies
+      : cls.data.multiclassArmorProficiencies;
+    for (const training of list) armorTraining.add(training);
+  }
+  for (const training of armorTrainingSchema.options) {
+    if (granted.has(`proficiency.armor.${training}`)) {
+      armorTraining.add(training);
+    }
+  }
+
+  const untrainedArmor = wornArmor.some(
+    ({ item }) =>
+      item.data.armor !== undefined &&
+      !armorTraining.has(item.data.armor.armorCategory),
   );
+  // SRD 5.2.1, "Escudos": solo obtenés el bonificador a la CA si tenés
+  // entrenamiento con escudos. Sin él se ignoran los efectos del escudo.
+  const untrainedShield = holdingShield && !armorTraining.has("shield");
+  if (!untrainedShield) {
+    collected.push(...shieldEffects);
+    for (const target of grantsOf(shieldEffects)) granted.add(target);
+  }
+
+  const applicable = collected.filter(applies);
   const effects: NumericEffect[] = applicable.filter(isNumericEffect);
-  const granted = new Set<GrantTarget>(
-    applicable.flatMap((e) => (e.op === "grant" ? [e.target] : [])),
-  );
 
   // --- Puntuaciones de característica ---
   const scores = { ...character.baseAbilityScores };
@@ -413,8 +489,17 @@ export function calculateSheet(
   };
 
   // --- Velocidad ---
+  // SRD 5.2.1, "Armaduras", "Fuerza": si la armadura pide una Fuerza mayor que
+  // la tuya (la final, con aumentos), tu velocidad baja 3 m (10 pies).
+  const insufficientStrength = wornArmor.some(
+    ({ item }) => (item.data.armor?.strengthRequirement ?? 0) > scores.str,
+  );
   const speed = applyNumericEffects(
-    species?.data.speed ?? 0,
+    Math.max(
+      0,
+      (species?.data.speed ?? 0) -
+        (insufficientStrength ? HEAVY_ARMOR_SPEED_PENALTY : 0),
+    ),
     effectsFor(effects, "speed"),
     modifiers,
   );
@@ -450,6 +535,9 @@ export function calculateSheet(
           effectsFor(effects, "spell.attack"),
           modifiers,
         ),
+        // SRD 5.2.1, "Entrenamiento con armaduras": sin entrenamiento con la
+        // armadura que llevás, no podés lanzar conjuros.
+        canCast: !untrainedArmor,
       },
     ];
   });
@@ -467,6 +555,7 @@ export function calculateSheet(
     speed,
     darkvision,
     spellcasting,
+    armorPenalties: { untrainedArmor, untrainedShield, insufficientStrength },
     issues,
   };
 }

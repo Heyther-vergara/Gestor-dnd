@@ -30,4 +30,5 @@ Tercer tramo de `calculateSheet`. Reglas del SRD 5.2.1 que hay que cubrir:
 
 - La hoja expone `initiative`, `hitPoints { max, current, temp }`, `hitDice { byDie, total, remaining }`, `speed` y `spellcasting[]`.
 - `hp.max-per-level` usa el nivel **total**. Sirve para _Aguante enano_; un rasgo que escala con el nivel de **una** clase (p. ej. _Resistencia dracónica_ del hechicero) necesitará otro target.
-- Pendiente: tirar PG, velocidad reducida por armadura pesada sin la Fuerza requerida, dados de golpe gastados por tipo y lanzamiento de conjuros de subclases (Caballero arcano), que hoy no tienen `spellcasting` en el esquema.
+- Pendiente: tirar PG, dados de golpe gastados por tipo y lanzamiento de conjuros de subclases (Caballero arcano), que hoy no tienen `spellcasting` en el esquema.
+- La velocidad reducida por Fuerza insuficiente se resolvió en el ADR 0007.

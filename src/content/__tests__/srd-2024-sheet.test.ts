@@ -38,6 +38,8 @@ const thora = characterSchema.parse({
   ],
 });
 
+const thoraItem = { quantity: 1, equipped: true, attuned: false };
+
 describe("SRD 2024 sample character: Thora, dwarf wizard 1", () => {
   const sheet = calculateSheet(thora, index);
 
@@ -66,8 +68,32 @@ describe("SRD 2024 sample character: Thora, dwarf wizard 1", () => {
   // SRD 5.2.1, "Lanzamiento de conjuros": CD 8 + Int (17 → +3) + competencia (+2).
   it("has spell save DC 13 and spell attack +5", () => {
     expect(sheet.spellcasting).toEqual([
-      { classId: "wizard", ability: "int", saveDc: 13, attackBonus: 5 },
+      {
+        classId: "wizard",
+        ability: "int",
+        saveDc: 13,
+        attackBonus: 5,
+        canCast: true,
+      },
     ]);
+  });
+
+  // SRD 5.2.1, "Entrenamiento con armaduras": la maga no tiene entrenamiento,
+  // así que con cota de malla no puede lanzar conjuros. "Armaduras", "Fuerza":
+  // la cota de malla pide Fuerza 13 y Thora tiene 8, así que pierde 3 m.
+  it("cannot cast spells and slows down in chain mail", () => {
+    const inChainMail = calculateSheet(
+      { ...thora, inventory: [{ ...thoraItem, itemId: "chain-mail" }] },
+      index,
+    );
+    expect(inChainMail.ac).toBe(16);
+    expect(inChainMail.armorPenalties).toEqual({
+      untrainedArmor: true,
+      untrainedShield: false,
+      insufficientStrength: true,
+    });
+    expect(inChainMail.spellcasting[0]?.canCast).toBe(false);
+    expect(inChainMail.speed).toBe(20);
   });
 });
 
@@ -99,6 +125,18 @@ describe("SRD 2024 sample character: Bram, human fighter 1 with real armor", () 
     expect(
       calculateSheet(bram(["chain-mail", "shield-item"]), index).issues,
     ).toEqual([]);
+  });
+
+  // SRD 5.2.1, "Atributos básicos de guerrero": entrenamiento con todas las
+  // armaduras y escudos; Fuerza 15 cumple la de la cota de malla (13).
+  it("has no armor penalties in chain mail with a shield", () => {
+    const sheet = calculateSheet(bram(["chain-mail", "shield-item"]), index);
+    expect(sheet.armorPenalties).toEqual({
+      untrainedArmor: false,
+      untrainedShield: false,
+      insufficientStrength: false,
+    });
+    expect(sheet.speed).toBe(30);
   });
 
   // SRD 5.2.1, "Armaduras": cota de malla 16 (sin Des) + escudo +2.

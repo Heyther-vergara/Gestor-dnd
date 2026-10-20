@@ -26,7 +26,6 @@ Reglas del SRD 5.2.1 (español) que hay que cubrir:
 
 ## Consecuencias
 
-- `calculateSheet` todavía **no** comprueba el entrenamiento: según el SRD, el escudo solo suma si tenés entrenamiento con escudos, y una armadura sin entrenamiento da desventaja y no deja lanzar conjuros. Queda pendiente junto con la velocidad reducida por Fuerza insuficiente (ADR 0005).
-- Tampoco se impide equipar dos armaduras o dos escudos ("Solo un tipo"); hoy ganaría la mejor base.
+- El entrenamiento con armaduras y escudos, la Fuerza requerida y la regla "Solo un tipo" se resolvieron en el ADR 0007.
 - Los ataques con arma (bonificador y daño) se calculan en otra tarea; los datos ya están.
 - Los pesos van en libras y los alcances en pies, como el resto del contenido importado.
