@@ -54,7 +54,16 @@ export const skillAbilities = {
   survival: "wis",
 } as const satisfies Record<Skill, Ability>;
 
+// SRD 5.2.1, "Entrenamiento con armaduras": ligeras, medias, pesadas y escudos.
+export const armorTrainingSchema = z.enum([
+  "light",
+  "medium",
+  "heavy",
+  "shield",
+]);
+
 export type Slug = z.infer<typeof slugSchema>;
 export type Edition = z.infer<typeof editionSchema>;
 export type Ability = z.infer<typeof abilitySchema>;
 export type Skill = z.infer<typeof skillSchema>;
+export type ArmorTraining = z.infer<typeof armorTrainingSchema>;

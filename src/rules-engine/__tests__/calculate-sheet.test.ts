@@ -81,17 +81,27 @@ const classData = {
   weaponProficiencies: [],
 };
 
+// SRD 5.2.1, "Atributos básicos de guerrero": entrenamiento con armaduras
+// ligeras, medias y pesadas y escudos. "Convertirse en guerrero", "Como
+// personaje multiclase": solo armaduras ligeras y medias y escudos.
 const fighter = content({
   id: "fighter",
   packageId: "srd-2024",
   type: "class",
   name: "Guerrero",
   description: "",
-  data: { ...classData, hitDie: 10, features: [] },
+  data: {
+    ...classData,
+    hitDie: 10,
+    armorProficiencies: ["light", "medium", "heavy", "shield"],
+    multiclassArmorProficiencies: ["light", "medium", "shield"],
+    features: [],
+  },
 });
 
 // SRD 5.2.1, bárbaro, "Defensa sin armadura" (nivel 1): sin armadura, CA base
-// 10 + Des + Con, aunque lleve escudo (ver ADR 0003).
+// 10 + Des + Con, aunque lleve escudo (ver ADR 0003). Entrenamiento con
+// armaduras ligeras y medias y escudos.
 const barbarian = content({
   id: "barbarian",
   packageId: "srd-2024",
@@ -101,6 +111,7 @@ const barbarian = content({
   data: {
     ...classData,
     hitDie: 12,
+    armorProficiencies: ["light", "medium", "shield"],
     features: [
       {
         level: 1,
@@ -150,12 +161,13 @@ const monk = content({
   },
 });
 
-// SRD 5.2.1, "Armaduras": cota de malla 16 · armadura de cuero 11 + Des ·
-// coraza 14 + Des (máx. 2) · escudo +2.
+// SRD 5.2.1, "Armaduras": cota de malla 16, Fuerza 13 · armadura de cuero
+// 11 + Des · coraza 14 + Des (máx. 2) · escudo +2.
 const armor = (
   id: string,
   armorCategory: "light" | "medium" | "heavy",
   acEffect: Effect,
+  strengthRequirement?: number,
 ) =>
   content({
     id,
@@ -166,15 +178,16 @@ const armor = (
     effects: [acEffect],
     data: {
       category: "armor",
-      armor: { armorCategory, stealthDisadvantage: false },
+      armor: { armorCategory, strengthRequirement, stealthDisadvantage: false },
     },
   });
 
-const chainMail = armor("chain-mail", "heavy", {
-  target: "ac",
-  op: "base",
-  value: 16,
-});
+const chainMail = armor(
+  "chain-mail",
+  "heavy",
+  { target: "ac", op: "base", value: 16 },
+  13,
+);
 const leather = armor("leather-armor", "light", {
   target: "ac",
   op: "base",
@@ -260,7 +273,8 @@ const wizard = content({
   },
 });
 
-// SRD 5.2.1, clérigo: dado de golpe d8, Sabiduría como aptitud mágica.
+// SRD 5.2.1, clérigo: dado de golpe d8, Sabiduría como aptitud mágica,
+// entrenamiento con armaduras ligeras y medias y escudos.
 const cleric = content({
   id: "cleric",
   packageId: "srd-2024",
@@ -271,6 +285,7 @@ const cleric = content({
     ...classData,
     savingThrows: ["wis", "cha"],
     hitDie: 8,
+    armorProficiencies: ["light", "medium", "shield"],
     spellcasting: { ability: "wis", preparation: "prepared" },
     features: [],
   },
@@ -346,6 +361,17 @@ const sentinelCloak = content({
   data: { category: "magic" },
 });
 
+// Homebrew: concede entrenamiento con armaduras pesadas.
+const knightGauntlets = content({
+  id: "knight-gauntlets",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Guanteletes del caballero",
+  description: "Entrenamiento con armaduras pesadas",
+  effects: [{ target: "proficiency.armor.heavy", op: "grant" }],
+  data: { category: "magic" },
+});
+
 // Homebrew: +2 a Sigilo, para probar efectos numéricos sobre habilidades.
 const quietBoots = content({
   id: "quiet-boots",
@@ -365,6 +391,7 @@ const index = createContentIndex([
   adventurerCharm,
   sentinelCloak,
   quietBoots,
+  knightGauntlets,
   owlEyes,
   dwarf,
   soldier,
@@ -673,9 +700,151 @@ describe("calculateSheet: armor class", () => {
       expect(calculateSheet(monkWith([]), index).ac).toBe(16);
     });
 
+    // El monje no tiene entrenamiento con escudos, así que el escudo tampoco
+    // suma: queda 10 + Des.
     it("does not apply with a shield", () => {
-      expect(calculateSheet(monkWith(equipped("shield")), index).ac).toBe(15);
+      expect(calculateSheet(monkWith(equipped("shield")), index).ac).toBe(13);
     });
+  });
+});
+
+describe("calculateSheet: armor training", () => {
+  const noPenalties = {
+    untrainedArmor: false,
+    untrainedShield: false,
+    insufficientStrength: false,
+  };
+  const wizardWith = (
+    inventory: Character["inventory"],
+    overrides: CharacterInput = {},
+  ) =>
+    makeCharacter({
+      classes: [{ classId: "wizard", level: 1 }],
+      baseAbilityScores: { str: 13, int: 16 },
+      inventory,
+      ...overrides,
+    });
+
+  it("has no penalties with armor the class is trained in", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ inventory: equipped("chain-mail", "shield") }),
+      index,
+    );
+    expect(sheet.armorPenalties).toEqual(noPenalties);
+  });
+
+  it("has no penalties without armor", () => {
+    expect(calculateSheet(wizardWith([]), index).armorPenalties).toEqual(
+      noPenalties,
+    );
+  });
+
+  // SRD 5.2.1, "Entrenamiento con armaduras", "Armaduras ligeras, medias o
+  // pesadas": sin entrenamiento tenés desventaja en las pruebas con d20 de
+  // Fuerza o Destreza y no podés lanzar conjuros. La CA se aplica igual.
+  describe("armor without training", () => {
+    const sheet = calculateSheet(wizardWith(equipped("chain-mail")), index);
+
+    it("keeps the armor's AC", () => {
+      expect(sheet.ac).toBe(16);
+    });
+
+    it("marks the armor as untrained", () => {
+      expect(sheet.armorPenalties.untrainedArmor).toBe(true);
+    });
+
+    it("prevents casting spells", () => {
+      expect(sheet.spellcasting[0]?.canCast).toBe(false);
+    });
+
+    it("is not a data issue", () => {
+      expect(sheet.issues).toEqual([]);
+    });
+  });
+
+  // SRD 5.2.1, "Entrenamiento con armaduras", "Escudos": solo obtenés el
+  // bonificador a la CA si tenés entrenamiento con escudos.
+  it("ignores the shield's AC bonus without shield training", () => {
+    const sheet = calculateSheet(wizardWith(equipped("shield")), index);
+    expect(sheet.ac).toBe(12);
+    expect(sheet.armorPenalties.untrainedShield).toBe(true);
+    // El escudo no impide lanzar conjuros; solo la armadura.
+    expect(sheet.spellcasting[0]?.canCast).toBe(true);
+  });
+
+  describe("multiclass", () => {
+    // SRD 5.2.1, "Convertirse en guerrero", "Como personaje multiclase":
+    // entrenamiento con armaduras ligeras y medias y escudos, no pesadas.
+    const wizardFighter = (...itemIds: string[]) =>
+      wizardWith(equipped(...itemIds), {
+        classes: [
+          { classId: "wizard", level: 1 },
+          { classId: "fighter", level: 1 },
+        ],
+      });
+
+    it("gets medium armor and shield training from a later fighter level", () => {
+      const sheet = calculateSheet(
+        wizardFighter("breastplate", "shield"),
+        index,
+      );
+      expect(sheet.armorPenalties).toEqual(noPenalties);
+      expect(sheet.spellcasting[0]?.canCast).toBe(true);
+    });
+
+    it("does not get heavy armor training from a later fighter level", () => {
+      const sheet = calculateSheet(wizardFighter("chain-mail"), index);
+      expect(sheet.armorPenalties.untrainedArmor).toBe(true);
+    });
+
+    it("keeps the full training of the starting class", () => {
+      const sheet = calculateSheet(
+        makeCharacter({
+          classes: [
+            { classId: "fighter", level: 1 },
+            { classId: "wizard", level: 1 },
+          ],
+          inventory: equipped("chain-mail"),
+        }),
+        index,
+      );
+      expect(sheet.armorPenalties.untrainedArmor).toBe(false);
+    });
+  });
+
+  it("grants armor training from effects", () => {
+    const sheet = calculateSheet(
+      wizardWith(equipped("chain-mail", "knight-gauntlets"), {
+        activePackageIds: ["srd-2024", "my-homebrew"],
+      }),
+      index,
+    );
+    expect(sheet.armorPenalties.untrainedArmor).toBe(false);
+    expect(sheet.spellcasting[0]?.canCast).toBe(true);
+  });
+
+  // SRD 5.2.1, "Entrenamiento con armaduras", "Solo un tipo": no se puede
+  // llevar más de una armadura ni embrazar más de un escudo a la vez.
+  it("reports two armors worn at once and keeps the best", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ inventory: equipped("leather-armor", "chain-mail") }),
+      index,
+    );
+    expect(sheet.ac).toBe(16);
+    expect(sheet.issues).toEqual([
+      "Hay 2 armaduras equipadas; solo se puede llevar una",
+    ]);
+  });
+
+  it("reports two shields held at once and counts only one", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ inventory: equipped("chain-mail", "shield", "shield") }),
+      index,
+    );
+    expect(sheet.ac).toBe(18);
+    expect(sheet.issues).toEqual([
+      "Hay 2 escudos equipados; solo se puede embrazar uno",
+    ]);
   });
 });
 
@@ -1159,6 +1328,71 @@ describe("calculateSheet: speed", () => {
     );
     expect(sheet.speed).toBe(40);
   });
+  // SRD 5.2.1, "Armaduras", "Fuerza": si la armadura pide una Fuerza y la
+  // tuya es menor, tu velocidad baja 3 m (10 pies). Cota de malla: Fuerza 13.
+  describe("armor with a Strength requirement", () => {
+    it("reduces speed by 10 ft with too little Strength", () => {
+      const sheet = calculateSheet(
+        makeCharacter({
+          baseAbilityScores: { str: 12 },
+          inventory: equipped("chain-mail"),
+        }),
+        index,
+      );
+      expect(sheet.speed).toBe(20);
+      expect(sheet.armorPenalties.insufficientStrength).toBe(true);
+    });
+
+    it("does not reduce speed when Strength meets the requirement", () => {
+      const sheet = calculateSheet(
+        makeCharacter({
+          baseAbilityScores: { str: 13 },
+          inventory: equipped("chain-mail"),
+        }),
+        index,
+      );
+      expect(sheet.speed).toBe(30);
+      expect(sheet.armorPenalties.insufficientStrength).toBe(false);
+    });
+
+    // Se usa la Fuerza final, con los aumentos del trasfondo.
+    it("uses the final Strength score", () => {
+      const sheet = calculateSheet(
+        makeCharacter({
+          baseAbilityScores: { str: 12 },
+          choices: [
+            {
+              kind: "ability-bonus",
+              contentId: "soldier",
+              level: 1,
+              bonuses: { str: 1, dex: 1, con: 1 },
+            },
+          ],
+          inventory: equipped("chain-mail"),
+        }),
+        index,
+      );
+      expect(sheet.speed).toBe(30);
+    });
+
+    it("does not reduce speed for carried armor", () => {
+      const sheet = calculateSheet(
+        makeCharacter({
+          baseAbilityScores: { str: 8 },
+          inventory: [
+            {
+              itemId: "chain-mail",
+              quantity: 1,
+              equipped: false,
+              attuned: false,
+            },
+          ],
+        }),
+        index,
+      );
+      expect(sheet.speed).toBe(30);
+    });
+  });
 });
 
 describe("calculateSheet: darkvision", () => {
@@ -1197,7 +1431,13 @@ describe("calculateSheet: spellcasting", () => {
       index,
     );
     expect(sheet.spellcasting).toEqual([
-      { classId: "wizard", ability: "int", saveDc: 13, attackBonus: 5 },
+      {
+        classId: "wizard",
+        ability: "int",
+        saveDc: 13,
+        attackBonus: 5,
+        canCast: true,
+      },
     ]);
   });
 
@@ -1216,8 +1456,20 @@ describe("calculateSheet: spellcasting", () => {
     );
     // Nivel total 5 → competencia +3.
     expect(sheet.spellcasting).toEqual([
-      { classId: "wizard", ability: "int", saveDc: 14, attackBonus: 6 },
-      { classId: "cleric", ability: "wis", saveDc: 13, attackBonus: 5 },
+      {
+        classId: "wizard",
+        ability: "int",
+        saveDc: 14,
+        attackBonus: 6,
+        canCast: true,
+      },
+      {
+        classId: "cleric",
+        ability: "wis",
+        saveDc: 13,
+        attackBonus: 5,
+        canCast: true,
+      },
     ]);
   });
 

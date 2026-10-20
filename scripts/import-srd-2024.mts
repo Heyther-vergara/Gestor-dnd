@@ -9,6 +9,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 import type {
   Ability,
+  ArmorTraining,
   Content,
   Effect,
   Package,
@@ -98,6 +99,8 @@ type SourceClass = {
   proficiencies: Ref[];
   saving_throws: Ref[];
   spellcasting?: { spellcasting_ability: Ref };
+  // Lo que da la clase cuando no es la inicial ("Como personaje multiclase").
+  multi_classing?: { proficiencies?: Ref[] };
 };
 type SourceFeature = {
   index: string;
@@ -208,7 +211,7 @@ const toSize = (size: string) => size.toLowerCase() as SpeciesSize;
 const levelOf = (ref: Ref) => Number(ref.index.split("-").pop());
 
 // Competencias de armas y armaduras de 5e-bits → vocabulario propio.
-const ARMOR_PROFICIENCIES: Record<string, string[]> = {
+const ARMOR_PROFICIENCIES: Record<string, ArmorTraining[]> = {
   "all-armor": ["light", "medium", "heavy"],
   "light-armor": ["light"],
   "medium-armor": ["medium"],
@@ -252,6 +255,9 @@ function convertClass(source: SourceClass, features: SourceFeature[]): Content {
       armorProficiencies: source.proficiencies.flatMap(
         (p) => ARMOR_PROFICIENCIES[p.index] ?? [],
       ),
+      multiclassArmorProficiencies: (
+        source.multi_classing?.proficiencies ?? []
+      ).flatMap((p) => ARMOR_PROFICIENCIES[p.index] ?? []),
       weaponProficiencies: source.proficiencies.flatMap((p) => {
         const weapon = WEAPON_PROFICIENCIES[p.index];
         return weapon ? [weapon] : [];

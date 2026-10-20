@@ -35,6 +35,11 @@
         "heavy",
         "shield"
       ],
+      "multiclassArmorProficiencies": [
+        "light",
+        "medium",
+        "shield"
+      ],
       "weaponProficiencies": [
         "simple",
         "martial"
@@ -125,6 +130,7 @@
         ]
       },
       "armorProficiencies": [],
+      "multiclassArmorProficiencies": [],
       "weaponProficiencies": [
         "simple"
       ],

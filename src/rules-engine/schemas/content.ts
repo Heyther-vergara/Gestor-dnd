@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { abilitySchema, skillSchema, slugSchema } from "./common";
+import {
+  abilitySchema,
+  armorTrainingSchema,
+  skillSchema,
+  slugSchema,
+} from "./common";
 import { effectSchema } from "./effect";
 
 const effectsSchema = z.array(effectSchema).default([]);
@@ -27,7 +32,10 @@ const classDataSchema = z.strictObject({
     count: z.int().min(1),
     options: z.array(skillSchema).min(1),
   }),
-  armorProficiencies: z.array(z.string()),
+  armorProficiencies: z.array(armorTrainingSchema),
+  // SRD 5.2.1, "Convertirse en <clase>", "Como personaje multiclase": una clase
+  // que no es la inicial da menos entrenamiento (el guerrero no da pesadas).
+  multiclassArmorProficiencies: z.array(armorTrainingSchema).default([]),
   weaponProficiencies: z.array(z.string()),
   spellcasting: z
     .strictObject({
