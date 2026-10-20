@@ -22,13 +22,25 @@ import {
 
 const content = (raw: unknown): Content => contentSchema.parse(raw);
 
+// SRD 5.2.1, enano, "Aguante enano": tus PG máximos aumentan en 1, y en 1 más
+// cada vez que subas un nivel.
 const dwarf = content({
   id: "dwarf",
   packageId: "srd-2024",
   type: "species",
   name: "Enano",
   description: "",
-  data: { size: ["medium"], speed: 30, traits: [] },
+  data: {
+    size: ["medium"],
+    speed: 30,
+    traits: [
+      {
+        name: "Aguante enano",
+        description: "",
+        effects: [{ target: "hp.max-per-level", op: "add", value: 1 }],
+      },
+    ],
+  },
 });
 
 const soldier = content({
@@ -236,8 +248,71 @@ const wizard = content({
       ],
     },
     hitDie: 6,
+    // SRD 5.2.1, mago: "La Inteligencia es tu aptitud mágica".
+    spellcasting: { ability: "int", preparation: "prepared" },
     features: [],
   },
+});
+
+// SRD 5.2.1, clérigo: dado de golpe d8, Sabiduría como aptitud mágica.
+const cleric = content({
+  id: "cleric",
+  packageId: "srd-2024",
+  type: "class",
+  name: "Clérigo",
+  description: "",
+  data: {
+    ...classData,
+    savingThrows: ["wis", "cha"],
+    hitDie: 8,
+    spellcasting: { ability: "wis", preparation: "prepared" },
+    features: [],
+  },
+});
+
+// SRD 5.2.1, trasfondo "Criminal": dote Alerta.
+const criminal = content({
+  id: "criminal",
+  packageId: "srd-2024",
+  type: "background",
+  name: "Criminal",
+  description: "",
+  data: {
+    abilityOptions: ["dex", "con", "int"],
+    featId: "alert",
+    skillProficiencies: ["sleight-of-hand", "stealth"],
+    toolProficiency: "Thieves' Tools",
+    equipment: "",
+  },
+});
+
+// SRD 5.2.1, dote "Alerta", "Competencia en iniciativa": cuando tires
+// iniciativa, podés sumar tu bonificador por competencia.
+const alert = content({
+  id: "alert",
+  packageId: "srd-2024",
+  type: "feat",
+  name: "Alerta",
+  description: "",
+  effects: [{ target: "proficiency.initiative", op: "grant" }],
+  data: { category: "origin" },
+});
+
+// Homebrew: un efecto sobre cada valor nuevo de la hoja, para probarlos.
+const adventurerCharm = content({
+  id: "adventurer-charm",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Talismán del aventurero",
+  description: "",
+  effects: [
+    { target: "initiative", op: "add", value: 1 },
+    { target: "speed", op: "add", value: 10 },
+    { target: "hp.max", op: "add", value: 5 },
+    { target: "spell.dc", op: "add", value: 1 },
+    { target: "spell.attack", op: "add", value: 1 },
+  ],
+  data: { category: "magic" },
 });
 
 // Homebrew: concede competencias con efectos "grant".
@@ -267,6 +342,10 @@ const quietBoots = content({
 
 const index = createContentIndex([
   wizard,
+  cleric,
+  criminal,
+  alert,
+  adventurerCharm,
   sentinelCloak,
   quietBoots,
   dwarf,
@@ -875,6 +954,247 @@ describe("calculateSheet: skills", () => {
     );
     expect(without.passivePerception).toBe(11);
     expect(withProficiency.passivePerception).toBe(13);
+  });
+});
+
+describe("calculateSheet: initiative", () => {
+  // SRD 5.2.1, "Rellena los números", "Iniciativa": tu modificador por Destreza.
+  it("is the Dexterity modifier", () => {
+    expect(calculateSheet(makeCharacter(), index).initiative).toBe(2);
+  });
+
+  // SRD 5.2.1, dote "Alerta": sumás tu bonificador por competencia a la
+  // iniciativa. Se calcula, así que sube solo con el nivel.
+  it("adds the proficiency bonus with Alert", () => {
+    const level3 = calculateSheet(
+      makeCharacter({ backgroundId: "criminal" }),
+      index,
+    );
+    const level5 = calculateSheet(
+      makeCharacter({
+        backgroundId: "criminal",
+        classes: [{ classId: "fighter", level: 5 }],
+      }),
+      index,
+    );
+    expect(level3.initiative).toBe(4);
+    expect(level5.initiative).toBe(5);
+  });
+
+  it("applies initiative effects", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("adventurer-charm"),
+      }),
+      index,
+    );
+    expect(sheet.initiative).toBe(3);
+  });
+});
+
+describe("calculateSheet: hit points", () => {
+  // SRD 5.2.1, "Puntos de golpe en el nivel 1 por clase": guerrero 10 + Con.
+  // Enano, "Aguante enano": +1 por nivel. Brunhilda tiene Con 13 (+1).
+  it("uses the full hit die + Con at level 1", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ classes: [{ classId: "fighter", level: 1 }] }),
+      index,
+    );
+    expect(sheet.hitPoints.max).toBe(10 + 1 + 1);
+  });
+
+  // SRD 5.2.1, "Subir de nivel", paso 2, tabla "Puntos de golpe establecidos
+  // por clase": guerrero 6 + Con por cada nivel después del 1.
+  it("adds the fixed value + Con for each later level", () => {
+    const sheet = calculateSheet(makeCharacter(), index);
+    // Nivel 1: 10 + 1 · niveles 2 y 3: (6 + 1) × 2 · Aguante enano: +3.
+    expect(sheet.hitPoints.max).toBe(11 + 14 + 3);
+  });
+
+  // SRD 5.2.1, "Subir de nivel", paso 2: "añade el total (mínimo de 1)".
+  it("gains at least 1 HP per level with a low Constitution", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [{ classId: "wizard", level: 3 }],
+        baseAbilityScores: { con: 3 },
+      }),
+      index,
+    );
+    // Nivel 1: 6 − 4 · niveles 2 y 3: 4 − 4 = 0 → 1 cada uno · Aguante enano: +3.
+    expect(sheet.hitPoints.max).toBe(2 + 1 + 1 + 3);
+  });
+
+  // SRD 5.2.1, "Ajustar los modificadores por característica": si el
+  // modificador por Constitución sube 1, los PG máximos suben 1 por nivel.
+  it("recalculates every level when Constitution changes", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        choices: [
+          {
+            kind: "ability-bonus",
+            contentId: "soldier",
+            level: 1,
+            bonuses: { con: 2, str: 1 },
+          },
+        ],
+      }),
+      index,
+    );
+    // Con 15 (+2): 10 + 2 + (6 + 2) × 2 + 3.
+    expect(sheet.hitPoints.max).toBe(12 + 16 + 3);
+  });
+
+  // SRD 5.2.1, "Multiclase", "Puntos de golpe y dados de golpe": solo obtenés
+  // los PG del nivel 1 de una clase cuando tu nivel total es 1, así que la
+  // clase inicial (la primera) es la que da el dado entero.
+  it("only gives level 1 HP for the starting class", () => {
+    const fighterFirst = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "fighter", level: 2 },
+          { classId: "wizard", level: 1 },
+        ],
+      }),
+      index,
+    );
+    const wizardFirst = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "wizard", level: 1 },
+          { classId: "fighter", level: 2 },
+        ],
+      }),
+      index,
+    );
+    // 10 + 1 · 6 + 1 · 4 + 1 · Aguante enano +3.
+    expect(fighterFirst.hitPoints.max).toBe(11 + 7 + 5 + 3);
+    // 6 + 1 · (6 + 1) × 2 · Aguante enano +3.
+    expect(wizardFirst.hitPoints.max).toBe(7 + 14 + 3);
+  });
+
+  it("applies hp.max effects", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("adventurer-charm"),
+      }),
+      index,
+    );
+    expect(sheet.hitPoints.max).toBe(28 + 5);
+  });
+
+  // Se guarda el daño recibido, no los PG actuales (ver characterSchema).
+  // SRD 5.2.1, "Puntos de golpe": los PG no bajan de 0.
+  it("derives current HP from damage taken, without going below 0", () => {
+    const hurt = calculateSheet(
+      makeCharacter({
+        playState: { damageTaken: 10, tempHp: 4, hitDiceSpent: 0 },
+      }),
+      index,
+    );
+    const down = calculateSheet(
+      makeCharacter({
+        playState: { damageTaken: 99, tempHp: 0, hitDiceSpent: 0 },
+      }),
+      index,
+    );
+    expect(hurt.hitPoints).toEqual({ max: 28, current: 18, temp: 4 });
+    expect(down.hitPoints.current).toBe(0);
+  });
+
+  // SRD 5.2.1, "Multiclase": tu total de dados de golpe es la suma de los de
+  // todas tus clases; si son de distinto tipo, se cuentan por separado.
+  it("counts hit dice by type", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "fighter", level: 2 },
+          { classId: "wizard", level: 1 },
+        ],
+        playState: { damageTaken: 0, tempHp: 0, hitDiceSpent: 1 },
+      }),
+      index,
+    );
+    expect(sheet.hitDice).toEqual({
+      byDie: { d10: 2, d6: 1 },
+      total: 3,
+      remaining: 2,
+    });
+  });
+});
+
+describe("calculateSheet: speed", () => {
+  // SRD 5.2.1, enano: velocidad 9 m. En los datos va en pies (30), como en
+  // el resto del contenido importado.
+  it("uses the species speed", () => {
+    expect(calculateSheet(makeCharacter(), index).speed).toBe(30);
+  });
+
+  it("applies speed effects", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("adventurer-charm"),
+      }),
+      index,
+    );
+    expect(sheet.speed).toBe(40);
+  });
+});
+
+describe("calculateSheet: spellcasting", () => {
+  it("is empty for a class without Spellcasting", () => {
+    expect(calculateSheet(makeCharacter(), index).spellcasting).toEqual([]);
+  });
+
+  // SRD 5.2.1, "Rellena los números", "Lanzamiento de conjuros":
+  // CD de salvación = 8 + modificador por aptitud mágica + competencia.
+  // Bonificador de ataque = modificador por aptitud mágica + competencia.
+  it("calculates save DC and attack bonus", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [{ classId: "wizard", level: 3 }],
+        baseAbilityScores: { int: 16 },
+      }),
+      index,
+    );
+    expect(sheet.spellcasting).toEqual([
+      { classId: "wizard", ability: "int", saveDc: 13, attackBonus: 5 },
+    ]);
+  });
+
+  // SRD 5.2.1, "Multiclase", "Lanzamiento de conjuros": cada conjuro preparado
+  // usa la aptitud mágica de su clase, así que hay una CD por clase.
+  it("keeps one entry per spellcasting class when multiclassing", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [
+          { classId: "wizard", level: 3 },
+          { classId: "cleric", level: 2 },
+        ],
+        baseAbilityScores: { int: 16, wis: 14 },
+      }),
+      index,
+    );
+    // Nivel total 5 → competencia +3.
+    expect(sheet.spellcasting).toEqual([
+      { classId: "wizard", ability: "int", saveDc: 14, attackBonus: 6 },
+      { classId: "cleric", ability: "wis", saveDc: 13, attackBonus: 5 },
+    ]);
+  });
+
+  it("applies spell.dc and spell.attack effects", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        classes: [{ classId: "wizard", level: 3 }],
+        baseAbilityScores: { int: 16 },
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("adventurer-charm"),
+      }),
+      index,
+    );
+    expect(sheet.spellcasting[0]).toMatchObject({ saveDc: 14, attackBonus: 6 });
   });
 });
 

@@ -100,6 +100,7 @@ describe("effectSchema", () => {
     "proficiency.save.con",
     "proficiency.armor.shield",
     "proficiency.weapon.martial",
+    "proficiency.initiative",
   ])("accepts the grant target %s", (target) => {
     const result = effectSchema.safeParse({ target, op: "grant" });
     expect(result.success).toBe(true);
