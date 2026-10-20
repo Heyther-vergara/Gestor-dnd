@@ -59,10 +59,25 @@ const SIZE_OVERRIDES: Record<string, SpeciesSize[]> = {
   human: ["medium", "small"],
 };
 
-// Efectos por índice de rasgo de especie. El vocabulario de `target` se cierra en la fase 2.
+// Efectos por índice de rasgo de especie.
+// La visión en la oscuridad es una "base": "max" es un techo en el motor y daría 0 (ADR 0006).
 const TRAIT_EFFECTS: Record<string, Effect[]> = {
-  "darkvision-120": [{ target: "senses.darkvision", op: "max", value: 120 }],
+  "darkvision-120": [{ target: "senses.darkvision", op: "base", value: 120 }],
   "dwarven-toughness": [{ target: "hp.max-per-level", op: "add", value: 1 }],
+};
+
+// Errores de 5e-bits en la tabla "Armas" del SRD 5.2.1 (verificados contra el PDF en español).
+const WEAPON_OVERRIDES: Record<string, Partial<WeaponData>> = {
+  // Honda: 1d4 contundente (5e-bits dice perforante).
+  sling: { damage: { dice: "1d4", type: "bludgeoning" } },
+  // Tridente: 1d8 perforante, versátil (1d10) (5e-bits dice 1d6 / 1d8).
+  trident: { damage: { dice: "1d8", type: "piercing" }, versatileDice: "1d10" },
+};
+
+// Ids que chocan con otro contenido del paquete: el escudo y el conjuro Escudo
+// se llaman "shield" en 5e-bits, y el índice de contenido necesita ids únicos.
+const ITEM_ID_OVERRIDES: Record<string, string> = {
+  shield: "shield-item",
 };
 
 // --- Tipos mínimos del JSON de 5e-bits (solo los campos que usamos) ---
@@ -118,6 +133,28 @@ type SourceFeat = {
   repeatable?: string;
   prerequisite?: string;
 };
+type SourceDamage = { damage_dice: string; damage_type: Ref };
+type SourceRange = { normal: number; long?: number };
+type SourceEquipment = {
+  index: string;
+  name: string;
+  equipment_categories: Ref[];
+  cost: { quantity: number; unit: string };
+  weight?: number;
+  description?: string;
+  notes?: string[];
+  // Armaduras y escudo
+  armor_class?: { base: number; dex_bonus: boolean; max_bonus?: number };
+  str_minimum?: number;
+  stealth_disadvantage?: boolean;
+  // Armas
+  damage?: SourceDamage;
+  two_handed_damage?: SourceDamage;
+  range?: SourceRange;
+  throw_range?: SourceRange;
+  properties?: Ref[];
+  mastery?: Ref;
+};
 type SourceSpell = {
   index: string;
   name: string;
@@ -141,6 +178,9 @@ type SpeciesSize = DataOf<"species">["size"][number];
 type FeatCategory = DataOf<"feat">["category"];
 type SpellSchool = DataOf<"spell">["school"];
 type HitDie = DataOf<"class">["hitDie"];
+type ItemData = DataOf<"item">;
+type WeaponData = NonNullable<ItemData["weapon"]>;
+type ArmorCategory = NonNullable<ItemData["armor"]>["armorCategory"];
 
 // --- Utilidades ---
 
@@ -339,6 +379,113 @@ function convertSpell(source: SourceSpell): Content {
   };
 }
 
+// Solo armaduras, escudo y armas por ahora: es lo que usa el motor.
+// El equipo de aventurero, herramientas, munición y objetos mágicos quedan para más adelante.
+function convertEquipment(source: SourceEquipment): Content | undefined {
+  const categories = source.equipment_categories.map((c) => c.index);
+  const common = {
+    id: ITEM_ID_OVERRIDES[source.index] ?? source.index,
+    packageId: PACKAGE_ID,
+    type: "item" as const,
+    name: source.name,
+    description: [source.description, ...(source.notes ?? [])]
+      .filter(Boolean)
+      .join("\n"),
+  };
+  const base = {
+    weight: source.weight,
+    cost: {
+      amount: source.cost.quantity,
+      unit: source.cost.unit as NonNullable<ItemData["cost"]>["unit"],
+    },
+    requiresAttunement: false,
+  };
+
+  // SRD 5.2.1, "Armaduras": escudo +2 a la CA.
+  if (categories.includes("shields")) {
+    return {
+      ...common,
+      effects: [
+        { target: "ac", op: "add", value: source.armor_class?.base ?? 2 },
+      ],
+      data: { ...base, category: "shield" },
+    };
+  }
+
+  // ADR 0003: la CA de la armadura va como un único efecto "base".
+  if (categories.includes("armor")) {
+    const ac = source.armor_class;
+    if (!ac) throw new Error(`${source.index}: armadura sin armor_class`);
+    const armorCategory = categories
+      .find((c) => c.endsWith("-armor"))
+      ?.replace(/-armor$/, "") as ArmorCategory | undefined;
+    if (!armorCategory) throw new Error(`${source.index}: sin categoría`);
+    // 5e-bits pone max_bonus: 0 en las pesadas, que no suman Des: ahí no va `abilities`.
+    const acEffect: Effect = ac.dex_bonus
+      ? {
+          target: "ac",
+          op: "base",
+          value: ac.base,
+          abilities: ["dex"],
+          ...(ac.max_bonus === undefined
+            ? {}
+            : { maxAbilityBonus: ac.max_bonus }),
+        }
+      : { target: "ac", op: "base", value: ac.base };
+    return {
+      ...common,
+      effects: [acEffect],
+      data: {
+        ...base,
+        category: "armor",
+        armor: {
+          armorCategory,
+          strengthRequirement: source.str_minimum || undefined,
+          stealthDisadvantage: Boolean(source.stealth_disadvantage),
+        },
+      },
+    };
+  }
+
+  if (categories.includes("weapons")) {
+    if (!source.damage || !source.mastery) {
+      throw new Error(`${source.index}: arma sin daño o maestría`);
+    }
+    const properties = (source.properties ?? []).map(
+      (p) => p.index as WeaponData["properties"][number],
+    );
+    const attackType = categories.includes("ranged-weapons")
+      ? "ranged"
+      : "melee";
+    // Alcance: el de disparo para las armas a distancia, el de lanzamiento para las arrojadizas.
+    const range = attackType === "ranged" ? source.range : source.throw_range;
+    const weapon: WeaponData = {
+      weaponCategory: categories.includes("martial-weapons")
+        ? "martial"
+        : "simple",
+      attackType,
+      damage: {
+        dice: source.damage.damage_dice,
+        type: source.damage.damage_type.index as WeaponData["damage"]["type"],
+      },
+      versatileDice: source.two_handed_damage?.damage_dice,
+      properties,
+      mastery: source.mastery.index as WeaponData["mastery"],
+      range: range?.long
+        ? { normal: range.normal, long: range.long }
+        : undefined,
+      ...WEAPON_OVERRIDES[source.index],
+    };
+    return {
+      ...common,
+      effects: [],
+      data: { ...base, category: "weapon", weapon },
+    };
+  }
+
+  return undefined;
+}
+
 // --- Principal ---
 
 const manifest: Package = {
@@ -361,16 +508,25 @@ async function writeJson(file: string, data: unknown) {
 
 async function main() {
   console.log(`Descargando 5e-bits @ ${SOURCE_COMMIT.slice(0, 7)}…`);
-  const [classes, features, species, traits, backgrounds, feats, spells] =
-    await Promise.all([
-      load<SourceClass>("Classes"),
-      load<SourceFeature>("Features"),
-      load<SourceSpecies>("Species"),
-      load<SourceTrait>("Traits"),
-      load<SourceBackground>("Backgrounds"),
-      load<SourceFeat>("Feats"),
-      load<SourceSpell>("Spells"),
-    ]);
+  const [
+    classes,
+    features,
+    species,
+    traits,
+    backgrounds,
+    feats,
+    spells,
+    equipment,
+  ] = await Promise.all([
+    load<SourceClass>("Classes"),
+    load<SourceFeature>("Features"),
+    load<SourceSpecies>("Species"),
+    load<SourceTrait>("Traits"),
+    load<SourceBackground>("Backgrounds"),
+    load<SourceFeat>("Feats"),
+    load<SourceSpell>("Spells"),
+    load<SourceEquipment>("Equipment"),
+  ]);
 
   const pickedBackgrounds = pick(backgrounds, BACKGROUND_IDS);
   // Solo las dotes que otorgan los trasfondos elegidos, sin repetir.
@@ -390,6 +546,10 @@ async function main() {
   await writeJson("backgrounds.json", pickedBackgrounds.map(convertBackground));
   await writeJson("feats.json", pick(feats, featIds).map(convertFeat));
   await writeJson("spells.json", pick(spells, SPELL_IDS).map(convertSpell));
+  await writeJson(
+    "items.json",
+    equipment.flatMap((e) => convertEquipment(e) ?? []),
+  );
   console.log("Listo. Valida con: pnpm test");
 }
 

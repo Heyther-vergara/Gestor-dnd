@@ -90,6 +90,66 @@ const spellDataSchema = z.strictObject({
   classIds: z.array(slugSchema).min(1),
 });
 
+// SRD 5.2.1, "Equipo", "Armas". Daño en dados ("1d8", "2d6") o fijo ("1",
+// cerbatana). Alcances en pies, como el resto del contenido importado.
+const diceSchema = z
+  .string()
+  .regex(/^\d+(?:d\d+)?$/, 'Debe ser "XdY" o un número fijo');
+
+export const damageTypeSchema = z.enum([
+  "acid",
+  "bludgeoning",
+  "cold",
+  "fire",
+  "force",
+  "lightning",
+  "necrotic",
+  "piercing",
+  "poison",
+  "psychic",
+  "radiant",
+  "slashing",
+  "thunder",
+]);
+
+const weaponDataSchema = z.strictObject({
+  weaponCategory: z.enum(["simple", "martial"]),
+  attackType: z.enum(["melee", "ranged"]),
+  damage: z.strictObject({ dice: diceSchema, type: damageTypeSchema }),
+  // Propiedad "Versátil": daño al usarla con las dos manos.
+  versatileDice: diceSchema.optional(),
+  properties: z.array(
+    z.enum([
+      "ammunition",
+      "finesse",
+      "heavy",
+      "light",
+      "loading",
+      "reach",
+      "thrown",
+      "two-handed",
+      "versatile",
+    ]),
+  ),
+  // "Propiedades de maestría": Debilitar (sap), Derribar (topple), Empujar
+  // (push), Hender (cleave), Mellar (nick), Molestar (vex), Ralentizar (slow),
+  // Rozar (graze).
+  mastery: z.enum([
+    "cleave",
+    "graze",
+    "nick",
+    "push",
+    "sap",
+    "slow",
+    "topple",
+    "vex",
+  ]),
+  // Alcance normal/largo de las armas a distancia y arrojadizas.
+  range: z
+    .strictObject({ normal: z.int().min(0), long: z.int().min(0) })
+    .optional(),
+});
+
 const itemDataSchema = z.strictObject({
   category: z.enum(["weapon", "armor", "shield", "gear", "tool", "magic"]),
   weight: z.number().min(0).optional(), // libras
@@ -109,6 +169,7 @@ const itemDataSchema = z.strictObject({
       stealthDisadvantage: z.boolean(),
     })
     .optional(),
+  weapon: weaponDataSchema.optional(),
 });
 
 // --- Contenido: campos comunes + `type` que decide el esquema de `data` ---
@@ -158,6 +219,13 @@ export const contentSchema = z.discriminatedUnion("type", [
       type: z.literal("item"),
       data: itemDataSchema,
     })
+    // Un arma necesita sus datos de arma. Un objeto mágico (p. ej. un arma +1)
+    // también puede llevarlos, por eso no se exige al revés.
+    .refine(
+      (item) =>
+        item.data.category !== "weapon" || item.data.weapon !== undefined,
+      { message: "Un arma necesita data.weapon", path: ["data", "weapon"] },
+    )
     .refine(
       (item) =>
         item.data.category !== "armor" ||

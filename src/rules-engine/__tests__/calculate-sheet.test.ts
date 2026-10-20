@@ -39,6 +39,12 @@ const dwarf = content({
         description: "",
         effects: [{ target: "hp.max-per-level", op: "add", value: 1 }],
       },
+      // SRD 5.2.1, enano, "Visión en la oscuridad": 36 m (120 pies).
+      {
+        name: "Visión en la oscuridad",
+        description: "",
+        effects: [{ target: "senses.darkvision", op: "base", value: 120 }],
+      },
     ],
   },
 });
@@ -315,6 +321,17 @@ const adventurerCharm = content({
   data: { category: "magic" },
 });
 
+// Homebrew: amplía la visión en la oscuridad que ya tengas.
+const owlEyes = content({
+  id: "owl-eyes",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Ojos de búho",
+  description: "+30 pies a la visión en la oscuridad",
+  effects: [{ target: "senses.darkvision", op: "add", value: 30 }],
+  data: { category: "magic" },
+});
+
 // Homebrew: concede competencias con efectos "grant".
 const sentinelCloak = content({
   id: "sentinel-cloak",
@@ -348,6 +365,7 @@ const index = createContentIndex([
   adventurerCharm,
   sentinelCloak,
   quietBoots,
+  owlEyes,
   dwarf,
   soldier,
   savageAttacker,
@@ -1140,6 +1158,25 @@ describe("calculateSheet: speed", () => {
       index,
     );
     expect(sheet.speed).toBe(40);
+  });
+});
+
+describe("calculateSheet: darkvision", () => {
+  // SRD 5.2.1, enano: "Tienes visión en la oscuridad hasta 36 m" (120 pies).
+  // Va como "base": con "max" (un techo) el resultado sería 0.
+  it("uses the species darkvision", () => {
+    expect(calculateSheet(makeCharacter(), index).darkvision).toBe(120);
+  });
+
+  it("adds darkvision effects on top of the base", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("owl-eyes"),
+      }),
+      index,
+    );
+    expect(sheet.darkvision).toBe(150);
   });
 });
 

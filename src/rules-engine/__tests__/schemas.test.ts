@@ -284,7 +284,8 @@ describe("contentSchema", () => {
           {
             name: "Darkvision",
             description: "Ves en la oscuridad hasta 120 pies.",
-            effects: [{ target: "senses.darkvision", op: "max", value: 120 }],
+            // "base" y no "max": en el motor "max" es un techo (ADR 0006).
+            effects: [{ target: "senses.darkvision", op: "base", value: 120 }],
           },
         ],
       },
@@ -408,6 +409,85 @@ describe("contentSchema", () => {
       ],
     });
     expect(result.success).toBe(true);
+  });
+
+  // SRD 5.2.1, tabla "Armas": espada larga, 1d8 cortante, versátil (1d10),
+  // maestría Debilitar.
+  it("accepts a weapon as an item", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "longsword",
+      type: "item",
+      name: "Longsword",
+      data: {
+        category: "weapon",
+        weight: 3,
+        cost: { amount: 15, unit: "gp" },
+        weapon: {
+          weaponCategory: "martial",
+          attackType: "melee",
+          damage: { dice: "1d8", type: "slashing" },
+          versatileDice: "1d10",
+          properties: ["versatile"],
+          mastery: "sap",
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // SRD 5.2.1, tabla "Armas": la cerbatana hace 1 de daño fijo y la honda
+  // dispara a 9/36 m (30/120 pies).
+  it("accepts fixed damage and a range", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "blowgun",
+      type: "item",
+      name: "Blowgun",
+      data: {
+        category: "weapon",
+        weapon: {
+          weaponCategory: "martial",
+          attackType: "ranged",
+          damage: { dice: "1", type: "piercing" },
+          properties: ["ammunition", "loading"],
+          mastery: "vex",
+          range: { normal: 25, long: 100 },
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a weapon without weapon data", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "dagger",
+      type: "item",
+      name: "Dagger",
+      data: { category: "weapon" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects malformed damage dice", () => {
+    const result = contentSchema.safeParse({
+      ...base,
+      id: "club",
+      type: "item",
+      name: "Club",
+      data: {
+        category: "weapon",
+        weapon: {
+          weaponCategory: "simple",
+          attackType: "melee",
+          damage: { dice: "d4", type: "bludgeoning" },
+          properties: ["light"],
+          mastery: "slow",
+        },
+      },
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects a spell level above 9", () => {
