@@ -45,6 +45,18 @@ export type ComputedSheet = {
     { ability: Ability; modifier: number; proficiency: SkillProficiency }
   >;
   passivePerception: number;
+  initiative: number;
+  hitPoints: { max: number; current: number; temp: number };
+  // Dados de golpe por tipo ("d10": 2). `remaining` descuenta los gastados.
+  hitDice: {
+    byDie: Partial<Record<HitDie, number>>;
+    total: number;
+    remaining: number;
+  };
+  // En pies, como el contenido importado (30 pies = 9 m).
+  speed: number;
+  // Una entrada por clase con lanzamiento de conjuros, en el orden de `classes`.
+  spellcasting: SpellcastingStats[];
   // Problemas con los datos (contenido que falta, elecciones inválidas).
   // No rompen la hoja: lo afectado se ignora y la interfaz puede avisar.
   issues: string[];
@@ -56,6 +68,20 @@ export const abilityModifier = (score: number): number =>
   Math.floor((score - 10) / 2);
 
 export type SkillProficiency = "none" | "proficient" | "expertise";
+
+export type HitDie = "d6" | "d8" | "d10" | "d12";
+
+export type SpellcastingStats = {
+  classId: string;
+  ability: Ability;
+  saveDc: number;
+  attackBonus: number;
+};
+
+// SRD 5.2.1, tabla "Puntos de golpe establecidos por clase": d12 → 7,
+// d10 → 6, d8 → 5, d6 → 4. Es la mitad del dado + 1.
+export const fixedHitPointsPerLevel = (hitDie: number): number =>
+  hitDie / 2 + 1;
 
 // SRD 5.2.1, "Cómo jugar", tabla "Bonificador por competencia": +2 hasta el
 // nivel 4 y +1 cada 4 niveles después (5–8 → +3 … 17–20 → +6).
@@ -131,9 +157,17 @@ export function calculateSheet(
     if (feat) collected.push(...feat.effects);
   }
 
-  for (const { classId, level } of character.classes) {
+  // Las clases encontradas, con su nivel. `starting` marca la clase inicial,
+  // que es la primera de `classes` (salvaciones y PG de nivel 1).
+  const ownedClasses: {
+    cls: Extract<Content, { type: "class" }>;
+    level: number;
+    starting: boolean;
+  }[] = [];
+  for (const [position, { classId, level }] of character.classes.entries()) {
     const cls = find(classId, "class");
     if (!cls) continue;
+    ownedClasses.push({ cls, level, starting: position === 0 });
     collected.push(...cls.effects);
     // Solo los rasgos que ya se alcanzaron con el nivel de esa clase.
     for (const feature of cls.data.features) {
@@ -219,7 +253,7 @@ export function calculateSheet(
   // --- Tiradas de salvación ---
   // SRD 5.2.1, "Convertirse en <clase>", "Como personaje multiclase": las
   // salvaciones solo las da la clase inicial, que es la primera de `classes`.
-  const startingClass = startingClassOf(character, contentIndex);
+  const startingClass = ownedClasses.find((c) => c.starting)?.cls;
   const savingThrows = Object.fromEntries(
     ABILITIES.map((ability) => {
       const proficient =
@@ -318,6 +352,97 @@ export function calculateSheet(
   // para pruebas de Sabiduría (Percepción).
   const passivePerception = 10 + skills.perception.modifier;
 
+  // --- Iniciativa ---
+  // SRD 5.2.1, "Rellena los números": la iniciativa es el modificador por
+  // Destreza. Dote "Alerta": suma el bonificador por competencia.
+  const initiative = applyNumericEffects(
+    modifiers.dex +
+      (granted.has("proficiency.initiative") ? proficiencyBonus : 0),
+    effectsFor(effects, "initiative"),
+    modifiers,
+  );
+
+  // --- Puntos de golpe y dados de golpe ---
+  const cappedLevel = Math.min(totalLevel, MAX_CHARACTER_LEVEL);
+  let classHitPoints = 0;
+  const byDie: Partial<Record<HitDie, number>> = {};
+  for (const { cls, level, starting } of ownedClasses) {
+    const { hitDie } = cls.data;
+    const die: HitDie = `d${hitDie}`;
+    byDie[die] = (byDie[die] ?? 0) + level;
+
+    // SRD 5.2.1, "Multiclase": solo la clase inicial (la primera) da los PG
+    // del nivel 1: el dado entero + Con ("Puntos de golpe en el nivel 1 por clase").
+    let levelsAfterFirst = level;
+    if (starting) {
+      classHitPoints += hitDie + modifiers.con;
+      levelsAfterFirst = level - 1;
+    }
+    // SRD 5.2.1, "Subir de nivel", paso 2: valor establecido + Con, mínimo 1.
+    // Se usa siempre el valor fijo; tirar el dado sería otra elección a guardar.
+    classHitPoints +=
+      levelsAfterFirst *
+      Math.max(1, fixedHitPointsPerLevel(hitDie) + modifiers.con);
+  }
+
+  // "hp.max-per-level" (p. ej. "Aguante enano") se multiplica por el nivel total.
+  const hitPointsPerLevel = applyNumericEffects(
+    0,
+    effectsFor(effects, "hp.max-per-level"),
+    modifiers,
+  );
+  const maxHitPoints = applyNumericEffects(
+    classHitPoints + hitPointsPerLevel * cappedLevel,
+    effectsFor(effects, "hp.max"),
+    modifiers,
+  );
+  const { damageTaken, tempHp, hitDiceSpent } = character.playState;
+  const hitPoints = {
+    max: maxHitPoints,
+    // SRD 5.2.1, "Puntos de golpe": no bajan de 0.
+    current: Math.max(0, maxHitPoints - damageTaken),
+    temp: tempHp,
+  };
+  const totalHitDice = Object.values(byDie).reduce((sum, n) => sum + n, 0);
+  const hitDice = {
+    byDie,
+    total: totalHitDice,
+    remaining: Math.max(0, totalHitDice - hitDiceSpent),
+  };
+
+  // --- Velocidad ---
+  const speed = applyNumericEffects(
+    species?.data.speed ?? 0,
+    effectsFor(effects, "speed"),
+    modifiers,
+  );
+
+  // --- Lanzamiento de conjuros ---
+  // SRD 5.2.1, "Rellena los números": CD = 8 + aptitud mágica + competencia;
+  // ataque = aptitud mágica + competencia. "Multiclase": cada conjuro usa la
+  // aptitud de su clase, así que va una entrada por clase.
+  const spellcasting: SpellcastingStats[] = ownedClasses.flatMap(({ cls }) => {
+    if (!cls.data.spellcasting) return [];
+    const { ability } = cls.data.spellcasting;
+    const base = modifiers[ability] + proficiencyBonus;
+    return [
+      {
+        classId: cls.id,
+        ability,
+        saveDc: applyNumericEffects(
+          8 + base,
+          effectsFor(effects, "spell.dc"),
+          modifiers,
+        ),
+        attackBonus: applyNumericEffects(
+          base,
+          effectsFor(effects, "spell.attack"),
+          modifiers,
+        ),
+      },
+    ];
+  });
+
   return {
     abilities,
     ac,
@@ -325,18 +450,13 @@ export function calculateSheet(
     savingThrows,
     skills,
     passivePerception,
+    initiative,
+    hitPoints,
+    hitDice,
+    speed,
+    spellcasting,
     issues,
   };
-}
-
-// La clase inicial es la primera de la lista. No repite el aviso si falta: ya
-// lo dio `find` al juntar los efectos.
-function startingClassOf(character: Character, contentIndex: ContentIndex) {
-  const first = contentIndex.get(character.classes[0].classId);
-  return first?.type === "class" &&
-    character.activePackageIds.includes(first.packageId)
-    ? first
-    : undefined;
 }
 
 function modifiersOf(scores: Record<Ability, number>): Modifiers {

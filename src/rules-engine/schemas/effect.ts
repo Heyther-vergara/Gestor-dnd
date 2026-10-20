@@ -33,6 +33,9 @@ export const grantTargetSchema = z.union([
     z.enum(["light", "medium", "heavy", "shield"]),
   ]),
   z.templateLiteral(["proficiency.weapon.", z.enum(["simple", "martial"])]),
+  // SRD 5.2.1, dote "Alerta": sumás tu bonificador por competencia a la
+  // iniciativa. Va como concesión y no como número fijo para que suba con el nivel.
+  z.literal("proficiency.initiative"),
 ]);
 
 // --- Condiciones: cuándo aplica un efecto ---
