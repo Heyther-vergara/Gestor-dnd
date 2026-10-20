@@ -18,7 +18,7 @@ Tercer tramo de `calculateSheet`. Reglas del SRD 5.2.1 que hay que cubrir:
 
 ## Decisión
 
-1. **Iniciativa:** mod. de Des + competencia si hay una concesión `proficiency.initiative` + efectos `initiative`. *Alerta* es una concesión y no `{ target: "initiative", op: "add", value: 2 }` porque el número tiene que subir solo con el nivel.
+1. **Iniciativa:** mod. de Des + competencia si hay una concesión `proficiency.initiative` + efectos `initiative`. _Alerta_ es una concesión y no `{ target: "initiative", op: "add", value: 2 }` porque el número tiene que subir solo con el nivel.
 2. **PG máximos:** la clase inicial (la primera de `classes`) da el dado entero + Con; todos los demás niveles dan el valor establecido + Con, con mínimo 1 por nivel. Después se suman los efectos `hp.max-per-level` × nivel total y se aplican los efectos `hp.max`. Siempre se usa Con **final**, así que subir Con recalcula todos los niveles.
 3. **Valor establecido, no tirada:** tirar el dado sería una elección más por nivel para guardar en el personaje. Se agrega cuando haya pantalla de subir de nivel.
 4. **PG actuales** = máximo − `damageTaken`, sin bajar de 0. Los temporales se muestran tal cual.
@@ -29,5 +29,5 @@ Tercer tramo de `calculateSheet`. Reglas del SRD 5.2.1 que hay que cubrir:
 ## Consecuencias
 
 - La hoja expone `initiative`, `hitPoints { max, current, temp }`, `hitDice { byDie, total, remaining }`, `speed` y `spellcasting[]`.
-- `hp.max-per-level` usa el nivel **total**. Sirve para *Aguante enano*; un rasgo que escala con el nivel de **una** clase (p. ej. *Resistencia dracónica* del hechicero) necesitará otro target.
+- `hp.max-per-level` usa el nivel **total**. Sirve para _Aguante enano_; un rasgo que escala con el nivel de **una** clase (p. ej. _Resistencia dracónica_ del hechicero) necesitará otro target.
 - Pendiente: tirar PG, velocidad reducida por armadura pesada sin la Fuerza requerida, dados de golpe gastados por tipo y lanzamiento de conjuros de subclases (Caballero arcano), que hoy no tienen `spellcasting` en el esquema.
