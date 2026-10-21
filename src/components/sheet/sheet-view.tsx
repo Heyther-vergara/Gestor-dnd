@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { feetToMeters } from "@/lib/format";
 import type { ComputedSheet } from "@/rules-engine/engine";
 
@@ -8,16 +10,18 @@ import { SheetSection } from "./sheet-section";
 import { SkillList } from "./skill-list";
 import { VitalsRow } from "./vitals-row";
 
-// La hoja completa, solo lectura. Recibe la hoja ya calculada: este
-// componente no conoce reglas, solo las muestra.
+// La hoja completa. Recibe la hoja ya calculada: este componente no conoce
+// reglas, solo las muestra. `playPanel` son los controles de partida, si los hay.
 export function SheetView({
   name,
   subtitle,
   sheet,
+  playPanel,
 }: {
   name: string;
   subtitle: string;
   sheet: ComputedSheet;
+  playPanel?: ReactNode;
 }) {
   return (
     <article className="mx-auto grid w-full max-w-2xl gap-5 px-4 py-6">
@@ -30,6 +34,7 @@ export function SheetView({
 
       <VitalsRow sheet={sheet} />
       <HitPoints hitPoints={sheet.hitPoints} hitDice={sheet.hitDice} />
+      {playPanel}
       <ArmorWarnings penalties={sheet.armorPenalties} />
 
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">

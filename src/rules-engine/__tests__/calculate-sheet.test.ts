@@ -1276,13 +1276,13 @@ describe("calculateSheet: hit points", () => {
   it("derives current HP from damage taken, without going below 0", () => {
     const hurt = calculateSheet(
       makeCharacter({
-        playState: { damageTaken: 10, tempHp: 4, hitDiceSpent: 0 },
+        playState: { damageTaken: 10, tempHp: 4, hitDiceSpent: {} },
       }),
       index,
     );
     const down = calculateSheet(
       makeCharacter({
-        playState: { damageTaken: 99, tempHp: 0, hitDiceSpent: 0 },
+        playState: { damageTaken: 99, tempHp: 0, hitDiceSpent: {} },
       }),
       index,
     );
@@ -1299,15 +1299,30 @@ describe("calculateSheet: hit points", () => {
           { classId: "fighter", level: 2 },
           { classId: "wizard", level: 1 },
         ],
-        playState: { damageTaken: 0, tempHp: 0, hitDiceSpent: 1 },
+        playState: { damageTaken: 0, tempHp: 0, hitDiceSpent: { d6: 1 } },
       }),
       index,
     );
     expect(sheet.hitDice).toEqual({
-      byDie: { d10: 2, d6: 1 },
+      byDie: {
+        d10: { total: 2, remaining: 2 },
+        d6: { total: 1, remaining: 0 },
+      },
       total: 3,
       remaining: 2,
     });
+  });
+
+  // Datos viejos o editados a mano: gastar más de los que hay no da negativos.
+  it("never shows negative remaining hit dice", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        playState: { damageTaken: 0, tempHp: 0, hitDiceSpent: { d10: 9 } },
+      }),
+      index,
+    );
+    expect(sheet.hitDice.byDie.d10).toEqual({ total: 3, remaining: 0 });
+    expect(sheet.hitDice.remaining).toBe(0);
   });
 });
 

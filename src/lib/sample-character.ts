@@ -32,5 +32,5 @@ export const sampleCharacter = characterSchema.parse({
     { itemId: "chain-mail", equipped: true },
     { itemId: "shield-item", equipped: true },
   ],
-  playState: { damageTaken: 9, tempHp: 0, hitDiceSpent: 0 },
+  playState: { damageTaken: 9, tempHp: 0, hitDiceSpent: {} },
 });

@@ -11,6 +11,7 @@ import {
   type Content,
   type Effect,
   type GrantTarget,
+  type HitDie,
   type Skill,
   skillAbilities,
   skillSchema,
@@ -49,9 +50,10 @@ export type ComputedSheet = {
   passivePerception: number;
   initiative: number;
   hitPoints: { max: number; current: number; temp: number };
-  // Dados de golpe por tipo ("d10": 2). `remaining` descuenta los gastados.
+  // Dados de golpe por tipo ({ d10: { total: 2, remaining: 1 } }) y en suma.
+  // `remaining` descuenta los gastados de ese tipo.
   hitDice: {
-    byDie: Partial<Record<HitDie, number>>;
+    byDie: Partial<Record<HitDie, HitDiceCount>>;
     total: number;
     remaining: number;
   };
@@ -76,7 +78,9 @@ export const abilityModifier = (score: number): number =>
 
 export type SkillProficiency = "none" | "proficient" | "expertise";
 
-export type HitDie = "d6" | "d8" | "d10" | "d12";
+export type { HitDie } from "../schemas";
+
+export type HitDiceCount = { total: number; remaining: number };
 
 export type SpellcastingStats = {
   classId: string;
@@ -443,11 +447,11 @@ export function calculateSheet(
   // --- Puntos de golpe y dados de golpe ---
   const cappedLevel = Math.min(totalLevel, MAX_CHARACTER_LEVEL);
   let classHitPoints = 0;
-  const byDie: Partial<Record<HitDie, number>> = {};
+  const diceByType: Partial<Record<HitDie, number>> = {};
   for (const { cls, level, starting } of ownedClasses) {
     const { hitDie } = cls.data;
     const die: HitDie = `d${hitDie}`;
-    byDie[die] = (byDie[die] ?? 0) + level;
+    diceByType[die] = (diceByType[die] ?? 0) + level;
 
     // SRD 5.2.1, "Multiclase": solo la clase inicial (la primera) da los PG
     // del nivel 1: el dado entero + Con ("Puntos de golpe en el nivel 1 por clase").
@@ -481,11 +485,19 @@ export function calculateSheet(
     current: Math.max(0, maxHitPoints - damageTaken),
     temp: tempHp,
   };
-  const totalHitDice = Object.values(byDie).reduce((sum, n) => sum + n, 0);
+  const byDie: Partial<Record<HitDie, HitDiceCount>> = {};
+  let totalHitDice = 0;
+  let remainingHitDice = 0;
+  for (const [die, total] of Object.entries(diceByType) as [HitDie, number][]) {
+    const remaining = Math.max(0, total - (hitDiceSpent[die] ?? 0));
+    byDie[die] = { total, remaining };
+    totalHitDice += total;
+    remainingHitDice += remaining;
+  }
   const hitDice = {
     byDie,
     total: totalHitDice,
-    remaining: Math.max(0, totalHitDice - hitDiceSpent),
+    remaining: remainingHitDice,
   };
 
   // --- Velocidad ---
