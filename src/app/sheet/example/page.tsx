@@ -1,18 +1,16 @@
 import type { Metadata } from "next";
 
-import { SheetView } from "@/components/sheet/sheet-view";
+import { PlayableSheet } from "@/components/sheet/playable-sheet";
 import { sampleCharacter } from "@/lib/sample-character";
 import { srd2024Index } from "@/lib/srd-2024";
-import { calculateSheet } from "@/rules-engine/engine";
 
 export const metadata: Metadata = {
   title: "Hoja de ejemplo · Gestor de personajes 5e",
 };
 
-// Server Component: la hoja se calcula en el servidor al compilar la página
-// (no hay datos por usuario todavía), así que llega como HTML estático.
+// Server Component: arma el subtítulo y le pasa el personaje a PlayableSheet,
+// que es un Client Component porque la hoja se edita en partida.
 export default function ExampleSheetPage() {
-  const sheet = calculateSheet(sampleCharacter, srd2024Index);
   const nameOf = (id: string) => srd2024Index.get(id)?.name ?? id;
 
   const subtitle = [
@@ -23,11 +21,7 @@ export default function ExampleSheetPage() {
 
   return (
     <main className="flex-1">
-      <SheetView
-        name={sampleCharacter.name}
-        subtitle={subtitle}
-        sheet={sheet}
-      />
+      <PlayableSheet initialCharacter={sampleCharacter} subtitle={subtitle} />
     </main>
   );
 }

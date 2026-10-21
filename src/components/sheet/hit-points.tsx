@@ -1,7 +1,7 @@
 import type { ComputedSheet } from "@/rules-engine/engine";
 
-// PG actuales sobre máximos, con barra. Por ahora solo lectura: los botones
-// de daño y curación llegan cuando la hoja se pueda editar.
+// PG actuales sobre máximos, con barra. Solo muestra: los botones de daño,
+// curación y descansos están en PlayPanel.
 export function HitPoints({
   hitPoints,
   hitDice,
@@ -11,7 +11,7 @@ export function HitPoints({
   // Debajo de la mitad (el "malherido" de muchas mesas) la barra pasa a rojo.
   const low = current * 2 < max;
   const dice = Object.entries(hitDice.byDie)
-    .map(([die, count]) => `${count}${die}`)
+    .map(([die, count]) => `${count.total}${die}`)
     .join(" + ");
 
   return (

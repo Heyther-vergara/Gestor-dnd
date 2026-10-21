@@ -62,8 +62,12 @@ export const armorTrainingSchema = z.enum([
   "shield",
 ]);
 
+// SRD 5.2.1, "Clases": los dados de golpe de las clases van del d6 al d12.
+export const hitDieSchema = z.enum(["d6", "d8", "d10", "d12"]);
+
 export type Slug = z.infer<typeof slugSchema>;
 export type Edition = z.infer<typeof editionSchema>;
 export type Ability = z.infer<typeof abilitySchema>;
 export type Skill = z.infer<typeof skillSchema>;
 export type ArmorTraining = z.infer<typeof armorTrainingSchema>;
+export type HitDie = z.infer<typeof hitDieSchema>;

@@ -43,7 +43,7 @@ describe("characterSchema", () => {
     expect(character.playState).toEqual({
       damageTaken: 0,
       tempHp: 0,
-      hitDiceSpent: 0,
+      hitDiceSpent: {},
     });
   });
 
@@ -150,7 +150,16 @@ describe("characterSchema", () => {
   it("rejects negative damage taken", () => {
     const result = characterSchema.safeParse({
       ...fighter,
-      playState: { damageTaken: -5, tempHp: 0, hitDiceSpent: 0 },
+      playState: { damageTaken: -5, tempHp: 0, hitDiceSpent: {} },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // ADR 0009: los dados gastados van por tipo de dado.
+  it("rejects spent hit dice of an unknown die type", () => {
+    const result = characterSchema.safeParse({
+      ...fighter,
+      playState: { damageTaken: 0, tempHp: 0, hitDiceSpent: { d20: 1 } },
     });
     expect(result.success).toBe(false);
   });

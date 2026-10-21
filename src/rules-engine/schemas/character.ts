@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   abilitySchema,
   editionSchema,
+  hitDieSchema,
   skillSchema,
   slugSchema,
 } from "./common";
@@ -86,10 +87,12 @@ const inventoryItemSchema = z.strictObject({
 
 // Se guarda el daño recibido, no los PG actuales: si los PG máximos cambian
 // (subir de nivel, un objeto), los PG actuales se recalculan solos.
+// Los dados de golpe gastados van por tipo ({ d10: 1 }): con multiclase
+// importa de qué clase era el dado (ADR 0009).
 const playStateSchema = z.strictObject({
   damageTaken: z.int().min(0).default(0),
   tempHp: z.int().min(0).default(0),
-  hitDiceSpent: z.int().min(0).default(0),
+  hitDiceSpent: z.partialRecord(hitDieSchema, z.int().min(0)).default({}),
 });
 
 export const characterSchema = z.strictObject({
@@ -106,7 +109,7 @@ export const characterSchema = z.strictObject({
   playState: playStateSchema.default({
     damageTaken: 0,
     tempHp: 0,
-    hitDiceSpent: 0,
+    hitDiceSpent: {},
   }),
 });
 
@@ -114,3 +117,4 @@ export type AbilityScores = z.infer<typeof abilityScoresSchema>;
 export type Choice = z.infer<typeof choiceSchema>;
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 export type Character = z.infer<typeof characterSchema>;
+export type PlayState = Character["playState"];

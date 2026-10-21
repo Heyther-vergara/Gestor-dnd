@@ -56,7 +56,7 @@ describe("SRD 2024 sample character: Thora, dwarf wizard 1", () => {
   // Enano, "Aguante enano": +1.
   it("has 10 hit points", () => {
     expect(sheet.hitPoints.max).toBe(6 + 3 + 1);
-    expect(sheet.hitDice.byDie).toEqual({ d6: 1 });
+    expect(sheet.hitDice.byDie).toEqual({ d6: { total: 1, remaining: 1 } });
   });
 
   // SRD 5.2.1, "Rellena los números": iniciativa = mod. de Des; enano 9 m (30 pies).
