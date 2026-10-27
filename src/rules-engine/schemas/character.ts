@@ -93,6 +93,19 @@ const playStateSchema = z.strictObject({
   damageTaken: z.int().min(0).default(0),
   tempHp: z.int().min(0).default(0),
   hitDiceSpent: z.partialRecord(hitDieSchema, z.int().min(0)).default({}),
+  // Salvaciones contra muerte con 0 PG. Tres de un tipo terminan la cuenta:
+  // con tres éxitos quedás estable y con tres fallos morís (ADR 0010).
+  deathSaves: z
+    .strictObject({
+      successes: z.int().min(0).max(3),
+      failures: z.int().min(0).max(3),
+    })
+    .default({ successes: 0, failures: 0 }),
+  // Estable con 0 PG: no hace salvaciones contra muerte.
+  stable: z.boolean().default(false),
+  // Se guarda porque la muerte no se deduce de los PG: con 0 PG podés estar
+  // agonizando, estable o muerto.
+  dead: z.boolean().default(false),
 });
 
 export const characterSchema = z.strictObject({
@@ -110,6 +123,9 @@ export const characterSchema = z.strictObject({
     damageTaken: 0,
     tempHp: 0,
     hitDiceSpent: {},
+    deathSaves: { successes: 0, failures: 0 },
+    stable: false,
+    dead: false,
   }),
 });
 
@@ -117,4 +133,7 @@ export type AbilityScores = z.infer<typeof abilityScoresSchema>;
 export type Choice = z.infer<typeof choiceSchema>;
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 export type Character = z.infer<typeof characterSchema>;
+// Lo que se puede pasar a `characterSchema.parse`: los campos con valor por
+// defecto son opcionales (por ejemplo, las salvaciones contra muerte).
+export type CharacterInput = z.input<typeof characterSchema>;
 export type PlayState = Character["playState"];

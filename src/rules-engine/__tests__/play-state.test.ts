@@ -6,7 +6,9 @@ import {
   gainTempHp,
   heal,
   longRest,
+  rollDeathSave,
   spendHitDie,
+  stabilize,
 } from "@/rules-engine/engine/play-state";
 import {
   type Character,
@@ -242,11 +244,7 @@ describe("gainTempHp", () => {
   // golpe temporales". Tampoco cuentan como curación.
   it("works at full hit points without healing", () => {
     const result = expectOk(gainTempHp(makeCharacter(), 5));
-    expect(result.playState).toEqual({
-      damageTaken: 0,
-      tempHp: 5,
-      hitDiceSpent: {},
-    });
+    expect(result.playState).toMatchObject({ damageTaken: 0, tempHp: 5 });
   });
 });
 
@@ -337,6 +335,9 @@ describe("longRest", () => {
       damageTaken: 0,
       tempHp: 0,
       hitDiceSpent: {},
+      deathSaves: { successes: 0, failures: 0 },
+      stable: false,
+      dead: false,
     });
   });
 
@@ -345,5 +346,241 @@ describe("longRest", () => {
     expect(longRest(makeCharacter({ damageTaken: MAX_HP }), index).ok).toBe(
       false,
     );
+  });
+});
+
+// --- Salvaciones contra muerte (ADR 0010) ---
+
+// Personaje con 0 PG y, si se indica, salvaciones ya hechas.
+const makeDown = (playState: Partial<PlayState> = {}) =>
+  makeCharacter({ damageTaken: MAX_HP, ...playState });
+const saves = (successes: number, failures: number) => ({
+  successes,
+  failures,
+});
+
+describe("death saves after damage", () => {
+  // SRD 5.2.1, "Daño considerable": el personaje muere y queda guardado.
+  it("marks the character as dead on massive damage", () => {
+    const atSix = makeCharacter({ damageTaken: MAX_HP - 6 });
+    expect(expectOk(applyDamage(atSix, index, 34)).playState.dead).toBe(true);
+    expect(expectOk(applyDamage(atSix, index, 33)).playState.dead).toBe(false);
+  });
+
+  // SRD 5.2.1, "Daño con 0 puntos de golpe": "es lo mismo que fallar en una
+  // tirada de salvación contra muerte".
+  it("adds one failure when damaged at 0 hit points", () => {
+    const result = expectOk(applyDamage(makeDown(), index, 5));
+    expect(result.playState.deathSaves).toEqual(saves(0, 1));
+  });
+
+  // "Si el daño lo causa un crítico, equivale a dos fallos".
+  it("adds two failures on a critical hit", () => {
+    const result = expectOk(
+      applyDamage(makeDown(), index, 5, { critical: true }),
+    );
+    expect(result.playState.deathSaves).toEqual(saves(0, 2));
+  });
+
+  // "Con tu tercer fallo morirás".
+  it("dies on the third failure", () => {
+    const twoFailures = makeDown({ deathSaves: saves(1, 2) });
+    const result = expectOk(applyDamage(twoFailures, index, 1));
+    expect(result.outcome).toBe("death-from-failures");
+    expect(result.playState).toMatchObject({
+      dead: true,
+      deathSaves: saves(1, 3),
+    });
+  });
+
+  it("does not count more than three failures", () => {
+    const twoFailures = makeDown({ deathSaves: saves(0, 2) });
+    const result = expectOk(
+      applyDamage(twoFailures, index, 1, { critical: true }),
+    );
+    expect(result.playState.deathSaves.failures).toBe(3);
+  });
+
+  // "Estabilizar a un personaje": "Si la criatura sufre daño, dejará de estar
+  // estable y empezará a hacer tiradas de salvación contra muerte otra vez".
+  it("stops being stable when damaged", () => {
+    const result = expectOk(applyDamage(makeDown({ stable: true }), index, 2));
+    expect(result.playState).toMatchObject({
+      stable: false,
+      deathSaves: saves(0, 1),
+    });
+  });
+
+  // Los PG temporales evitan la pérdida de PG reales: sin daño a los PG no
+  // hay fallo (ADR 0010).
+  it("does not add a failure when temporary hit points absorb the damage", () => {
+    const result = expectOk(applyDamage(makeDown({ tempHp: 5 }), index, 3));
+    expect(result.playState.deathSaves).toEqual(saves(0, 0));
+  });
+
+  it("starts with no saves when dropping to 0", () => {
+    const result = expectOk(
+      applyDamage(makeCharacter({ damageTaken: 20 }), index, 8),
+    );
+    expect(result.playState).toMatchObject({
+      deathSaves: saves(0, 0),
+      stable: false,
+      dead: false,
+    });
+  });
+});
+
+describe("rollDeathSave", () => {
+  // SRD 5.2.1, "Tres éxitos o fallos": 10 o más es éxito; si no, fallo.
+  it("counts 10 or more as a success and less as a failure", () => {
+    expect(expectOk(rollDeathSave(makeDown(), index, 10))).toMatchObject({
+      outcome: "success",
+      playState: { deathSaves: saves(1, 0) },
+    });
+    expect(expectOk(rollDeathSave(makeDown(), index, 9))).toMatchObject({
+      outcome: "failure",
+      playState: { deathSaves: saves(0, 1) },
+    });
+  });
+
+  // "Los éxitos y los fallos no tienen por qué ser consecutivos".
+  it("keeps both counts until one reaches three", () => {
+    const mixed = makeDown({ deathSaves: saves(1, 1) });
+    expect(
+      expectOk(rollDeathSave(mixed, index, 15)).playState.deathSaves,
+    ).toEqual(saves(2, 1));
+  });
+
+  // "En tu tercer éxito te estabilizarás". "La cantidad de ambos vuelve a
+  // cero si [...] te estabilizas".
+  it("stabilizes on the third success and resets the counts", () => {
+    const result = expectOk(
+      rollDeathSave(makeDown({ deathSaves: saves(2, 2) }), index, 12),
+    );
+    expect(result.outcome).toBe("stabilized");
+    expect(result.playState).toMatchObject({
+      stable: true,
+      deathSaves: saves(0, 0),
+    });
+  });
+
+  it("dies on the third failure", () => {
+    const result = expectOk(
+      rollDeathSave(makeDown({ deathSaves: saves(2, 2) }), index, 4),
+    );
+    expect(result.outcome).toBe("died");
+    expect(result.playState).toMatchObject({
+      dead: true,
+      deathSaves: saves(2, 3),
+    });
+  });
+
+  // "Sacar 1 o 20": un 1 cuenta como dos fallos.
+  it("counts a natural 1 as two failures", () => {
+    const result = expectOk(rollDeathSave(makeDown(), index, 1));
+    expect(result.playState.deathSaves).toEqual(saves(0, 2));
+    const oneFailure = makeDown({ deathSaves: saves(0, 2) });
+    expect(expectOk(rollDeathSave(oneFailure, index, 1))).toMatchObject({
+      outcome: "died",
+      playState: { deathSaves: saves(0, 3) },
+    });
+  });
+
+  // "Si sacas un 20, recuperas 1 punto de golpe", y con eso las cuentas
+  // vuelven a cero.
+  it("regains 1 hit point on a natural 20", () => {
+    const character = makeDown({ deathSaves: saves(1, 2) });
+    const result = expectOk(rollDeathSave(character, index, 20));
+    expect(result.outcome).toBe("regained-hp");
+    expect(result.playState.deathSaves).toEqual(saves(0, 0));
+    expect(hitPointsAfter(character, result.playState).current).toBe(1);
+  });
+
+  it("rejects rolls outside the d20", () => {
+    expect(rollDeathSave(makeDown(), index, 0).ok).toBe(false);
+    expect(rollDeathSave(makeDown(), index, 21).ok).toBe(false);
+    expect(rollDeathSave(makeDown(), index, 7.5).ok).toBe(false);
+  });
+
+  // "Siempre que empieces tu turno con 0 puntos de golpe". "Una criatura
+  // estable no tendrá que hacer tiradas de salvación contra muerte".
+  it("only rolls at 0 hit points, when not stable and alive", () => {
+    expect(rollDeathSave(makeCharacter(), index, 12).ok).toBe(false);
+    expect(rollDeathSave(makeDown({ stable: true }), index, 12).ok).toBe(false);
+    expect(rollDeathSave(makeDown({ dead: true }), index, 12).ok).toBe(false);
+  });
+});
+
+describe("stabilize", () => {
+  // SRD 5.2.1, "Estabilizar a un personaje": con una prueba de Sabiduría
+  // (Medicina) CD 10 superada. La cuenta vuelve a cero.
+  it("makes a dying character stable and resets the counts", () => {
+    const result = expectOk(
+      stabilize(makeDown({ deathSaves: saves(1, 2) }), index),
+    );
+    expect(result.playState).toMatchObject({
+      stable: true,
+      deathSaves: saves(0, 0),
+      damageTaken: MAX_HP,
+    });
+  });
+
+  it("only works on a dying character", () => {
+    expect(stabilize(makeCharacter(), index).ok).toBe(false);
+    expect(stabilize(makeDown({ stable: true }), index).ok).toBe(false);
+    expect(stabilize(makeDown({ dead: true }), index).ok).toBe(false);
+  });
+});
+
+describe("healing a dying character", () => {
+  // SRD 5.2.1: "La cantidad de ambos vuelve a cero si recuperas puntos de
+  // golpe". "Caer inconsciente": hasta que recuperes cualquier cantidad.
+  it("resets the counts and stability when healed", () => {
+    const result = expectOk(
+      heal(makeDown({ deathSaves: saves(2, 1), stable: true }), index, 3),
+    );
+    expect(result.playState).toMatchObject({
+      deathSaves: saves(0, 0),
+      stable: false,
+    });
+  });
+
+  it("keeps the counts when healing 0", () => {
+    const result = expectOk(
+      heal(makeDown({ deathSaves: saves(2, 1) }), index, 0),
+    );
+    expect(result.playState.deathSaves).toEqual(saves(2, 1));
+  });
+});
+
+describe("a dead character", () => {
+  // La curación normal no revive: hace falta magia como alzar a los muertos,
+  // que todavía no está modelada.
+  it("cannot be damaged, healed, gain temp HP or rest", () => {
+    const dead = makeDown({ dead: true });
+    for (const result of [
+      applyDamage(dead, index, 3),
+      heal(dead, index, 5),
+      gainTempHp(dead, 5),
+      spendHitDie(dead, index, "d10", 4),
+      longRest(dead, index),
+    ]) {
+      expect(result).toEqual({ ok: false, reason: "El personaje está muerto" });
+    }
+  });
+});
+
+describe("sheet death save status", () => {
+  const status = (playState: Partial<PlayState>) =>
+    calculateSheet(makeCharacter(playState), index).deathSaves;
+
+  it("derives the status from hit points and stored state", () => {
+    expect(status({}).status).toBe("conscious");
+    expect(status({ damageTaken: MAX_HP })).toEqual({
+      status: "dying",
+      ...saves(0, 0),
+    });
+    expect(status({ damageTaken: MAX_HP, stable: true }).status).toBe("stable");
+    expect(status({ damageTaken: MAX_HP, dead: true }).status).toBe("dead");
   });
 });

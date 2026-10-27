@@ -44,6 +44,9 @@ describe("characterSchema", () => {
       damageTaken: 0,
       tempHp: 0,
       hitDiceSpent: {},
+      deathSaves: { successes: 0, failures: 0 },
+      stable: false,
+      dead: false,
     });
   });
 
@@ -151,6 +154,15 @@ describe("characterSchema", () => {
     const result = characterSchema.safeParse({
       ...fighter,
       playState: { damageTaken: -5, tempHp: 0, hitDiceSpent: {} },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // SRD 5.2.1, "Tres éxitos o fallos": la cuenta nunca pasa de tres.
+  it("rejects more than three death save failures", () => {
+    const result = characterSchema.safeParse({
+      ...fighter,
+      playState: { deathSaves: { successes: 0, failures: 4 } },
     });
     expect(result.success).toBe(false);
   });

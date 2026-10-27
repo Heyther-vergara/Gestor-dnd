@@ -6,11 +6,14 @@ import type { ContentIndex } from "@/rules-engine/engine";
 import {
   applyDamage,
   type DamageOutcome,
+  type DeathSaveOutcome,
   gainTempHp,
   heal,
   longRest,
   type PlayResult,
+  rollDeathSave,
   spendHitDie,
+  stabilize,
 } from "@/rules-engine/engine/play-state";
 import type { Character, HitDie } from "@/rules-engine/schemas";
 
@@ -22,11 +25,13 @@ export type PlaySession = {
 };
 
 export type PlayAction =
-  | { type: "damage"; amount: number }
+  | { type: "damage"; amount: number; critical?: boolean }
   | { type: "heal"; amount: number }
   | { type: "temp-hp"; amount: number }
   | { type: "spend-hit-die"; die: HitDie; roll: number }
   | { type: "long-rest" }
+  | { type: "death-save"; roll: number }
+  | { type: "stabilize" }
   | { type: "reset"; character: Character };
 
 const damageText: Record<DamageOutcome, string> = {
@@ -35,8 +40,18 @@ const damageText: Record<DamageOutcome, string> = {
   "dropped-to-zero":
     "Caíste a 0 PG: quedás inconsciente y hacés tiradas de salvación contra muerte.",
   "damaged-at-zero":
-    "Daño con 0 PG: cuenta como un fallo de salvación contra muerte (dos si fue crítico).",
+    "Daño con 0 PG: cuenta como fallo de salvación contra muerte.",
   "instant-death": "Daño considerable: el personaje muere.",
+  "death-from-failures":
+    "Tercer fallo de salvación contra muerte: el personaje muere.",
+};
+
+const deathSaveText: Record<DeathSaveOutcome, string> = {
+  success: "Éxito en la salvación contra muerte.",
+  failure: "Fallo en la salvación contra muerte.",
+  stabilized: "Tercer éxito: quedás estable con 0 PG.",
+  died: "Tercer fallo: el personaje muere.",
+  "regained-hp": "¡20 natural! Recuperás 1 PG y te despertás.",
 };
 
 export function createPlayReducer(contentIndex: ContentIndex) {
@@ -65,7 +80,9 @@ export function createPlayReducer(contentIndex: ContentIndex) {
       case "damage":
         return apply(
           session,
-          applyDamage(character, contentIndex, action.amount),
+          applyDamage(character, contentIndex, action.amount, {
+            critical: action.critical,
+          }),
           ({ outcome, hpLost, tempHpLost }) => {
             const lost = [
               hpLost > 0 && `${hpLost} PG`,
@@ -75,7 +92,11 @@ export function createPlayReducer(contentIndex: ContentIndex) {
               .filter(Boolean)
               .join(" y ");
             const text =
-              outcome === "hurt" ? `Perdiste ${lost}.` : damageText[outcome];
+              outcome === "hurt"
+                ? `Perdiste ${lost}.`
+                : outcome === "damaged-at-zero" && action.critical
+                  ? "Crítico con 0 PG: cuenta como dos fallos de salvación contra muerte."
+                  : damageText[outcome];
             return {
               tone:
                 outcome === "hurt" || outcome === "unharmed"
@@ -122,6 +143,24 @@ export function createPlayReducer(contentIndex: ContentIndex) {
         return apply(session, longRest(character, contentIndex), () => ({
           tone: "info",
           text: "Descanso largo: PG y dados de golpe al máximo.",
+        }));
+      case "death-save":
+        return apply(
+          session,
+          rollDeathSave(character, contentIndex, action.roll),
+          ({ outcome }) => ({
+            tone:
+              outcome === "died" || outcome === "failure" ? "danger" : "info",
+            text:
+              action.roll === 1 && outcome === "failure"
+                ? "1 natural: cuenta como dos fallos."
+                : deathSaveText[outcome],
+          }),
+        );
+      case "stabilize":
+        return apply(session, stabilize(character, contentIndex), () => ({
+          tone: "info",
+          text: "Estabilizado: sigue inconsciente con 0 PG, pero ya no hace salvaciones.",
         }));
       case "reset":
         return { character: action.character, message: null };

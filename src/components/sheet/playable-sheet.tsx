@@ -43,6 +43,7 @@ export function PlayableSheet({
         <div className="grid gap-2">
           <PlayPanel
             hitDice={sheet.hitDice}
+            deathSaves={sheet.deathSaves}
             message={session.message}
             dispatch={dispatch}
           />
