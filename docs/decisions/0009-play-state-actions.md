@@ -1,7 +1,7 @@
 # 0009 — Daño, curación y descansos en partida
 
 - Fecha: 2026-10-21
-- Estado: aceptada
+- Estado: aceptada (salvaciones contra muerte: ADR 0010)
 
 ## Contexto
 
@@ -29,4 +29,4 @@ La hoja de ejemplo era de solo lectura. Para usarla en la mesa hay que poder rec
 ## Consecuencias
 
 - Recargar la página vuelve al personaje inicial hasta que haya base de datos.
-- Pendiente: salvaciones contra muerte (éxitos, fallos, estabilizar), resistencias y vulnerabilidades al daño, PG máximos reducidos, cansancio, y que el daño interrumpa un descanso.
+- Pendiente: resistencias y vulnerabilidades al daño, PG máximos reducidos, cansancio, y que el daño interrumpa un descanso.

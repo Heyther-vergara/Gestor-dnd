@@ -38,6 +38,43 @@ describe("play reducer (Brunhilda: 22 of 31 HP)", () => {
     expect(next.character.playState.hitDiceSpent).toEqual({ d10: 1 });
   });
 
+  it("counts a critical hit at 0 HP as two failures", () => {
+    const down = reducer(start, { type: "damage", amount: 30 });
+    const crit = reducer(down, { type: "damage", amount: 1, critical: true });
+    expect(crit.character.playState.deathSaves).toEqual({
+      successes: 0,
+      failures: 2,
+    });
+    expect(crit.message?.text).toContain("dos fallos");
+  });
+
+  it("rolls death saves and stabilizes on the third success", () => {
+    let session = reducer(start, { type: "damage", amount: 30 });
+    session = reducer(session, { type: "death-save", roll: 12 });
+    expect(session.message?.tone).toBe("info");
+    session = reducer(session, { type: "death-save", roll: 3 });
+    expect(session.message?.tone).toBe("danger");
+    session = reducer(session, { type: "death-save", roll: 10 });
+    session = reducer(session, { type: "death-save", roll: 18 });
+    expect(calculateSheet(session.character, srd2024Index).deathSaves).toEqual({
+      status: "stable",
+      successes: 0,
+      failures: 0,
+    });
+  });
+
+  it("explains that a natural 1 counts as two failures", () => {
+    const down = reducer(start, { type: "damage", amount: 30 });
+    const one = reducer(down, { type: "death-save", roll: 1 });
+    expect(one.message?.text).toBe("1 natural: cuenta como dos fallos.");
+  });
+
+  it("stabilizes a dying character", () => {
+    const down = reducer(start, { type: "damage", amount: 30 });
+    const stable = reducer(down, { type: "stabilize" });
+    expect(stable.character.playState.stable).toBe(true);
+  });
+
   it("resets to the given character", () => {
     const hurt = reducer(start, { type: "damage", amount: 5 });
     const reset = reducer(hurt, { type: "reset", character: sampleCharacter });

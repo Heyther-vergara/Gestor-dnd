@@ -6,25 +6,36 @@ import { Button } from "@/components/ui/button";
 import type { PlayAction, PlayMessage } from "@/lib/play-reducer";
 import type { ComputedSheet, HitDie } from "@/rules-engine/engine";
 
+import { DeathSaves } from "./death-saves";
+
 const inputClass =
   "h-8 w-full min-w-0 rounded-lg border border-input bg-card px-2 text-base tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 // Un campo vacío o con texto no es un número: se manda NaN y el motor lo rechaza.
 const toNumber = (value: string) => (value.trim() === "" ? NaN : Number(value));
 
-// Controles de partida: daño, curación, PG temporales y descansos. Solo
+// Controles de partida: daño, curación, PG temporales, descansos y
+// salvaciones contra muerte. Solo
 // manda acciones; qué pasa con cada una lo decide el motor.
 export function PlayPanel({
   hitDice,
+  deathSaves,
   message,
   dispatch,
 }: {
   hitDice: ComputedSheet["hitDice"];
+  deathSaves: ComputedSheet["deathSaves"];
   message: PlayMessage | null;
   dispatch: ActionDispatch<[PlayAction]>;
 }) {
-  const ids = { amount: useId(), die: useId(), roll: useId() };
+  const ids = {
+    amount: useId(),
+    critical: useId(),
+    die: useId(),
+    roll: useId(),
+  };
   const [amount, setAmount] = useState("");
+  const [critical, setCritical] = useState(false);
   const [roll, setRoll] = useState("");
 
   const availableDice = (
@@ -37,12 +48,18 @@ export function PlayPanel({
     : availableDice[0]?.[0];
 
   const sendAmount = (type: "damage" | "heal" | "temp-hp") => {
-    dispatch({ type, amount: toNumber(amount) });
+    if (type === "damage") {
+      dispatch({ type, amount: toNumber(amount), critical });
+      setCritical(false);
+    } else {
+      dispatch({ type, amount: toNumber(amount) });
+    }
     setAmount("");
   };
 
   return (
     <div className="grid gap-3 rounded-sm border border-border bg-card p-3">
+      <DeathSaves deathSaves={deathSaves} dispatch={dispatch} />
       <div className="grid gap-1.5">
         <label
           htmlFor={ids.amount}
@@ -70,6 +87,20 @@ export function PlayPanel({
             PG temp.
           </Button>
         </div>
+        {/* Solo cambia algo con 0 PG: un crítico cuenta como dos fallos. */}
+        <label
+          htmlFor={ids.critical}
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+        >
+          <input
+            id={ids.critical}
+            type="checkbox"
+            checked={critical}
+            onChange={(e) => setCritical(e.target.checked)}
+            className="size-4 accent-primary"
+          />
+          El daño es de un golpe crítico
+        </label>
       </div>
 
       <fieldset className="grid gap-1.5">

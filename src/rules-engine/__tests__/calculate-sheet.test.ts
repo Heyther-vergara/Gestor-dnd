@@ -9,6 +9,7 @@ import {
 } from "@/rules-engine/engine";
 import {
   type Character,
+  type CharacterInput,
   characterSchema,
   type Choice,
   type Content,
@@ -409,11 +410,11 @@ const index = createContentIndex([
 
 // --- Personaje de ejemplo: Brunhilda, guerrera enana soldado de nivel 3 ---
 
-type CharacterInput = Partial<Omit<Character, "baseAbilityScores">> & {
+type CharacterOverrides = Partial<Omit<CharacterInput, "baseAbilityScores">> & {
   baseAbilityScores?: Partial<Character["baseAbilityScores"]>;
 };
 
-const makeCharacter = (overrides: CharacterInput = {}): Character => {
+const makeCharacter = (overrides: CharacterOverrides = {}): Character => {
   const { baseAbilityScores, ...rest } = overrides;
   return characterSchema.parse({
     id: "char-1",
@@ -716,7 +717,7 @@ describe("calculateSheet: armor training", () => {
   };
   const wizardWith = (
     inventory: Character["inventory"],
-    overrides: CharacterInput = {},
+    overrides: CharacterOverrides = {},
   ) =>
     makeCharacter({
       classes: [{ classId: "wizard", level: 1 }],

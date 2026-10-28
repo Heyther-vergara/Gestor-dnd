@@ -1,4 +1,5 @@
-// Acciones de partida: daño, curación, PG temporales y descansos.
+// Acciones de partida: daño, curación, PG temporales, descansos y
+// salvaciones contra muerte (ADR 0009 y 0010).
 // Cada una recibe el personaje y devuelve un playState nuevo, sin modificar
 // el original. Son puras: el motor no tira dados, recibe el resultado (ADR 0009).
 
@@ -17,13 +18,48 @@ export type DamageOutcome =
   | "hurt"
   | "dropped-to-zero"
   | "damaged-at-zero"
-  | "instant-death";
+  | "instant-death"
+  | "death-from-failures"; // el fallo por daño con 0 PG fue el tercero
+
+// Qué pasó con una tirada de salvación contra muerte.
+export type DeathSaveOutcome =
+  "success" | "failure" | "stabilized" | "died" | "regained-hp";
 
 const HIT_DIE_FACES: Record<HitDie, number> = {
   d6: 6,
   d8: 8,
   d10: 10,
   d12: 12,
+};
+
+// SRD 5.2.1, "Tres éxitos o fallos": la cuenta termina en tres.
+const DEATH_SAVE_LIMIT = 3;
+const NO_SAVES = { successes: 0, failures: 0 };
+
+// La muerte se guarda: ninguna acción de este archivo la revierte. Revivir
+// necesita magia (por ejemplo, alzar a los muertos), que no está modelada.
+const DEAD = "El personaje está muerto";
+
+// SRD 5.2.1: "La cantidad de ambos vuelve a cero si recuperas puntos de golpe
+// o te estabilizas". Recuperar PG también termina la estabilidad, porque ya
+// no estás en 0.
+const backToLife = (playState: PlayState): PlayState => ({
+  ...playState,
+  deathSaves: NO_SAVES,
+  stable: false,
+});
+
+// Suma fallos sin pasar de tres; con el tercero, el personaje muere.
+const addFailures = (playState: PlayState, count: number): PlayState => {
+  const failures = Math.min(
+    DEATH_SAVE_LIMIT,
+    playState.deathSaves.failures + count,
+  );
+  return {
+    ...playState,
+    deathSaves: { ...playState.deathSaves, failures },
+    dead: failures >= DEATH_SAVE_LIMIT,
+  };
 };
 
 const invalidAmount = (amount: number): string | undefined =>
@@ -43,7 +79,10 @@ export function applyDamage(
   character: Character,
   contentIndex: ContentIndex,
   amount: number,
+  // `critical`: el daño viene de un golpe crítico. Solo importa con 0 PG.
+  { critical = false }: { critical?: boolean } = {},
 ): PlayResult<{ tempHpLost: number; hpLost: number; outcome: DamageOutcome }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
   const invalid = invalidAmount(amount);
   if (invalid) return { ok: false, reason: invalid };
 
@@ -63,24 +102,33 @@ export function applyDamage(
 
   // SRD 5.2.1, "Daño considerable": si llegás a 0 y el daño que sobra es
   // mayor o igual a tus PG máximos, morís. "Daño con 0 puntos de golpe":
-  // con 0 PG, recibir daño cuenta como un fallo de salvación contra muerte,
-  // y si es mayor o igual a tus PG máximos, morís.
-  let outcome: DamageOutcome;
-  if (remaining === 0) outcome = "unharmed";
-  else if (newCurrent > 0) outcome = "hurt";
-  else if (leftover >= max) outcome = "instant-death";
-  else outcome = current === 0 ? "damaged-at-zero" : "dropped-to-zero";
-
-  return {
-    ok: true,
-    playState: {
-      ...withCurrentHp(character.playState, max, newCurrent),
-      tempHp: temp - tempHpLost,
-    },
-    tempHpLost,
-    hpLost,
-    outcome,
+  // con 0 PG, recibir daño cuenta como un fallo de salvación contra muerte
+  // (dos si es crítico), y si es mayor o igual a tus PG máximos, morís.
+  let playState: PlayState = {
+    ...withCurrentHp(character.playState, max, newCurrent),
+    tempHp: temp - tempHpLost,
   };
+  let outcome: DamageOutcome;
+  if (remaining === 0) {
+    // Los PG temporales evitan la pérdida de PG reales: no hay fallo.
+    outcome = "unharmed";
+  } else if (newCurrent > 0) {
+    outcome = "hurt";
+  } else if (leftover >= max) {
+    outcome = "instant-death";
+    playState = { ...playState, dead: true };
+  } else if (current > 0) {
+    // Recién cae: empieza a hacer salvaciones desde cero.
+    outcome = "dropped-to-zero";
+    playState = backToLife(playState);
+  } else {
+    // "Estabilizar a un personaje": si una criatura estable sufre daño, deja
+    // de estar estable.
+    playState = addFailures({ ...playState, stable: false }, critical ? 2 : 1);
+    outcome = playState.dead ? "death-from-failures" : "damaged-at-zero";
+  }
+
+  return { ok: true, playState, tempHpLost, hpLost, outcome };
 }
 
 export function heal(
@@ -88,6 +136,7 @@ export function heal(
   contentIndex: ContentIndex,
   amount: number,
 ): PlayResult<{ healed: number }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
   const invalid = invalidAmount(amount);
   if (invalid) return { ok: false, reason: invalid };
 
@@ -95,9 +144,10 @@ export function heal(
   // SRD 5.2.1, "Curación": tus PG no pueden superar tus PG máximos; lo que
   // sobra se pierde.
   const newCurrent = Math.min(max, current + amount);
+  const playState = withCurrentHp(character.playState, max, newCurrent);
   return {
     ok: true,
-    playState: withCurrentHp(character.playState, max, newCurrent),
+    playState: newCurrent > 0 ? backToLife(playState) : playState,
     healed: newCurrent - current,
   };
 }
@@ -106,6 +156,7 @@ export function gainTempHp(
   character: Character,
   amount: number,
 ): PlayResult<{ kept: "new" | "current" }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
   const invalid = invalidAmount(amount);
   if (invalid) return { ok: false, reason: invalid };
 
@@ -135,6 +186,7 @@ export function spendHitDie(
   die: HitDie,
   roll: number,
 ): PlayResult<{ healed: number }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
   const sheet = calculateSheet(character, contentIndex);
   const { current, max } = sheet.hitPoints;
   if (current < 1) return { ok: false, reason: CANNOT_REST };
@@ -171,10 +223,108 @@ export function longRest(
   character: Character,
   contentIndex: ContentIndex,
 ): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
   const { current } = calculateSheet(character, contentIndex).hitPoints;
   if (current < 1) return { ok: false, reason: CANNOT_REST };
   return {
     ok: true,
-    playState: { damageTaken: 0, tempHp: 0, hitDiceSpent: {} },
+    playState: {
+      damageTaken: 0,
+      tempHp: 0,
+      hitDiceSpent: {},
+      deathSaves: NO_SAVES,
+      stable: false,
+      dead: false,
+    },
+  };
+}
+
+// Solo se hacen salvaciones o se estabiliza con 0 PG, sin estar estable ni
+// muerto. Devuelve el motivo si no se puede, o los PG máximos si se puede.
+function checkDying(
+  character: Character,
+  contentIndex: ContentIndex,
+  messages: { conscious: string; stable: string },
+): { ok: false; reason: string } | { ok: true; max: number } {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const { current, max } = calculateSheet(character, contentIndex).hitPoints;
+  if (current > 0) return { ok: false, reason: messages.conscious };
+  if (character.playState.stable) {
+    return { ok: false, reason: messages.stable };
+  }
+  return { ok: true, max };
+}
+
+// SRD 5.2.1, "Tiradas de salvación contra muerte": al empezar tu turno con
+// 0 PG tirás 1d20. El jugador tira en la mesa y carga el resultado.
+export function rollDeathSave(
+  character: Character,
+  contentIndex: ContentIndex,
+  roll: number,
+): PlayResult<{ outcome: DeathSaveOutcome }> {
+  const dying = checkDying(character, contentIndex, {
+    conscious: "Solo se hacen salvaciones contra muerte con 0 PG",
+    // "Una criatura estable no tendrá que hacer tiradas de salvación".
+    stable: "El personaje está estable: no hace salvaciones",
+  });
+  if (!dying.ok) return dying;
+  if (!Number.isInteger(roll) || roll < 1 || roll > 20) {
+    return { ok: false, reason: "La tirada de un d20 va de 1 a 20" };
+  }
+
+  const { playState } = character;
+  // "Sacar 1 o 20": con un 20 recuperás 1 PG, y al recuperar PG las cuentas
+  // vuelven a cero.
+  if (roll === 20) {
+    return {
+      ok: true,
+      playState: backToLife(withCurrentHp(playState, dying.max, 1)),
+      outcome: "regained-hp",
+    };
+  }
+  // Con un 1, dos fallos. "Tres éxitos o fallos": 10 o más es éxito.
+  if (roll < 10) {
+    const next = addFailures(playState, roll === 1 ? 2 : 1);
+    return {
+      ok: true,
+      playState: next,
+      outcome: next.dead ? "died" : "failure",
+    };
+  }
+  const successes = playState.deathSaves.successes + 1;
+  // "En tu tercer éxito te estabilizarás", y estabilizarte pone la cuenta
+  // en cero.
+  if (successes >= DEATH_SAVE_LIMIT) {
+    return {
+      ok: true,
+      playState: { ...playState, deathSaves: NO_SAVES, stable: true },
+      outcome: "stabilized",
+    };
+  }
+  return {
+    ok: true,
+    playState: {
+      ...playState,
+      deathSaves: { ...playState.deathSaves, successes },
+    },
+    outcome: "success",
+  };
+}
+
+// SRD 5.2.1, "Estabilizar a un personaje": otro personaje usa la acción de
+// ayudar y supera una prueba de Sabiduría (Medicina) CD 10. La prueba se tira
+// en la mesa; esto registra que salió bien. El personaje sigue con 0 PG.
+export function stabilize(
+  character: Character,
+  contentIndex: ContentIndex,
+): PlayResult {
+  const dying = checkDying(character, contentIndex, {
+    conscious: "Solo se puede estabilizar a alguien con 0 PG",
+    stable: "El personaje ya está estable",
+  });
+  if (!dying.ok) return dying;
+  return {
+    ok: true,
+    playState: { ...character.playState, deathSaves: NO_SAVES, stable: true },
   };
 }

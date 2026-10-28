@@ -38,6 +38,8 @@ export const createContentIndex = (
   contents: readonly Content[],
 ): ContentIndex => new Map(contents.map((c) => [c.id, c]));
 
+export type DeathStatus = "conscious" | "dying" | "stable" | "dead";
+
 export type ComputedSheet = {
   abilities: Record<Ability, { score: number; modifier: number }>;
   ac: number;
@@ -50,6 +52,13 @@ export type ComputedSheet = {
   passivePerception: number;
   initiative: number;
   hitPoints: { max: number; current: number; temp: number };
+  // Salvaciones contra muerte. El estado se deduce de los PG y de lo
+  // guardado: con PG está consciente; con 0, agonizando, estable o muerto.
+  deathSaves: {
+    status: DeathStatus;
+    successes: number;
+    failures: number;
+  };
   // Dados de golpe por tipo ({ d10: { total: 2, remaining: 1 } }) y en suma.
   // `remaining` descuenta los gastados de ese tipo.
   hitDice: {
@@ -478,13 +487,23 @@ export function calculateSheet(
     effectsFor(effects, "hp.max"),
     modifiers,
   );
-  const { damageTaken, tempHp, hitDiceSpent } = character.playState;
+  const { damageTaken, tempHp, hitDiceSpent, deathSaves, stable, dead } =
+    character.playState;
   const hitPoints = {
     max: maxHitPoints,
     // SRD 5.2.1, "Puntos de golpe": no bajan de 0.
     current: Math.max(0, maxHitPoints - damageTaken),
     temp: tempHp,
   };
+  // La muerte va primero: un personaje muerto sigue muerto aunque sus PG
+  // cambien. Con PG, las salvaciones no cuentan (ADR 0010).
+  const deathStatus: DeathStatus = dead
+    ? "dead"
+    : hitPoints.current > 0
+      ? "conscious"
+      : stable
+        ? "stable"
+        : "dying";
   const byDie: Partial<Record<HitDie, HitDiceCount>> = {};
   let totalHitDice = 0;
   let remainingHitDice = 0;
@@ -563,6 +582,7 @@ export function calculateSheet(
     passivePerception,
     initiative,
     hitPoints,
+    deathSaves: { status: deathStatus, ...deathSaves },
     hitDice,
     speed,
     darkvision,
