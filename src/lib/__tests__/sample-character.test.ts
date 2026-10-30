@@ -39,4 +39,9 @@ describe("sample character: Brunhilda, dwarf fighter 3", () => {
       ["athletics", "intimidation", "perception", "survival"].sort(),
     );
   });
+
+  // SRD 5.2.1, enano, "Resistencia enana": resistencia al daño de veneno.
+  it("resists poison damage", () => {
+    expect(sheet.damageDefenses.resistances).toEqual(["poison"]);
+  });
 });

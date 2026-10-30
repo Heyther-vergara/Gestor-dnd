@@ -40,6 +40,12 @@ const dwarf = content({
         description: "",
         effects: [{ target: "hp.max-per-level", op: "add", value: 1 }],
       },
+      // SRD 5.2.1, enano, "Resistencia enana": resistencia al daño de veneno.
+      {
+        name: "Resistencia enana",
+        description: "",
+        effects: [{ target: "resistance.poison", op: "grant" }],
+      },
       // SRD 5.2.1, enano, "Visión en la oscuridad": 36 m (120 pies).
       {
         name: "Visión en la oscuridad",
@@ -384,7 +390,25 @@ const quietBoots = content({
   data: { category: "magic" },
 });
 
+// Homebrew: defensas contra el daño, una de cada tipo. También repite la
+// resistencia al veneno del enano, para ver que no se acumula.
+const elementalAmulet = content({
+  id: "elemental-amulet",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Amuleto elemental",
+  description: "",
+  effects: [
+    { target: "resistance.cold", op: "grant" },
+    { target: "resistance.poison", op: "grant" },
+    { target: "vulnerability.fire", op: "grant" },
+    { target: "immunity.psychic", op: "grant" },
+  ],
+  data: { category: "magic" },
+});
+
 const index = createContentIndex([
+  elementalAmulet,
   wizard,
   cleric,
   criminal,
@@ -1287,8 +1311,36 @@ describe("calculateSheet: hit points", () => {
       }),
       index,
     );
-    expect(hurt.hitPoints).toEqual({ max: 28, current: 18, temp: 4 });
+    expect(hurt.hitPoints).toEqual({
+      max: 28,
+      current: 18,
+      temp: 4,
+      maxReduction: 0,
+    });
     expect(down.hitPoints.current).toBe(0);
+  });
+
+  // SRD 5.2.1, "Puntos de golpe máximos de 0": ciertos efectos reducen los
+  // PG máximos. El daño recibido se cuenta desde el máximo ya reducido.
+  it("subtracts a max hit point reduction", () => {
+    const drained = calculateSheet(
+      makeCharacter({ playState: { damageTaken: 3, maxHpReduction: 8 } }),
+      index,
+    );
+    expect(drained.hitPoints).toEqual({
+      max: 20,
+      current: 17,
+      temp: 0,
+      maxReduction: 8,
+    });
+  });
+
+  it("never drops max hit points below 0", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ playState: { maxHpReduction: 99 } }),
+      index,
+    );
+    expect(sheet.hitPoints).toMatchObject({ max: 0, current: 0 });
   });
 
   // SRD 5.2.1, "Multiclase": tu total de dados de golpe es la suma de los de
@@ -1427,6 +1479,96 @@ describe("calculateSheet: darkvision", () => {
       index,
     );
     expect(sheet.darkvision).toBe(150);
+  });
+});
+
+// SRD 5.2.1, glosario, "Cansancio [estado]".
+describe("calculateSheet: exhaustion", () => {
+  const tired = (exhaustion: number, overrides: CharacterOverrides = {}) =>
+    calculateSheet(
+      makeCharacter({ ...overrides, playState: { exhaustion } }),
+      index,
+    );
+
+  it("has no penalties without exhaustion", () => {
+    expect(calculateSheet(makeCharacter(), index).exhaustion).toEqual({
+      level: 0,
+      d20Penalty: 0,
+      speedPenalty: 0,
+    });
+  });
+
+  // "Pruebas con d20 afectadas": el resultado se reduce en 2 × tu nivel de
+  // cansancio. "Prueba con d20": abarca pruebas de característica, tiradas
+  // de ataque y tiradas de salvación.
+  it("lowers saving throws, skills and initiative by 2 per level", () => {
+    const rested = calculateSheet(makeCharacter(), index);
+    const sheet = tired(2);
+    expect(sheet.exhaustion.d20Penalty).toBe(4);
+    expect(sheet.savingThrows.str.modifier).toBe(
+      rested.savingThrows.str.modifier - 4,
+    );
+    expect(sheet.skills.athletics.modifier).toBe(
+      rested.skills.athletics.modifier - 4,
+    );
+    expect(sheet.initiative).toBe(rested.initiative - 4);
+  });
+
+  // La tirada de ataque de conjuro es una tirada de ataque; la CD de
+  // salvación no es una tirada del lanzador.
+  it("lowers the spell attack bonus but not the save DC", () => {
+    const wizard3 = { classes: [{ classId: "wizard", level: 3 }] };
+    const rested = calculateSheet(makeCharacter(wizard3), index);
+    const sheet = tired(1, wizard3);
+    expect(sheet.spellcasting[0].attackBonus).toBe(
+      rested.spellcasting[0].attackBonus - 2,
+    );
+    expect(sheet.spellcasting[0].saveDc).toBe(rested.spellcasting[0].saveDc);
+  });
+
+  // La Percepción pasiva no es una tirada: es 10 + el bonificador a las
+  // pruebas de Sabiduría (Percepción). El cansancio reduce el resultado de la
+  // tirada, así que no la cambia (ADR 0012).
+  it("does not change passive Perception or ability modifiers", () => {
+    const rested = calculateSheet(makeCharacter(), index);
+    const sheet = tired(3);
+    expect(sheet.passivePerception).toBe(rested.passivePerception);
+    expect(sheet.abilities).toEqual(rested.abilities);
+  });
+
+  // "Velocidad reducida": 1,5 m (5 pies) × tu nivel de cansancio.
+  it("lowers speed by 5 ft per level, not below 0", () => {
+    expect(tired(3).speed).toBe(30 - 15);
+    expect(tired(3).exhaustion.speedPenalty).toBe(15);
+    expect(tired(6).speed).toBe(0);
+  });
+});
+
+describe("calculateSheet: damage defenses", () => {
+  // SRD 5.2.1, enano, "Resistencia enana".
+  it("lists resistances from species traits", () => {
+    expect(calculateSheet(makeCharacter(), index).damageDefenses).toEqual({
+      resistances: ["poison"],
+      vulnerabilities: [],
+      immunities: [],
+    });
+  });
+
+  // SRD 5.2.1, "No se acumulan": varias resistencias al mismo tipo cuentan
+  // como una. Se listan en el orden de la tabla "Tipos de daño".
+  it("merges defenses from every source without repeating them", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("elemental-amulet"),
+      }),
+      index,
+    );
+    expect(sheet.damageDefenses).toEqual({
+      resistances: ["cold", "poison"],
+      vulnerabilities: ["fire"],
+      immunities: ["psychic"],
+    });
   });
 });
 

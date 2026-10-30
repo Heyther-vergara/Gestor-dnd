@@ -2,20 +2,26 @@
 // arma el mensaje que ve el jugador. No conoce reglas: las decide el motor.
 // Es una función pura para usarla con useReducer de React y poder testearla.
 
-import type { ContentIndex } from "@/rules-engine/engine";
+import { damageTypeNames, feetToMeters } from "@/lib/format";
+import { type ContentIndex, calculateSheet } from "@/rules-engine/engine";
 import {
   applyDamage,
+  type DamageDefense,
   type DamageOutcome,
   type DeathSaveOutcome,
+  gainExhaustion,
   gainTempHp,
   heal,
   longRest,
   type PlayResult,
+  reduceMaxHp,
+  removeExhaustion,
+  restoreMaxHp,
   rollDeathSave,
   spendHitDie,
   stabilize,
 } from "@/rules-engine/engine/play-state";
-import type { Character, HitDie } from "@/rules-engine/schemas";
+import type { Character, DamageType, HitDie } from "@/rules-engine/schemas";
 
 export type PlayMessage = { tone: "info" | "danger"; text: string };
 
@@ -25,11 +31,20 @@ export type PlaySession = {
 };
 
 export type PlayAction =
-  | { type: "damage"; amount: number; critical?: boolean }
+  | {
+      type: "damage";
+      amount: number;
+      critical?: boolean;
+      damageType?: DamageType;
+    }
   | { type: "heal"; amount: number }
   | { type: "temp-hp"; amount: number }
   | { type: "spend-hit-die"; die: HitDie; roll: number }
   | { type: "long-rest" }
+  | { type: "reduce-max-hp"; amount: number }
+  | { type: "restore-max-hp" }
+  | { type: "gain-exhaustion" }
+  | { type: "remove-exhaustion" }
   | { type: "death-save"; roll: number }
   | { type: "stabilize" }
   | { type: "reset"; character: Character };
@@ -44,6 +59,20 @@ const damageText: Record<DamageOutcome, string> = {
   "instant-death": "Daño considerable: el personaje muere.",
   "death-from-failures":
     "Tercer fallo de salvación contra muerte: el personaje muere.",
+};
+
+const defenseNames: Record<DamageDefense, string> = {
+  immunity: "Inmunidad",
+  resistance: "Resistencia",
+  vulnerability: "Vulnerabilidad",
+};
+
+// "Resistencia al veneno", "Resistencia y vulnerabilidad al fuego".
+const defensesText = (defenses: DamageDefense[], type: DamageType) => {
+  const names = defenses.map((d, i) =>
+    i === 0 ? defenseNames[d] : defenseNames[d].toLowerCase(),
+  );
+  return `${names.join(" y ")} al ${damageTypeNames[type]}`;
 };
 
 const deathSaveText: Record<DeathSaveOutcome, string> = {
@@ -82,8 +111,9 @@ export function createPlayReducer(contentIndex: ContentIndex) {
           session,
           applyDamage(character, contentIndex, action.amount, {
             critical: action.critical,
+            damageType: action.damageType,
           }),
-          ({ outcome, hpLost, tempHpLost }) => {
+          ({ outcome, hpLost, tempHpLost, damage, defenses }) => {
             const lost = [
               hpLost > 0 && `${hpLost} PG`,
               tempHpLost > 0 &&
@@ -91,12 +121,19 @@ export function createPlayReducer(contentIndex: ContentIndex) {
             ]
               .filter(Boolean)
               .join(" y ");
-            const text =
+            const result =
               outcome === "hurt"
                 ? `Perdiste ${lost}.`
                 : outcome === "damaged-at-zero" && action.critical
                   ? "Crítico con 0 PG: cuenta como dos fallos de salvación contra muerte."
-                  : damageText[outcome];
+                  : outcome === "unharmed" && damage === 0
+                    ? "No perdiste PG."
+                    : damageText[outcome];
+            // Si una defensa cambió el daño, se cuenta antes del resultado.
+            const text =
+              defenses.length > 0 && action.damageType
+                ? `${defensesText(defenses, action.damageType)}: ${action.amount} de daño quedan en ${damage}. ${result}`
+                : result;
             return {
               tone:
                 outcome === "hurt" || outcome === "unharmed"
@@ -140,9 +177,60 @@ export function createPlayReducer(contentIndex: ContentIndex) {
           }),
         );
       case "long-rest":
-        return apply(session, longRest(character, contentIndex), () => ({
+        return apply(
+          session,
+          longRest(character, contentIndex),
+          ({ playState }) => ({
+            tone: "info",
+            text:
+              character.playState.exhaustion > 0
+                ? `Descanso largo: PG y dados de golpe al máximo. Cansancio: nivel ${playState.exhaustion}.`
+                : "Descanso largo: PG y dados de golpe al máximo.",
+          }),
+        );
+      case "gain-exhaustion":
+      case "remove-exhaustion": {
+        const result =
+          action.type === "gain-exhaustion"
+            ? gainExhaustion(character)
+            : removeExhaustion(character);
+        return apply(session, result, ({ playState }) => {
+          if (playState.dead) {
+            return {
+              tone: "danger",
+              text: "Cansancio nivel 6: el personaje muere.",
+            };
+          }
+          if (playState.exhaustion === 0) {
+            return { tone: "info", text: "Ya no tenés cansancio." };
+          }
+          // Las penalizaciones las calcula el motor; acá solo se cuentan.
+          const { exhaustion } = calculateSheet(
+            { ...character, playState },
+            contentIndex,
+          );
+          return {
+            tone: "danger",
+            text: `Cansancio nivel ${exhaustion.level}: −${exhaustion.d20Penalty} a las pruebas con d20 y −${feetToMeters(exhaustion.speedPenalty)} de velocidad.`,
+          };
+        });
+      }
+      case "reduce-max-hp":
+        return apply(
+          session,
+          reduceMaxHp(character, contentIndex, action.amount),
+          ({ reducedBy, outcome }) => ({
+            tone: "danger",
+            text:
+              outcome === "died"
+                ? "Tus PG máximos llegaron a 0: el personaje muere."
+                : `Tus PG máximos bajaron ${reducedBy}. Vuelven con un descanso largo.`,
+          }),
+        );
+      case "restore-max-hp":
+        return apply(session, restoreMaxHp(character, contentIndex), () => ({
           tone: "info",
-          text: "Descanso largo: PG y dados de golpe al máximo.",
+          text: "Tus PG máximos vuelven a la normalidad.",
         }));
       case "death-save":
         return apply(

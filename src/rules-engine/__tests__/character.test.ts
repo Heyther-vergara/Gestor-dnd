@@ -47,7 +47,19 @@ describe("characterSchema", () => {
       deathSaves: { successes: 0, failures: 0 },
       stable: false,
       dead: false,
+      maxHpReduction: 0,
+      exhaustion: 0,
     });
+  });
+
+  // SRD 5.2.1, "Cansancio": "Morirás si tu nivel de cansancio es 6".
+  it("keeps exhaustion between 0 and 6", () => {
+    const withLevel = (exhaustion: number) =>
+      characterSchema.safeParse({ ...fighter, playState: { exhaustion } })
+        .success;
+    expect(withLevel(6)).toBe(true);
+    expect(withLevel(7)).toBe(false);
+    expect(withLevel(-1)).toBe(false);
   });
 
   it("does not store derived values", () => {

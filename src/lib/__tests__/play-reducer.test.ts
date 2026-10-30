@@ -19,6 +19,19 @@ describe("play reducer (Brunhilda: 22 of 31 HP)", () => {
     expect(next.message).toEqual({ tone: "info", text: "Perdiste 5 PG." });
   });
 
+  // Brunhilda es enana: "Resistencia enana" reduce el veneno a la mitad.
+  it("explains when a resistance changes the damage", () => {
+    const next = reducer(start, {
+      type: "damage",
+      amount: 7,
+      damageType: "poison",
+    });
+    expect(currentHp(next)).toBe(19);
+    expect(next.message?.text).toBe(
+      "Resistencia al veneno: 7 de daño quedan en 3. Perdiste 3 PG.",
+    );
+  });
+
   it("warns when the character drops to 0", () => {
     const next = reducer(start, { type: "damage", amount: 30 });
     expect(currentHp(next)).toBe(0);
@@ -73,6 +86,52 @@ describe("play reducer (Brunhilda: 22 of 31 HP)", () => {
     const down = reducer(start, { type: "damage", amount: 30 });
     const stable = reducer(down, { type: "stabilize" });
     expect(stable.character.playState.stable).toBe(true);
+  });
+
+  it("reduces and restores max hit points", () => {
+    const drained = reducer(start, { type: "reduce-max-hp", amount: 12 });
+    const sheet = calculateSheet(drained.character, srd2024Index);
+    // 31 − 12 = 19: los 22 PG actuales bajan a 19.
+    expect(sheet.hitPoints).toMatchObject({ max: 19, current: 19 });
+    expect(drained.message).toEqual({
+      tone: "danger",
+      text: "Tus PG máximos bajaron 12. Vuelven con un descanso largo.",
+    });
+    const restored = reducer(drained, { type: "restore-max-hp" });
+    expect(
+      calculateSheet(restored.character, srd2024Index).hitPoints,
+    ).toMatchObject({
+      max: 31,
+      current: 19,
+    });
+  });
+
+  it("says when max hit points reach 0", () => {
+    const next = reducer(start, { type: "reduce-max-hp", amount: 31 });
+    expect(next.message?.text).toBe(
+      "Tus PG máximos llegaron a 0: el personaje muere.",
+    );
+  });
+
+  it("adds and removes exhaustion levels", () => {
+    const once = reducer(start, { type: "gain-exhaustion" });
+    const twice = reducer(once, { type: "gain-exhaustion" });
+    expect(twice.character.playState.exhaustion).toBe(2);
+    expect(twice.message).toEqual({
+      tone: "danger",
+      text: "Cansancio nivel 2: −4 a las pruebas con d20 y −3 m de velocidad.",
+    });
+    const better = reducer(twice, { type: "remove-exhaustion" });
+    expect(better.character.playState.exhaustion).toBe(1);
+  });
+
+  it("says that a long rest removes one exhaustion level", () => {
+    let session = reducer(start, { type: "gain-exhaustion" });
+    session = reducer(session, { type: "gain-exhaustion" });
+    session = reducer(session, { type: "long-rest" });
+    expect(session.message?.text).toBe(
+      "Descanso largo: PG y dados de golpe al máximo. Cansancio: nivel 1.",
+    );
   });
 
   it("resets to the given character", () => {

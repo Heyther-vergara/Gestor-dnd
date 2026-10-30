@@ -68,6 +68,24 @@ describe("character storage", () => {
     expect(loadCharacter(storage, sampleCharacter.id).status).toBe("invalid");
   });
 
+  // ADR 0012: los campos nuevos de playState tienen valor por defecto, así
+  // que lo guardado antes de que existieran se sigue pudiendo cargar.
+  it("loads a save from before max HP reduction and exhaustion existed", () => {
+    const storage = memoryStorage();
+    saveCharacter(storage, sampleCharacter);
+    const saved = JSON.parse(storage.data.get(key)!);
+    delete saved.character.playState.maxHpReduction;
+    delete saved.character.playState.exhaustion;
+    storage.setItem(key, JSON.stringify(saved));
+
+    const result = loadCharacter(storage, sampleCharacter.id);
+    if (result.status !== "loaded") throw new Error(result.status);
+    expect(result.saved.character.playState).toMatchObject({
+      maxHpReduction: 0,
+      exhaustion: 0,
+    });
+  });
+
   it("ignores a save from an unknown format version", () => {
     const storage = memoryStorage();
     saveCharacter(storage, sampleCharacter);

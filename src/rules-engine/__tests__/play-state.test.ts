@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import { calculateSheet, createContentIndex } from "@/rules-engine/engine";
 import {
   applyDamage,
+  gainExhaustion,
   gainTempHp,
   heal,
   longRest,
+  reduceMaxHp,
+  removeExhaustion,
+  restoreMaxHp,
   rollDeathSave,
   spendHitDie,
   stabilize,
@@ -78,6 +82,23 @@ const index = createContentIndex([
     name: "Mago",
     description: "",
     data: { ...classData, hitDie: 6 },
+  }),
+  // Defensas contra el daño para los tests de tipos de daño. Fuego tiene
+  // resistencia y vulnerabilidad a la vez, como el ejemplo del SRD.
+  content({
+    id: "warding-amulet",
+    packageId: "srd-2024",
+    type: "item",
+    name: "Amuleto de protección",
+    description: "",
+    effects: [
+      { target: "resistance.poison", op: "grant" },
+      { target: "resistance.fire", op: "grant" },
+      { target: "vulnerability.fire", op: "grant" },
+      { target: "vulnerability.cold", op: "grant" },
+      { target: "immunity.necrotic", op: "grant" },
+    ],
+    data: { category: "magic" },
   }),
 ]);
 
@@ -192,6 +213,97 @@ describe("applyDamage", () => {
     const character = makeCharacter();
     applyDamage(character, index, 10);
     expect(character.playState.damageTaken).toBe(0);
+  });
+});
+
+describe("applyDamage with a damage type", () => {
+  const warded = (playState: Partial<PlayState> = {}) => ({
+    ...makeCharacter(playState),
+    inventory: [
+      { itemId: "warding-amulet", quantity: 1, equipped: true, attuned: false },
+    ],
+  });
+
+  // SRD 5.2.1, "Resistencia y vulnerabilidad": con resistencia, el daño de
+  // ese tipo se reduce a la mitad (redondeando hacia abajo).
+  it("halves damage with resistance, rounding down", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 7, { damageType: "poison" }),
+    );
+    expect(result).toMatchObject({ damage: 3, defenses: ["resistance"] });
+    expect(result.playState.damageTaken).toBe(3);
+  });
+
+  // "Si tienes vulnerabilidad a un tipo de daño, el daño de ese tipo se duplica".
+  it("doubles damage with vulnerability", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 5, { damageType: "cold" }),
+    );
+    expect(result).toMatchObject({ damage: 10, defenses: ["vulnerability"] });
+    expect(result.playState.damageTaken).toBe(10);
+  });
+
+  // "Orden de aplicación": primero los ajustes, después las resistencias y
+  // por último las vulnerabilidades. Del ejemplo del SRD: 23 de fuego se
+  // reduce a la mitad (11) y luego se duplica (22).
+  it("applies resistance before vulnerability", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 23, { damageType: "fire" }),
+    );
+    expect(result).toMatchObject({
+      damage: 22,
+      defenses: ["resistance", "vulnerability"],
+    });
+  });
+
+  // SRD 5.2.1, "Inmunidad": no recibís daño de ese tipo.
+  it("ignores damage with immunity", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 12, { damageType: "necrotic" }),
+    );
+    expect(result).toMatchObject({
+      damage: 0,
+      defenses: ["immunity"],
+      outcome: "unharmed",
+    });
+    expect(result.playState.damageTaken).toBe(0);
+  });
+
+  // Con 0 PG, el daño que no llega por inmunidad no es "daño con 0 PG".
+  it("adds no death save failure when immunity stops the damage", () => {
+    const down = warded({ damageTaken: MAX_HP });
+    const result = expectOk(
+      applyDamage(down, index, 12, { damageType: "necrotic" }),
+    );
+    expect(result.playState.deathSaves.failures).toBe(0);
+  });
+
+  it("leaves damage of other types or without a type as it is", () => {
+    expect(
+      expectOk(applyDamage(warded(), index, 7, { damageType: "acid" })),
+    ).toMatchObject({ damage: 7, defenses: [] });
+    expect(expectOk(applyDamage(warded(), index, 7))).toMatchObject({
+      damage: 7,
+      defenses: [],
+    });
+  });
+
+  // Los PG temporales y el daño considerable se calculan con el daño ya
+  // reducido: 12 de veneno con resistencia son 6, y 5 los absorben.
+  it("applies temporary hit points to the reduced damage", () => {
+    const result = expectOk(
+      applyDamage(warded({ tempHp: 5 }), index, 12, { damageType: "poison" }),
+    );
+    expect(result).toMatchObject({ damage: 6, tempHpLost: 5, hpLost: 1 });
+  });
+
+  it("uses the reduced damage for massive damage", () => {
+    // Con 6 PG y 28 de máximo, morir al instante pide 34. Con resistencia,
+    // 60 de veneno son 30: cae a 0 pero no muere.
+    const atSix = warded({ damageTaken: MAX_HP - 6 });
+    expect(
+      expectOk(applyDamage(atSix, index, 60, { damageType: "poison" })).outcome,
+    ).toBe("dropped-to-zero");
   });
 });
 
@@ -338,6 +450,30 @@ describe("longRest", () => {
       deathSaves: { successes: 0, failures: 0 },
       stable: false,
       dead: false,
+      maxHpReduction: 0,
+      exhaustion: 0,
+    });
+  });
+
+  // SRD 5.2.1, "Cansancio", "Eliminar niveles de cansancio": tras finalizar
+  // un descanso largo, restá 1 nivel.
+  it("removes one level of exhaustion", () => {
+    const result = expectOk(longRest(makeCharacter({ exhaustion: 3 }), index));
+    expect(result.playState.exhaustion).toBe(2);
+  });
+
+  // SRD 5.2.1, "Descanso largo", "Puntos de golpe al máximo": si tus PG
+  // máximos se habían reducido, vuelven a la normalidad.
+  it("restores reduced max hit points", () => {
+    const drained = makeCharacter({ maxHpReduction: 8, damageTaken: 5 });
+    const result = expectOk(longRest(drained, index));
+    expect(result.playState).toMatchObject({
+      maxHpReduction: 0,
+      damageTaken: 0,
+    });
+    expect(hitPointsAfter(drained, result.playState)).toMatchObject({
+      max: MAX_HP,
+      current: MAX_HP,
     });
   });
 
@@ -346,6 +482,115 @@ describe("longRest", () => {
     expect(longRest(makeCharacter({ damageTaken: MAX_HP }), index).ok).toBe(
       false,
     );
+  });
+});
+
+// --- PG máximos reducidos (ADR 0012) ---
+
+describe("reduceMaxHp", () => {
+  // SRD 5.2.1, "Curación": tus PG no pueden superar tus PG máximos. Si
+  // estabas al máximo, bajás con él.
+  it("lowers max hit points and caps current hit points", () => {
+    const character = makeCharacter();
+    const result = expectOk(reduceMaxHp(character, index, 5));
+    expect(result).toMatchObject({ reducedBy: 5, outcome: "reduced" });
+    expect(hitPointsAfter(character, result.playState)).toMatchObject({
+      max: MAX_HP - 5,
+      current: MAX_HP - 5,
+    });
+  });
+
+  // Si ya estabas herido por debajo del máximo nuevo, tus PG actuales no
+  // cambian: la reducción no es daño.
+  it("keeps current hit points that fit under the new max", () => {
+    const hurt = makeCharacter({ damageTaken: 10 }); // 18 de 28
+    const result = expectOk(reduceMaxHp(hurt, index, 5));
+    expect(hitPointsAfter(hurt, result.playState)).toMatchObject({
+      max: 23,
+      current: 18,
+    });
+  });
+
+  it("adds up several reductions", () => {
+    const drained = makeCharacter({ maxHpReduction: 4 });
+    const result = expectOk(reduceMaxHp(drained, index, 3));
+    expect(result.playState.maxHpReduction).toBe(7);
+  });
+
+  // SRD 5.2.1, "Puntos de golpe máximos de 0": una criatura muere si sus PG
+  // máximos llegan a 0. La reducción no pasa del máximo.
+  it("kills when max hit points reach 0", () => {
+    const result = expectOk(reduceMaxHp(makeCharacter(), index, 40));
+    expect(result).toMatchObject({ reducedBy: MAX_HP, outcome: "died" });
+    expect(result.playState).toMatchObject({
+      maxHpReduction: MAX_HP,
+      dead: true,
+    });
+  });
+
+  it("caps healing at the reduced max", () => {
+    const drained = makeCharacter({ maxHpReduction: 8, damageTaken: 10 });
+    const result = expectOk(heal(drained, index, 50));
+    expect(hitPointsAfter(drained, result.playState).current).toBe(20);
+  });
+
+  it("rejects invalid amounts and dead characters", () => {
+    expect(reduceMaxHp(makeCharacter(), index, -1).ok).toBe(false);
+    expect(reduceMaxHp(makeCharacter({ dead: true }), index, 1).ok).toBe(false);
+  });
+});
+
+describe("restoreMaxHp", () => {
+  // SRD 5.2.1, conjuro "Restablecimiento mayor": elimina "cualquier reducción
+  // de los puntos de golpe máximos". Los PG actuales no suben: no es curación.
+  it("removes the reduction without healing", () => {
+    const drained = makeCharacter({ maxHpReduction: 8 }); // 20 de 20
+    const result = expectOk(restoreMaxHp(drained, index));
+    expect(result.playState.maxHpReduction).toBe(0);
+    expect(hitPointsAfter(drained, result.playState)).toMatchObject({
+      max: MAX_HP,
+      current: 20,
+    });
+  });
+
+  it("fails when max hit points are not reduced", () => {
+    expect(restoreMaxHp(makeCharacter(), index).ok).toBe(false);
+  });
+});
+
+// --- Cansancio (ADR 0012) ---
+
+describe("gainExhaustion", () => {
+  // SRD 5.2.1, "Cansancio", "Niveles de cansancio": es acumulativo; cada vez
+  // que lo recibís sumás 1 nivel.
+  it("adds one level", () => {
+    const result = expectOk(gainExhaustion(makeCharacter({ exhaustion: 1 })));
+    expect(result).toMatchObject({ outcome: "exhausted" });
+    expect(result.playState.exhaustion).toBe(2);
+  });
+
+  // "Morirás si tu nivel de cansancio es 6".
+  it("kills at level 6", () => {
+    const result = expectOk(gainExhaustion(makeCharacter({ exhaustion: 5 })));
+    expect(result.outcome).toBe("died");
+    expect(result.playState).toMatchObject({ exhaustion: 6, dead: true });
+  });
+
+  it("rejects a dead character", () => {
+    expect(gainExhaustion(makeCharacter({ dead: true })).ok).toBe(false);
+  });
+});
+
+describe("removeExhaustion", () => {
+  // Para efectos que quitan un nivel fuera del descanso largo, como el
+  // conjuro "Restablecimiento mayor" ("1 nivel de cansancio").
+  it("removes one level", () => {
+    const result = expectOk(removeExhaustion(makeCharacter({ exhaustion: 2 })));
+    expect(result.playState.exhaustion).toBe(1);
+  });
+
+  it("fails without exhaustion", () => {
+    expect(removeExhaustion(makeCharacter()).ok).toBe(false);
   });
 });
 

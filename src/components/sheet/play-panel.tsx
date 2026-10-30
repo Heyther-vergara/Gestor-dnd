@@ -3,13 +3,20 @@
 import { type ActionDispatch, useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { damageTypeNames } from "@/lib/format";
 import type { PlayAction, PlayMessage } from "@/lib/play-reducer";
 import type { ComputedSheet, HitDie } from "@/rules-engine/engine";
+import { type DamageType, damageTypeSchema } from "@/rules-engine/schemas";
 
 import { DeathSaves } from "./death-saves";
 
 const inputClass =
   "h-8 w-full min-w-0 rounded-lg border border-input bg-card px-2 text-base tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+// Los tipos de daño en orden alfabético en español, para el selector.
+const damageTypes = [...damageTypeSchema.options].sort((a, b) =>
+  damageTypeNames[a].localeCompare(damageTypeNames[b], "es"),
+);
 
 // Un campo vacío o con texto no es un número: se manda NaN y el motor lo rechaza.
 const toNumber = (value: string) => (value.trim() === "" ? NaN : Number(value));
@@ -18,11 +25,15 @@ const toNumber = (value: string) => (value.trim() === "" ? NaN : Number(value));
 // salvaciones contra muerte. Solo
 // manda acciones; qué pasa con cada una lo decide el motor.
 export function PlayPanel({
+  hitPoints,
   hitDice,
   deathSaves,
+  exhaustion,
   message,
   dispatch,
 }: {
+  hitPoints: ComputedSheet["hitPoints"];
+  exhaustion: ComputedSheet["exhaustion"];
   hitDice: ComputedSheet["hitDice"];
   deathSaves: ComputedSheet["deathSaves"];
   message: PlayMessage | null;
@@ -31,11 +42,14 @@ export function PlayPanel({
   const ids = {
     amount: useId(),
     critical: useId(),
+    damageType: useId(),
     die: useId(),
     roll: useId(),
   };
   const [amount, setAmount] = useState("");
   const [critical, setCritical] = useState(false);
+  // "" = sin tipo: el daño se aplica tal cual, sin resistencias.
+  const [damageType, setDamageType] = useState<DamageType | "">("");
   const [roll, setRoll] = useState("");
 
   const availableDice = (
@@ -47,9 +61,16 @@ export function PlayPanel({
     ? chosenDie
     : availableDice[0]?.[0];
 
-  const sendAmount = (type: "damage" | "heal" | "temp-hp") => {
+  const sendAmount = (
+    type: "damage" | "heal" | "temp-hp" | "reduce-max-hp",
+  ) => {
     if (type === "damage") {
-      dispatch({ type, amount: toNumber(amount), critical });
+      dispatch({
+        type,
+        amount: toNumber(amount),
+        critical,
+        damageType: damageType || undefined,
+      });
       setCritical(false);
     } else {
       dispatch({ type, amount: toNumber(amount) });
@@ -87,6 +108,28 @@ export function PlayPanel({
             PG temp.
           </Button>
         </div>
+        {/* Con tipo, el motor aplica resistencias, vulnerabilidades e inmunidades. */}
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2">
+          <label
+            htmlFor={ids.damageType}
+            className="text-sm text-muted-foreground"
+          >
+            Tipo de daño
+          </label>
+          <select
+            id={ids.damageType}
+            value={damageType}
+            onChange={(e) => setDamageType(e.target.value as DamageType | "")}
+            className={inputClass}
+          >
+            <option value="">Sin tipo</option>
+            {damageTypes.map((type) => (
+              <option key={type} value={type}>
+                {damageTypeNames[type]}
+              </option>
+            ))}
+          </select>
+        </div>
         {/* Solo cambia algo con 0 PG: un crítico cuenta como dos fallos. */}
         <label
           htmlFor={ids.critical}
@@ -101,6 +144,20 @@ export function PlayPanel({
           />
           El daño es de un golpe crítico
         </label>
+        {/* Efectos que "absorben la energía vital": usan la misma cantidad. */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button variant="outline" onClick={() => sendAmount("reduce-max-hp")}>
+            Reducir PG máx.
+          </Button>
+          {hitPoints.maxReduction > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => dispatch({ type: "restore-max-hp" })}
+            >
+              Restablecer máx.
+            </Button>
+          )}
+        </div>
       </div>
 
       <fieldset className="grid gap-1.5">
@@ -157,6 +214,33 @@ export function PlayPanel({
       <Button variant="outline" onClick={() => dispatch({ type: "long-rest" })}>
         Descanso largo
       </Button>
+
+      {/* SRD 5.2.1, "Cansancio": se suma de a un nivel; con 6, morís. */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[0.7rem] font-semibold tracking-wider text-muted-foreground uppercase">
+          Cansancio: nivel{" "}
+          <span className="tabular-nums">{exhaustion.level}</span>
+        </span>
+        <div className="flex gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Quitar un nivel de cansancio"
+            disabled={exhaustion.level === 0}
+            onClick={() => dispatch({ type: "remove-exhaustion" })}
+          >
+            −1
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Sumar un nivel de cansancio"
+            onClick={() => dispatch({ type: "gain-exhaustion" })}
+          >
+            +1
+          </Button>
+        </div>
+      </div>
 
       {/* aria-live: el lector de pantalla anuncia el resultado de cada acción. */}
       <p

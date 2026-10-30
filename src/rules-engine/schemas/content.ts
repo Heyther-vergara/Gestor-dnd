@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   abilitySchema,
   armorTrainingSchema,
+  damageTypeSchema,
   skillSchema,
   slugSchema,
 } from "./common";
@@ -103,22 +104,6 @@ const spellDataSchema = z.strictObject({
 const diceSchema = z
   .string()
   .regex(/^\d+(?:d\d+)?$/, 'Debe ser "XdY" o un número fijo');
-
-export const damageTypeSchema = z.enum([
-  "acid",
-  "bludgeoning",
-  "cold",
-  "fire",
-  "force",
-  "lightning",
-  "necrotic",
-  "piercing",
-  "poison",
-  "psychic",
-  "radiant",
-  "slashing",
-  "thunder",
-]);
 
 const weaponDataSchema = z.strictObject({
   weaponCategory: z.enum(["simple", "martial"]),

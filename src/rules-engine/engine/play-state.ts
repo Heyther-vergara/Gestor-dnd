@@ -1,10 +1,15 @@
-// Acciones de partida: daño, curación, PG temporales, descansos y
-// salvaciones contra muerte (ADR 0009 y 0010).
+// Acciones de partida: daño, curación, PG temporales, descansos,
+// salvaciones contra muerte (ADR 0009 y 0010), y PG máximos reducidos y
+// cansancio (ADR 0012).
 // Cada una recibe el personaje y devuelve un playState nuevo, sin modificar
 // el original. Son puras: el motor no tira dados, recibe el resultado (ADR 0009).
 
-import type { Character, HitDie, PlayState } from "../schemas";
-import { type ContentIndex, calculateSheet } from "./index";
+import type { Character, DamageType, HitDie, PlayState } from "../schemas";
+import {
+  type ContentIndex,
+  calculateSheet,
+  type DamageDefenses,
+} from "./index";
 
 // Resultado de una acción: el estado nuevo y lo que pasó, o el motivo por el
 // que no se pudo hacer (por ejemplo, descansar con 0 PG).
@@ -20,6 +25,9 @@ export type DamageOutcome =
   | "damaged-at-zero"
   | "instant-death"
   | "death-from-failures"; // el fallo por daño con 0 PG fue el tercero
+
+// Defensas que cambiaron el daño, en el orden en que se aplicaron.
+export type DamageDefense = "immunity" | "resistance" | "vulnerability";
 
 // Qué pasó con una tirada de salvación contra muerte.
 export type DeathSaveOutcome =
@@ -75,26 +83,70 @@ const withCurrentHp = (
   current: number,
 ): PlayState => ({ ...playState, damageTaken: max - current });
 
+// SRD 5.2.1, "Inmunidad": no recibís daño de ese tipo. "Resistencia y
+// vulnerabilidad": con resistencia, la mitad (redondeando hacia abajo); con
+// vulnerabilidad, el doble. "Orden de aplicación": primero los ajustes
+// (bonificadores, penalizadores; ya vienen en `amount`, porque los suma el
+// jugador), después las resistencias y por último las vulnerabilidades.
+export function applyDamageDefenses(
+  amount: number,
+  damageType: DamageType | undefined,
+  defenses: DamageDefenses,
+): { damage: number; defenses: DamageDefense[] } {
+  if (damageType === undefined) return { damage: amount, defenses: [] };
+  if (defenses.immunities.includes(damageType)) {
+    return { damage: 0, defenses: ["immunity"] };
+  }
+  let damage = amount;
+  const applied: DamageDefense[] = [];
+  if (defenses.resistances.includes(damageType)) {
+    damage = Math.floor(damage / 2);
+    applied.push("resistance");
+  }
+  if (defenses.vulnerabilities.includes(damageType)) {
+    damage *= 2;
+    applied.push("vulnerability");
+  }
+  return { damage, defenses: applied };
+}
+
 export function applyDamage(
   character: Character,
   contentIndex: ContentIndex,
   amount: number,
-  // `critical`: el daño viene de un golpe crítico. Solo importa con 0 PG.
-  { critical = false }: { critical?: boolean } = {},
-): PlayResult<{ tempHpLost: number; hpLost: number; outcome: DamageOutcome }> {
+  {
+    critical = false,
+    damageType,
+  }: {
+    // El daño viene de un golpe crítico. Solo importa con 0 PG.
+    critical?: boolean;
+    // Sin tipo, el daño se aplica tal cual (por ejemplo, si el jugador ya
+    // descontó la resistencia).
+    damageType?: DamageType;
+  } = {},
+): PlayResult<{
+  damage: number;
+  defenses: DamageDefense[];
+  tempHpLost: number;
+  hpLost: number;
+  outcome: DamageOutcome;
+}> {
   if (character.playState.dead) return { ok: false, reason: DEAD };
   const invalid = invalidAmount(amount);
   if (invalid) return { ok: false, reason: invalid };
 
-  const { current, max, temp } = calculateSheet(
-    character,
-    contentIndex,
-  ).hitPoints;
+  const sheet = calculateSheet(character, contentIndex);
+  const { current, max, temp } = sheet.hitPoints;
+  const { damage, defenses } = applyDamageDefenses(
+    amount,
+    damageType,
+    sheet.damageDefenses,
+  );
 
   // SRD 5.2.1, "Puntos de golpe temporales": se pierden primero y el daño
   // sobrante se aplica a los puntos de golpe normales.
-  const tempHpLost = Math.min(temp, amount);
-  const remaining = amount - tempHpLost;
+  const tempHpLost = Math.min(temp, damage);
+  const remaining = damage - tempHpLost;
   // SRD 5.2.1, "Puntos de golpe": no bajan de 0.
   const hpLost = Math.min(current, remaining);
   const leftover = remaining - hpLost;
@@ -110,7 +162,8 @@ export function applyDamage(
   };
   let outcome: DamageOutcome;
   if (remaining === 0) {
-    // Los PG temporales evitan la pérdida de PG reales: no hay fallo.
+    // Los PG temporales (o una inmunidad) evitan la pérdida de PG reales:
+    // no hay fallo.
     outcome = "unharmed";
   } else if (newCurrent > 0) {
     outcome = "hurt";
@@ -128,7 +181,15 @@ export function applyDamage(
     outcome = playState.dead ? "death-from-failures" : "damaged-at-zero";
   }
 
-  return { ok: true, playState, tempHpLost, hpLost, outcome };
+  return {
+    ok: true,
+    playState,
+    damage,
+    defenses,
+    tempHpLost,
+    hpLost,
+    outcome,
+  };
 }
 
 export function heal(
@@ -217,8 +278,9 @@ export function spendHitDie(
 }
 
 // SRD 5.2.1, "Descanso largo": recuperás todos los PG perdidos y todos los
-// dados de golpe gastados. "Puntos de golpe temporales": duran hasta que
-// finalizás un descanso largo.
+// dados de golpe gastados, y "si tus puntos de golpe máximos se habían
+// reducido, vuelven a la normalidad". "Puntos de golpe temporales": duran
+// hasta que finalizás un descanso largo.
 export function longRest(
   character: Character,
   contentIndex: ContentIndex,
@@ -235,6 +297,99 @@ export function longRest(
       deathSaves: NO_SAVES,
       stable: false,
       dead: false,
+      maxHpReduction: 0,
+      // SRD 5.2.1, "Cansancio", "Eliminar niveles de cansancio": tras
+      // finalizar un descanso largo, restá 1 nivel.
+      exhaustion: Math.max(0, character.playState.exhaustion - 1),
+    },
+  };
+}
+
+// SRD 5.2.1, glosario, "Cansancio [estado]", "Niveles de cansancio": es
+// acumulativo; cada vez que lo recibís, sumás 1 nivel. "Morirás si tu nivel
+// de cansancio es 6". Qué lo causa (viajar de más, hambre, conjuros) se
+// decide en la mesa.
+const EXHAUSTION_DEATH_LEVEL = 6;
+
+export function gainExhaustion(
+  character: Character,
+): PlayResult<{ outcome: "exhausted" | "died" }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const exhaustion = character.playState.exhaustion + 1;
+  const died = exhaustion >= EXHAUSTION_DEATH_LEVEL;
+  return {
+    ok: true,
+    playState: { ...character.playState, exhaustion, dead: died },
+    outcome: died ? "died" : "exhausted",
+  };
+}
+
+// Quita un nivel fuera del descanso largo, por ejemplo con el conjuro
+// "Restablecimiento mayor" ("1 nivel de cansancio"). "Cuando tus niveles de
+// cansancio se reduzcan a 0, el estado terminará".
+export function removeExhaustion(character: Character): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const { exhaustion } = character.playState;
+  if (exhaustion === 0) {
+    return { ok: false, reason: "El personaje no tiene cansancio" };
+  }
+  return {
+    ok: true,
+    playState: { ...character.playState, exhaustion: exhaustion - 1 },
+  };
+}
+
+// SRD 5.2.1, "Puntos de golpe máximos de 0": ciertos efectos absorben la
+// energía vital y reducen los PG máximos; si llegan a 0, la criatura muere.
+// "Curación": los PG actuales no pueden superar el máximo, así que bajan con
+// él si hace falta. Cuánto reduce lo dice el efecto (en general, el daño
+// necrótico recibido); el jugador lo carga.
+export function reduceMaxHp(
+  character: Character,
+  contentIndex: ContentIndex,
+  amount: number,
+): PlayResult<{ reducedBy: number; outcome: "reduced" | "died" }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const invalid = invalidAmount(amount);
+  if (invalid) return { ok: false, reason: invalid };
+
+  const { current, max } = calculateSheet(character, contentIndex).hitPoints;
+  // La reducción no pasa del máximo que queda.
+  const reducedBy = Math.min(max, amount);
+  const newMax = max - reducedBy;
+  const playState: PlayState = {
+    ...withCurrentHp(character.playState, newMax, Math.min(current, newMax)),
+    maxHpReduction: character.playState.maxHpReduction + reducedBy,
+  };
+  if (newMax === 0) {
+    return {
+      ok: true,
+      playState: { ...playState, dead: true },
+      reducedBy,
+      outcome: "died",
+    };
+  }
+  return { ok: true, playState, reducedBy, outcome: "reduced" };
+}
+
+// SRD 5.2.1, conjuro "Restablecimiento mayor": elimina "cualquier reducción
+// de los puntos de golpe máximos del objetivo". No es curación: los PG
+// actuales quedan igual. (El descanso largo también lo hace, y además cura.)
+export function restoreMaxHp(
+  character: Character,
+  contentIndex: ContentIndex,
+): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  if (character.playState.maxHpReduction === 0) {
+    return { ok: false, reason: "Los PG máximos no están reducidos" };
+  }
+  const { current, max } = calculateSheet(character, contentIndex).hitPoints;
+  const fullMax = max + character.playState.maxHpReduction;
+  return {
+    ok: true,
+    playState: {
+      ...withCurrentHp(character.playState, fullMax, current),
+      maxHpReduction: 0,
     },
   };
 }
