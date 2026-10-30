@@ -3,8 +3,12 @@
 // Cada una recibe el personaje y devuelve un playState nuevo, sin modificar
 // el original. Son puras: el motor no tira dados, recibe el resultado (ADR 0009).
 
-import type { Character, HitDie, PlayState } from "../schemas";
-import { type ContentIndex, calculateSheet } from "./index";
+import type { Character, DamageType, HitDie, PlayState } from "../schemas";
+import {
+  type ContentIndex,
+  calculateSheet,
+  type DamageDefenses,
+} from "./index";
 
 // Resultado de una acción: el estado nuevo y lo que pasó, o el motivo por el
 // que no se pudo hacer (por ejemplo, descansar con 0 PG).
@@ -20,6 +24,9 @@ export type DamageOutcome =
   | "damaged-at-zero"
   | "instant-death"
   | "death-from-failures"; // el fallo por daño con 0 PG fue el tercero
+
+// Defensas que cambiaron el daño, en el orden en que se aplicaron.
+export type DamageDefense = "immunity" | "resistance" | "vulnerability";
 
 // Qué pasó con una tirada de salvación contra muerte.
 export type DeathSaveOutcome =
@@ -75,26 +82,70 @@ const withCurrentHp = (
   current: number,
 ): PlayState => ({ ...playState, damageTaken: max - current });
 
+// SRD 5.2.1, "Inmunidad": no recibís daño de ese tipo. "Resistencia y
+// vulnerabilidad": con resistencia, la mitad (redondeando hacia abajo); con
+// vulnerabilidad, el doble. "Orden de aplicación": primero los ajustes
+// (bonificadores, penalizadores; ya vienen en `amount`, porque los suma el
+// jugador), después las resistencias y por último las vulnerabilidades.
+export function applyDamageDefenses(
+  amount: number,
+  damageType: DamageType | undefined,
+  defenses: DamageDefenses,
+): { damage: number; defenses: DamageDefense[] } {
+  if (damageType === undefined) return { damage: amount, defenses: [] };
+  if (defenses.immunities.includes(damageType)) {
+    return { damage: 0, defenses: ["immunity"] };
+  }
+  let damage = amount;
+  const applied: DamageDefense[] = [];
+  if (defenses.resistances.includes(damageType)) {
+    damage = Math.floor(damage / 2);
+    applied.push("resistance");
+  }
+  if (defenses.vulnerabilities.includes(damageType)) {
+    damage *= 2;
+    applied.push("vulnerability");
+  }
+  return { damage, defenses: applied };
+}
+
 export function applyDamage(
   character: Character,
   contentIndex: ContentIndex,
   amount: number,
-  // `critical`: el daño viene de un golpe crítico. Solo importa con 0 PG.
-  { critical = false }: { critical?: boolean } = {},
-): PlayResult<{ tempHpLost: number; hpLost: number; outcome: DamageOutcome }> {
+  {
+    critical = false,
+    damageType,
+  }: {
+    // El daño viene de un golpe crítico. Solo importa con 0 PG.
+    critical?: boolean;
+    // Sin tipo, el daño se aplica tal cual (por ejemplo, si el jugador ya
+    // descontó la resistencia).
+    damageType?: DamageType;
+  } = {},
+): PlayResult<{
+  damage: number;
+  defenses: DamageDefense[];
+  tempHpLost: number;
+  hpLost: number;
+  outcome: DamageOutcome;
+}> {
   if (character.playState.dead) return { ok: false, reason: DEAD };
   const invalid = invalidAmount(amount);
   if (invalid) return { ok: false, reason: invalid };
 
-  const { current, max, temp } = calculateSheet(
-    character,
-    contentIndex,
-  ).hitPoints;
+  const sheet = calculateSheet(character, contentIndex);
+  const { current, max, temp } = sheet.hitPoints;
+  const { damage, defenses } = applyDamageDefenses(
+    amount,
+    damageType,
+    sheet.damageDefenses,
+  );
 
   // SRD 5.2.1, "Puntos de golpe temporales": se pierden primero y el daño
   // sobrante se aplica a los puntos de golpe normales.
-  const tempHpLost = Math.min(temp, amount);
-  const remaining = amount - tempHpLost;
+  const tempHpLost = Math.min(temp, damage);
+  const remaining = damage - tempHpLost;
   // SRD 5.2.1, "Puntos de golpe": no bajan de 0.
   const hpLost = Math.min(current, remaining);
   const leftover = remaining - hpLost;
@@ -110,7 +161,8 @@ export function applyDamage(
   };
   let outcome: DamageOutcome;
   if (remaining === 0) {
-    // Los PG temporales evitan la pérdida de PG reales: no hay fallo.
+    // Los PG temporales (o una inmunidad) evitan la pérdida de PG reales:
+    // no hay fallo.
     outcome = "unharmed";
   } else if (newCurrent > 0) {
     outcome = "hurt";
@@ -128,7 +180,15 @@ export function applyDamage(
     outcome = playState.dead ? "death-from-failures" : "damaged-at-zero";
   }
 
-  return { ok: true, playState, tempHpLost, hpLost, outcome };
+  return {
+    ok: true,
+    playState,
+    damage,
+    defenses,
+    tempHpLost,
+    hpLost,
+    outcome,
+  };
 }
 
 export function heal(

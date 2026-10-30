@@ -33,6 +33,27 @@ describe("effectSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  // SRD 5.2.1, enano, "Resistencia enana": resistencia al daño de veneno.
+  it("accepts damage resistance, vulnerability and immunity grants", () => {
+    for (const target of [
+      "resistance.poison",
+      "vulnerability.fire",
+      "immunity.psychic",
+    ]) {
+      expect(effectSchema.safeParse({ target, op: "grant" }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects an unknown damage type", () => {
+    const result = effectSchema.safeParse({
+      target: "resistance.banana",
+      op: "grant",
+    });
+    expect(result.success).toBe(false);
+  });
+
   // SRD 5.2.1, monje "Movimiento sin armadura": +3 m si no llevás armadura ni escudo.
   it("accepts an optional condition", () => {
     const result = effectSchema.safeParse({

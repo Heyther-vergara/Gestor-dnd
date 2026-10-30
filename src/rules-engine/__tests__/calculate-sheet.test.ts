@@ -40,6 +40,12 @@ const dwarf = content({
         description: "",
         effects: [{ target: "hp.max-per-level", op: "add", value: 1 }],
       },
+      // SRD 5.2.1, enano, "Resistencia enana": resistencia al daño de veneno.
+      {
+        name: "Resistencia enana",
+        description: "",
+        effects: [{ target: "resistance.poison", op: "grant" }],
+      },
       // SRD 5.2.1, enano, "Visión en la oscuridad": 36 m (120 pies).
       {
         name: "Visión en la oscuridad",
@@ -384,7 +390,25 @@ const quietBoots = content({
   data: { category: "magic" },
 });
 
+// Homebrew: defensas contra el daño, una de cada tipo. También repite la
+// resistencia al veneno del enano, para ver que no se acumula.
+const elementalAmulet = content({
+  id: "elemental-amulet",
+  packageId: "my-homebrew",
+  type: "item",
+  name: "Amuleto elemental",
+  description: "",
+  effects: [
+    { target: "resistance.cold", op: "grant" },
+    { target: "resistance.poison", op: "grant" },
+    { target: "vulnerability.fire", op: "grant" },
+    { target: "immunity.psychic", op: "grant" },
+  ],
+  data: { category: "magic" },
+});
+
 const index = createContentIndex([
+  elementalAmulet,
   wizard,
   cleric,
   criminal,
@@ -1427,6 +1451,34 @@ describe("calculateSheet: darkvision", () => {
       index,
     );
     expect(sheet.darkvision).toBe(150);
+  });
+});
+
+describe("calculateSheet: damage defenses", () => {
+  // SRD 5.2.1, enano, "Resistencia enana".
+  it("lists resistances from species traits", () => {
+    expect(calculateSheet(makeCharacter(), index).damageDefenses).toEqual({
+      resistances: ["poison"],
+      vulnerabilities: [],
+      immunities: [],
+    });
+  });
+
+  // SRD 5.2.1, "No se acumulan": varias resistencias al mismo tipo cuentan
+  // como una. Se listan en el orden de la tabla "Tipos de daño".
+  it("merges defenses from every source without repeating them", () => {
+    const sheet = calculateSheet(
+      makeCharacter({
+        activePackageIds: ["srd-2024", "my-homebrew"],
+        inventory: equipped("elemental-amulet"),
+      }),
+      index,
+    );
+    expect(sheet.damageDefenses).toEqual({
+      resistances: ["cold", "poison"],
+      vulnerabilities: ["fire"],
+      immunities: ["psychic"],
+    });
   });
 });
 

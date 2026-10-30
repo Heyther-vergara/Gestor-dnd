@@ -1,6 +1,6 @@
 // Textos de la hoja: nombres en español y formato de números.
 
-import type { Ability, Skill } from "@/rules-engine/schemas";
+import type { Ability, DamageType, Skill } from "@/rules-engine/schemas";
 
 // SRD 5.2.1 (español), "Cómo jugar": nombres de las características.
 export const abilityNames: Record<Ability, { name: string; short: string }> = {
@@ -32,6 +32,24 @@ export const skillNames: Record<Skill, string> = {
   "sleight-of-hand": "Juego de manos",
   stealth: "Sigilo",
   survival: "Supervivencia",
+};
+
+// SRD 5.2.1 (español), glosario, tabla "Tipos de daño". Se usa tras "daño
+// de…" o "resistencia al…", por eso va en minúscula y con artículo aparte.
+export const damageTypeNames: Record<DamageType, string> = {
+  acid: "ácido",
+  bludgeoning: "contundente",
+  slashing: "cortante",
+  cold: "frío",
+  fire: "fuego",
+  force: "fuerza",
+  necrotic: "necrótico",
+  piercing: "perforante",
+  psychic: "psíquico",
+  radiant: "radiante",
+  lightning: "relámpago",
+  thunder: "trueno",
+  poison: "veneno",
 };
 
 // Bonificadores con signo: +3, +0, −1 (signo menos tipográfico, no guion).

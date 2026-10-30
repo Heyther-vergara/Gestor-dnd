@@ -65,9 +65,28 @@ export const armorTrainingSchema = z.enum([
 // SRD 5.2.1, "Clases": los dados de golpe de las clases van del d6 al d12.
 export const hitDieSchema = z.enum(["d6", "d8", "d10", "d12"]);
 
+// SRD 5.2.1, glosario, tabla "Tipos de daño". Ids en inglés, en orden
+// alfabético. Los usan las armas y las resistencias.
+export const damageTypeSchema = z.enum([
+  "acid",
+  "bludgeoning",
+  "cold",
+  "fire",
+  "force",
+  "lightning",
+  "necrotic",
+  "piercing",
+  "poison",
+  "psychic",
+  "radiant",
+  "slashing",
+  "thunder",
+]);
+
 export type Slug = z.infer<typeof slugSchema>;
 export type Edition = z.infer<typeof editionSchema>;
 export type Ability = z.infer<typeof abilitySchema>;
 export type Skill = z.infer<typeof skillSchema>;
 export type ArmorTraining = z.infer<typeof armorTrainingSchema>;
 export type HitDie = z.infer<typeof hitDieSchema>;
+export type DamageType = z.infer<typeof damageTypeSchema>;

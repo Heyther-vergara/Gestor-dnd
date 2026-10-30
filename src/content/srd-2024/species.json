@@ -26,7 +26,12 @@
         {
           "name": "Dwarven Resilience",
           "description": "You have Resistance to Poison damage. You also have Advantage on saving throws you make to avoid or end the Poisoned condition.",
-          "effects": []
+          "effects": [
+            {
+              "target": "resistance.poison",
+              "op": "grant"
+            }
+          ]
         },
         {
           "name": "Dwarven Toughness",

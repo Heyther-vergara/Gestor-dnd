@@ -79,6 +79,23 @@ const index = createContentIndex([
     description: "",
     data: { ...classData, hitDie: 6 },
   }),
+  // Defensas contra el daño para los tests de tipos de daño. Fuego tiene
+  // resistencia y vulnerabilidad a la vez, como el ejemplo del SRD.
+  content({
+    id: "warding-amulet",
+    packageId: "srd-2024",
+    type: "item",
+    name: "Amuleto de protección",
+    description: "",
+    effects: [
+      { target: "resistance.poison", op: "grant" },
+      { target: "resistance.fire", op: "grant" },
+      { target: "vulnerability.fire", op: "grant" },
+      { target: "vulnerability.cold", op: "grant" },
+      { target: "immunity.necrotic", op: "grant" },
+    ],
+    data: { category: "magic" },
+  }),
 ]);
 
 // Guerrero humano de nivel 3 con Con 14 (+2). SRD 5.2.1: 10 + 2 en el nivel 1
@@ -192,6 +209,97 @@ describe("applyDamage", () => {
     const character = makeCharacter();
     applyDamage(character, index, 10);
     expect(character.playState.damageTaken).toBe(0);
+  });
+});
+
+describe("applyDamage with a damage type", () => {
+  const warded = (playState: Partial<PlayState> = {}) => ({
+    ...makeCharacter(playState),
+    inventory: [
+      { itemId: "warding-amulet", quantity: 1, equipped: true, attuned: false },
+    ],
+  });
+
+  // SRD 5.2.1, "Resistencia y vulnerabilidad": con resistencia, el daño de
+  // ese tipo se reduce a la mitad (redondeando hacia abajo).
+  it("halves damage with resistance, rounding down", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 7, { damageType: "poison" }),
+    );
+    expect(result).toMatchObject({ damage: 3, defenses: ["resistance"] });
+    expect(result.playState.damageTaken).toBe(3);
+  });
+
+  // "Si tienes vulnerabilidad a un tipo de daño, el daño de ese tipo se duplica".
+  it("doubles damage with vulnerability", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 5, { damageType: "cold" }),
+    );
+    expect(result).toMatchObject({ damage: 10, defenses: ["vulnerability"] });
+    expect(result.playState.damageTaken).toBe(10);
+  });
+
+  // "Orden de aplicación": primero los ajustes, después las resistencias y
+  // por último las vulnerabilidades. Del ejemplo del SRD: 23 de fuego se
+  // reduce a la mitad (11) y luego se duplica (22).
+  it("applies resistance before vulnerability", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 23, { damageType: "fire" }),
+    );
+    expect(result).toMatchObject({
+      damage: 22,
+      defenses: ["resistance", "vulnerability"],
+    });
+  });
+
+  // SRD 5.2.1, "Inmunidad": no recibís daño de ese tipo.
+  it("ignores damage with immunity", () => {
+    const result = expectOk(
+      applyDamage(warded(), index, 12, { damageType: "necrotic" }),
+    );
+    expect(result).toMatchObject({
+      damage: 0,
+      defenses: ["immunity"],
+      outcome: "unharmed",
+    });
+    expect(result.playState.damageTaken).toBe(0);
+  });
+
+  // Con 0 PG, el daño que no llega por inmunidad no es "daño con 0 PG".
+  it("adds no death save failure when immunity stops the damage", () => {
+    const down = warded({ damageTaken: MAX_HP });
+    const result = expectOk(
+      applyDamage(down, index, 12, { damageType: "necrotic" }),
+    );
+    expect(result.playState.deathSaves.failures).toBe(0);
+  });
+
+  it("leaves damage of other types or without a type as it is", () => {
+    expect(
+      expectOk(applyDamage(warded(), index, 7, { damageType: "acid" })),
+    ).toMatchObject({ damage: 7, defenses: [] });
+    expect(expectOk(applyDamage(warded(), index, 7))).toMatchObject({
+      damage: 7,
+      defenses: [],
+    });
+  });
+
+  // Los PG temporales y el daño considerable se calculan con el daño ya
+  // reducido: 12 de veneno con resistencia son 6, y 5 los absorben.
+  it("applies temporary hit points to the reduced damage", () => {
+    const result = expectOk(
+      applyDamage(warded({ tempHp: 5 }), index, 12, { damageType: "poison" }),
+    );
+    expect(result).toMatchObject({ damage: 6, tempHpLost: 5, hpLost: 1 });
+  });
+
+  it("uses the reduced damage for massive damage", () => {
+    // Con 6 PG y 28 de máximo, morir al instante pide 34. Con resistencia,
+    // 60 de veneno son 30: cae a 0 pero no muere.
+    const atSix = warded({ damageTaken: MAX_HP - 6 });
+    expect(
+      expectOk(applyDamage(atSix, index, 60, { damageType: "poison" })).outcome,
+    ).toBe("dropped-to-zero");
   });
 });
 

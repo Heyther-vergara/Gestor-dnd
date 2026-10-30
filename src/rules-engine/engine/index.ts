@@ -9,6 +9,8 @@ import {
   type Character,
   type Condition,
   type Content,
+  type DamageType,
+  damageTypeSchema,
   type Effect,
   type GrantTarget,
   type HitDie,
@@ -75,6 +77,9 @@ export type ComputedSheet = {
   // Consecuencias de la armadura equipada que no son un número de la hoja.
   // La interfaz las muestra como avisos (ADR 0007).
   armorPenalties: ArmorPenalties;
+  // SRD 5.2.1, "Resistencia y vulnerabilidad" e "Inmunidad": tipos de daño
+  // contra los que el personaje tiene cada defensa, sin repetir.
+  damageDefenses: DamageDefenses;
   // Problemas con los datos (contenido que falta, elecciones inválidas).
   // No rompen la hoja: lo afectado se ignora y la interfaz puede avisar.
   issues: string[];
@@ -110,6 +115,12 @@ export type ArmorPenalties = {
   insufficientStrength: boolean;
 };
 
+export type DamageDefenses = {
+  resistances: DamageType[];
+  vulnerabilities: DamageType[];
+  immunities: DamageType[];
+};
+
 // SRD 5.2.1, "Armaduras", "Fuerza": la armadura reduce 3 m la velocidad.
 const HEAVY_ARMOR_SPEED_PENALTY = 10;
 
@@ -131,6 +142,7 @@ const BACKGROUND_BONUS_CAP = 20;
 
 const ABILITIES = abilitySchema.options;
 const SKILLS = skillSchema.options;
+const DAMAGE_TYPES = damageTypeSchema.options;
 
 export function calculateSheet(
   character: Character,
@@ -573,6 +585,17 @@ export function calculateSheet(
     ];
   });
 
+  // --- Defensas contra el daño ---
+  // SRD 5.2.1, "No se acumulan": varias resistencias o vulnerabilidades al
+  // mismo tipo cuentan como una. Por eso alcanza con saber si alguna lo da.
+  const defensesFor = (kind: "resistance" | "vulnerability" | "immunity") =>
+    DAMAGE_TYPES.filter((type) => granted.has(`${kind}.${type}`));
+  const damageDefenses: DamageDefenses = {
+    resistances: defensesFor("resistance"),
+    vulnerabilities: defensesFor("vulnerability"),
+    immunities: defensesFor("immunity"),
+  };
+
   return {
     abilities,
     ac,
@@ -588,6 +611,7 @@ export function calculateSheet(
     darkvision,
     spellcasting,
     armorPenalties: { untrainedArmor, untrainedShield, insufficientStrength },
+    damageDefenses,
     issues,
   };
 }

@@ -3,13 +3,20 @@
 import { type ActionDispatch, useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { damageTypeNames } from "@/lib/format";
 import type { PlayAction, PlayMessage } from "@/lib/play-reducer";
 import type { ComputedSheet, HitDie } from "@/rules-engine/engine";
+import { type DamageType, damageTypeSchema } from "@/rules-engine/schemas";
 
 import { DeathSaves } from "./death-saves";
 
 const inputClass =
   "h-8 w-full min-w-0 rounded-lg border border-input bg-card px-2 text-base tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+// Los tipos de daño en orden alfabético en español, para el selector.
+const damageTypes = [...damageTypeSchema.options].sort((a, b) =>
+  damageTypeNames[a].localeCompare(damageTypeNames[b], "es"),
+);
 
 // Un campo vacío o con texto no es un número: se manda NaN y el motor lo rechaza.
 const toNumber = (value: string) => (value.trim() === "" ? NaN : Number(value));
@@ -31,11 +38,14 @@ export function PlayPanel({
   const ids = {
     amount: useId(),
     critical: useId(),
+    damageType: useId(),
     die: useId(),
     roll: useId(),
   };
   const [amount, setAmount] = useState("");
   const [critical, setCritical] = useState(false);
+  // "" = sin tipo: el daño se aplica tal cual, sin resistencias.
+  const [damageType, setDamageType] = useState<DamageType | "">("");
   const [roll, setRoll] = useState("");
 
   const availableDice = (
@@ -49,7 +59,12 @@ export function PlayPanel({
 
   const sendAmount = (type: "damage" | "heal" | "temp-hp") => {
     if (type === "damage") {
-      dispatch({ type, amount: toNumber(amount), critical });
+      dispatch({
+        type,
+        amount: toNumber(amount),
+        critical,
+        damageType: damageType || undefined,
+      });
       setCritical(false);
     } else {
       dispatch({ type, amount: toNumber(amount) });
@@ -86,6 +101,28 @@ export function PlayPanel({
           <Button variant="outline" onClick={() => sendAmount("temp-hp")}>
             PG temp.
           </Button>
+        </div>
+        {/* Con tipo, el motor aplica resistencias, vulnerabilidades e inmunidades. */}
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2">
+          <label
+            htmlFor={ids.damageType}
+            className="text-sm text-muted-foreground"
+          >
+            Tipo de daño
+          </label>
+          <select
+            id={ids.damageType}
+            value={damageType}
+            onChange={(e) => setDamageType(e.target.value as DamageType | "")}
+            className={inputClass}
+          >
+            <option value="">Sin tipo</option>
+            {damageTypes.map((type) => (
+              <option key={type} value={type}>
+                {damageTypeNames[type]}
+              </option>
+            ))}
+          </select>
         </div>
         {/* Solo cambia algo con 0 PG: un crítico cuenta como dos fallos. */}
         <label

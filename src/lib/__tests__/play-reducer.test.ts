@@ -19,6 +19,19 @@ describe("play reducer (Brunhilda: 22 of 31 HP)", () => {
     expect(next.message).toEqual({ tone: "info", text: "Perdiste 5 PG." });
   });
 
+  // Brunhilda es enana: "Resistencia enana" reduce el veneno a la mitad.
+  it("explains when a resistance changes the damage", () => {
+    const next = reducer(start, {
+      type: "damage",
+      amount: 7,
+      damageType: "poison",
+    });
+    expect(currentHp(next)).toBe(19);
+    expect(next.message?.text).toBe(
+      "Resistencia al veneno: 7 de daño quedan en 3. Perdiste 3 PG.",
+    );
+  });
+
   it("warns when the character drops to 0", () => {
     const next = reducer(start, { type: "damage", amount: 30 });
     expect(currentHp(next)).toBe(0);
