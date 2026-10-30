@@ -108,20 +108,6 @@ export function PlayPanel({
             PG temp.
           </Button>
         </div>
-        {/* Efectos que "absorben la energía vital": usan la misma cantidad. */}
-        <div className="grid grid-cols-2 gap-1.5">
-          <Button variant="outline" onClick={() => sendAmount("reduce-max-hp")}>
-            Reducir PG máx.
-          </Button>
-          {hitPoints.maxReduction > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => dispatch({ type: "restore-max-hp" })}
-            >
-              Restablecer máx.
-            </Button>
-          )}
-        </div>
         {/* Con tipo, el motor aplica resistencias, vulnerabilidades e inmunidades. */}
         <div className="grid grid-cols-[auto_1fr] items-center gap-2">
           <label
@@ -158,6 +144,20 @@ export function PlayPanel({
           />
           El daño es de un golpe crítico
         </label>
+        {/* Efectos que "absorben la energía vital": usan la misma cantidad. */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button variant="outline" onClick={() => sendAmount("reduce-max-hp")}>
+            Reducir PG máx.
+          </Button>
+          {hitPoints.maxReduction > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => dispatch({ type: "restore-max-hp" })}
+            >
+              Restablecer máx.
+            </Button>
+          )}
+        </div>
       </div>
 
       <fieldset className="grid gap-1.5">

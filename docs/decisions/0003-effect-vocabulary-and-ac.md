@@ -48,4 +48,4 @@ Reglas del SRD 5.2.1 que hay que poder expresar:
 
 - Agregar un `target` o una `condition` nuevos es sumarlo a la lista en `effect.ts` (y enseñarle al motor a usarlo). Es a propósito: obliga a pensar si el motor lo sabe calcular.
 - Cuando se importen armaduras al paquete SRD, el script tiene que convertir la CA de 5e-bits en un efecto `base`.
-- Fuera de alcance por ahora: resistencias, competencias con herramientas y pericia. Se agregan cuando haya contenido que las use.
+- Fuera de alcance por ahora: competencias con herramientas y pericia. Se agregan cuando haya contenido que las use. (Las resistencias se agregaron en el ADR 0012.)
