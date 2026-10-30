@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import { calculateSheet, createContentIndex } from "@/rules-engine/engine";
 import {
   applyDamage,
+  gainExhaustion,
   gainTempHp,
   heal,
   longRest,
   reduceMaxHp,
+  removeExhaustion,
   restoreMaxHp,
   rollDeathSave,
   spendHitDie,
@@ -449,7 +451,15 @@ describe("longRest", () => {
       stable: false,
       dead: false,
       maxHpReduction: 0,
+      exhaustion: 0,
     });
+  });
+
+  // SRD 5.2.1, "Cansancio", "Eliminar niveles de cansancio": tras finalizar
+  // un descanso largo, restá 1 nivel.
+  it("removes one level of exhaustion", () => {
+    const result = expectOk(longRest(makeCharacter({ exhaustion: 3 }), index));
+    expect(result.playState.exhaustion).toBe(2);
   });
 
   // SRD 5.2.1, "Descanso largo", "Puntos de golpe al máximo": si tus PG
@@ -545,6 +555,42 @@ describe("restoreMaxHp", () => {
 
   it("fails when max hit points are not reduced", () => {
     expect(restoreMaxHp(makeCharacter(), index).ok).toBe(false);
+  });
+});
+
+// --- Cansancio (ADR 0012) ---
+
+describe("gainExhaustion", () => {
+  // SRD 5.2.1, "Cansancio", "Niveles de cansancio": es acumulativo; cada vez
+  // que lo recibís sumás 1 nivel.
+  it("adds one level", () => {
+    const result = expectOk(gainExhaustion(makeCharacter({ exhaustion: 1 })));
+    expect(result).toMatchObject({ outcome: "exhausted" });
+    expect(result.playState.exhaustion).toBe(2);
+  });
+
+  // "Morirás si tu nivel de cansancio es 6".
+  it("kills at level 6", () => {
+    const result = expectOk(gainExhaustion(makeCharacter({ exhaustion: 5 })));
+    expect(result.outcome).toBe("died");
+    expect(result.playState).toMatchObject({ exhaustion: 6, dead: true });
+  });
+
+  it("rejects a dead character", () => {
+    expect(gainExhaustion(makeCharacter({ dead: true })).ok).toBe(false);
+  });
+});
+
+describe("removeExhaustion", () => {
+  // Para efectos que quitan un nivel fuera del descanso largo, como el
+  // conjuro "Restablecimiento mayor" ("1 nivel de cansancio").
+  it("removes one level", () => {
+    const result = expectOk(removeExhaustion(makeCharacter({ exhaustion: 2 })));
+    expect(result.playState.exhaustion).toBe(1);
+  });
+
+  it("fails without exhaustion", () => {
+    expect(removeExhaustion(makeCharacter()).ok).toBe(false);
   });
 });
 

@@ -36,6 +36,14 @@ export function SheetView({
       <HitPoints hitPoints={sheet.hitPoints} hitDice={sheet.hitDice} />
       {playPanel}
       <ArmorWarnings penalties={sheet.armorPenalties} />
+      {sheet.exhaustion.level > 0 && (
+        <p className="rounded-sm border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          Cansancio nivel {sheet.exhaustion.level}: −
+          {sheet.exhaustion.d20Penalty} a las pruebas con d20 y −
+          {feetToMeters(sheet.exhaustion.speedPenalty)} de velocidad. Ya está
+          restado en la hoja.
+        </p>
+      )}
 
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
         <span>

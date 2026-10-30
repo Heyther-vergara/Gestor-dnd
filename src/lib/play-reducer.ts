@@ -2,18 +2,20 @@
 // arma el mensaje que ve el jugador. No conoce reglas: las decide el motor.
 // Es una función pura para usarla con useReducer de React y poder testearla.
 
-import { damageTypeNames } from "@/lib/format";
-import type { ContentIndex } from "@/rules-engine/engine";
+import { damageTypeNames, feetToMeters } from "@/lib/format";
+import { type ContentIndex, calculateSheet } from "@/rules-engine/engine";
 import {
   applyDamage,
   type DamageDefense,
   type DamageOutcome,
   type DeathSaveOutcome,
+  gainExhaustion,
   gainTempHp,
   heal,
   longRest,
   type PlayResult,
   reduceMaxHp,
+  removeExhaustion,
   restoreMaxHp,
   rollDeathSave,
   spendHitDie,
@@ -41,6 +43,8 @@ export type PlayAction =
   | { type: "long-rest" }
   | { type: "reduce-max-hp"; amount: number }
   | { type: "restore-max-hp" }
+  | { type: "gain-exhaustion" }
+  | { type: "remove-exhaustion" }
   | { type: "death-save"; roll: number }
   | { type: "stabilize" }
   | { type: "reset"; character: Character };
@@ -173,10 +177,44 @@ export function createPlayReducer(contentIndex: ContentIndex) {
           }),
         );
       case "long-rest":
-        return apply(session, longRest(character, contentIndex), () => ({
-          tone: "info",
-          text: "Descanso largo: PG y dados de golpe al máximo.",
-        }));
+        return apply(
+          session,
+          longRest(character, contentIndex),
+          ({ playState }) => ({
+            tone: "info",
+            text:
+              character.playState.exhaustion > 0
+                ? `Descanso largo: PG y dados de golpe al máximo. Cansancio: nivel ${playState.exhaustion}.`
+                : "Descanso largo: PG y dados de golpe al máximo.",
+          }),
+        );
+      case "gain-exhaustion":
+      case "remove-exhaustion": {
+        const result =
+          action.type === "gain-exhaustion"
+            ? gainExhaustion(character)
+            : removeExhaustion(character);
+        return apply(session, result, ({ playState }) => {
+          if (playState.dead) {
+            return {
+              tone: "danger",
+              text: "Cansancio nivel 6: el personaje muere.",
+            };
+          }
+          if (playState.exhaustion === 0) {
+            return { tone: "info", text: "Ya no tenés cansancio." };
+          }
+          // Las penalizaciones las calcula el motor; acá solo se cuentan.
+          const { exhaustion } = calculateSheet(
+            { ...character, playState },
+            contentIndex,
+          );
+          return {
+            tone: "danger",
+            text: `Cansancio nivel ${exhaustion.level}: −${exhaustion.d20Penalty} a las pruebas con d20 y −${feetToMeters(exhaustion.speedPenalty)} de velocidad.`,
+          };
+        });
+      }
       case "reduce-max-hp":
         return apply(
           session,

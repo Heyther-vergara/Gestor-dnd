@@ -28,10 +28,12 @@ export function PlayPanel({
   hitPoints,
   hitDice,
   deathSaves,
+  exhaustion,
   message,
   dispatch,
 }: {
   hitPoints: ComputedSheet["hitPoints"];
+  exhaustion: ComputedSheet["exhaustion"];
   hitDice: ComputedSheet["hitDice"];
   deathSaves: ComputedSheet["deathSaves"];
   message: PlayMessage | null;
@@ -212,6 +214,33 @@ export function PlayPanel({
       <Button variant="outline" onClick={() => dispatch({ type: "long-rest" })}>
         Descanso largo
       </Button>
+
+      {/* SRD 5.2.1, "Cansancio": se suma de a un nivel; con 6, morís. */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[0.7rem] font-semibold tracking-wider text-muted-foreground uppercase">
+          Cansancio: nivel{" "}
+          <span className="tabular-nums">{exhaustion.level}</span>
+        </span>
+        <div className="flex gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Quitar un nivel de cansancio"
+            disabled={exhaustion.level === 0}
+            onClick={() => dispatch({ type: "remove-exhaustion" })}
+          >
+            −1
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Sumar un nivel de cansancio"
+            onClick={() => dispatch({ type: "gain-exhaustion" })}
+          >
+            +1
+          </Button>
+        </div>
+      </div>
 
       {/* aria-live: el lector de pantalla anuncia el resultado de cada acción. */}
       <p

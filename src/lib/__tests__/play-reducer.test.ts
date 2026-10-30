@@ -113,6 +113,27 @@ describe("play reducer (Brunhilda: 22 of 31 HP)", () => {
     );
   });
 
+  it("adds and removes exhaustion levels", () => {
+    const once = reducer(start, { type: "gain-exhaustion" });
+    const twice = reducer(once, { type: "gain-exhaustion" });
+    expect(twice.character.playState.exhaustion).toBe(2);
+    expect(twice.message).toEqual({
+      tone: "danger",
+      text: "Cansancio nivel 2: −4 a las pruebas con d20 y −3 m de velocidad.",
+    });
+    const better = reducer(twice, { type: "remove-exhaustion" });
+    expect(better.character.playState.exhaustion).toBe(1);
+  });
+
+  it("says that a long rest removes one exhaustion level", () => {
+    let session = reducer(start, { type: "gain-exhaustion" });
+    session = reducer(session, { type: "gain-exhaustion" });
+    session = reducer(session, { type: "long-rest" });
+    expect(session.message?.text).toBe(
+      "Descanso largo: PG y dados de golpe al máximo. Cansancio: nivel 1.",
+    );
+  });
+
   it("resets to the given character", () => {
     const hurt = reducer(start, { type: "damage", amount: 5 });
     const reset = reducer(hurt, { type: "reset", character: sampleCharacter });

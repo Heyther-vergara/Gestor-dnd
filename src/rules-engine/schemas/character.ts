@@ -110,6 +110,9 @@ const playStateSchema = z.strictObject({
   // "absorbe la energía vital"). Es estado, no un valor derivado: lo causa un
   // efecto de la partida y se quita con un descanso largo (ADR 0012).
   maxHpReduction: z.int().min(0).default(0),
+  // SRD 5.2.1, glosario, "Cansancio [estado]": es acumulativo, de a un nivel.
+  // Con nivel 6 el personaje muere, así que no hay nivel 7 (ADR 0012).
+  exhaustion: z.int().min(0).max(6).default(0),
 });
 
 export const characterSchema = z.strictObject({
@@ -131,6 +134,7 @@ export const characterSchema = z.strictObject({
     stable: false,
     dead: false,
     maxHpReduction: 0,
+    exhaustion: 0,
   }),
 });
 

@@ -298,7 +298,44 @@ export function longRest(
       stable: false,
       dead: false,
       maxHpReduction: 0,
+      // SRD 5.2.1, "Cansancio", "Eliminar niveles de cansancio": tras
+      // finalizar un descanso largo, restá 1 nivel.
+      exhaustion: Math.max(0, character.playState.exhaustion - 1),
     },
+  };
+}
+
+// SRD 5.2.1, glosario, "Cansancio [estado]", "Niveles de cansancio": es
+// acumulativo; cada vez que lo recibís, sumás 1 nivel. "Morirás si tu nivel
+// de cansancio es 6". Qué lo causa (viajar de más, hambre, conjuros) se
+// decide en la mesa.
+const EXHAUSTION_DEATH_LEVEL = 6;
+
+export function gainExhaustion(
+  character: Character,
+): PlayResult<{ outcome: "exhausted" | "died" }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const exhaustion = character.playState.exhaustion + 1;
+  const died = exhaustion >= EXHAUSTION_DEATH_LEVEL;
+  return {
+    ok: true,
+    playState: { ...character.playState, exhaustion, dead: died },
+    outcome: died ? "died" : "exhausted",
+  };
+}
+
+// Quita un nivel fuera del descanso largo, por ejemplo con el conjuro
+// "Restablecimiento mayor" ("1 nivel de cansancio"). "Cuando tus niveles de
+// cansancio se reduzcan a 0, el estado terminará".
+export function removeExhaustion(character: Character): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const { exhaustion } = character.playState;
+  if (exhaustion === 0) {
+    return { ok: false, reason: "El personaje no tiene cansancio" };
+  }
+  return {
+    ok: true,
+    playState: { ...character.playState, exhaustion: exhaustion - 1 },
   };
 }
 

@@ -83,6 +83,15 @@ export type ComputedSheet = {
   // Consecuencias de la armadura equipada que no son un número de la hoja.
   // La interfaz las muestra como avisos (ADR 0007).
   armorPenalties: ArmorPenalties;
+  // SRD 5.2.1, glosario, "Cansancio [estado]". Las penalizaciones ya están
+  // restadas de los números de la hoja; acá van para mostrarlas.
+  exhaustion: {
+    level: number;
+    // A las pruebas con d20: salvaciones, habilidades, iniciativa y ataques.
+    d20Penalty: number;
+    // En pies, como `speed`.
+    speedPenalty: number;
+  };
   // SRD 5.2.1, "Resistencia y vulnerabilidad" e "Inmunidad": tipos de daño
   // contra los que el personaje tiene cada defensa, sin repetir.
   damageDefenses: DamageDefenses;
@@ -129,6 +138,11 @@ export type DamageDefenses = {
 
 // SRD 5.2.1, "Armaduras", "Fuerza": la armadura reduce 3 m la velocidad.
 const HEAVY_ARMOR_SPEED_PENALTY = 10;
+
+// SRD 5.2.1, "Cansancio": −2 a las pruebas con d20 y −1,5 m (5 pies) de
+// velocidad por cada nivel.
+const EXHAUSTION_D20_PENALTY = 2;
+const EXHAUSTION_SPEED_PENALTY = 5;
 
 // SRD 5.2.1, tabla "Puntos de golpe establecidos por clase": d12 → 7,
 // d10 → 6, d8 → 5, d6 → 4. Es la mitad del dado + 1.
@@ -359,6 +373,14 @@ export function calculateSheet(
     Math.min(totalLevel, MAX_CHARACTER_LEVEL),
   );
 
+  // --- Cansancio ---
+  // SRD 5.2.1, "Pruebas con d20 afectadas": cuando hacés una prueba con d20,
+  // el resultado se reduce en 2 × tu nivel de cansancio. "Prueba con d20":
+  // son las pruebas de característica, las tiradas de ataque y las de
+  // salvación. Se resta después de los efectos, porque es sobre la tirada.
+  const exhaustionLevel = character.playState.exhaustion;
+  const d20Penalty = EXHAUSTION_D20_PENALTY * exhaustionLevel;
+
   // --- Tiradas de salvación ---
   // SRD 5.2.1, "Convertirse en <clase>", "Como personaje multiclase": las
   // salvaciones solo las da la clase inicial, que es la primera de `classes`.
@@ -368,11 +390,12 @@ export function calculateSheet(
       const proficient =
         (startingClass?.data.savingThrows.includes(ability) ?? false) ||
         granted.has(`proficiency.save.${ability}`);
-      const modifier = applyNumericEffects(
-        modifiers[ability] + (proficient ? proficiencyBonus : 0),
-        effectsFor(effects, `save.${ability}`),
-        modifiers,
-      );
+      const modifier =
+        applyNumericEffects(
+          modifiers[ability] + (proficient ? proficiencyBonus : 0),
+          effectsFor(effects, `save.${ability}`),
+          modifiers,
+        ) - d20Penalty;
       return [ability, { modifier, proficient }];
     }),
   ) as ComputedSheet["savingThrows"];
@@ -439,6 +462,8 @@ export function calculateSheet(
 
   // SRD 5.2.1, "El bonificador no se acumula": aunque la competencia venga de
   // varios lados, el bonificador se suma una vez (o dos con pericia).
+  // `restedModifiers` son los bonificadores sin el cansancio.
+  const restedModifiers = {} as Record<Skill, number>;
   const skills = Object.fromEntries(
     SKILLS.map((skill) => {
       const ability = skillAbilities[skill];
@@ -448,28 +473,32 @@ export function calculateSheet(
           ? "proficient"
           : "none";
       const multiplier = { none: 0, proficient: 1, expertise: 2 }[proficiency];
-      const modifier = applyNumericEffects(
+      restedModifiers[skill] = applyNumericEffects(
         modifiers[ability] + proficiencyBonus * multiplier,
         effectsFor(effects, `skill.${skill}`),
         modifiers,
       );
+      const modifier = restedModifiers[skill] - d20Penalty;
       return [skill, { ability, modifier, proficiency }];
     }),
   ) as ComputedSheet["skills"];
 
   // SRD 5.2.1, "Rellena los números": Percepción pasiva = 10 + modificador
-  // para pruebas de Sabiduría (Percepción).
-  const passivePerception = 10 + skills.perception.modifier;
+  // para pruebas de Sabiduría (Percepción). No es una tirada, y el cansancio
+  // reduce el resultado de la tirada: por eso no lo resta (ADR 0012).
+  const passivePerception = 10 + restedModifiers.perception;
 
   // --- Iniciativa ---
   // SRD 5.2.1, "Rellena los números": la iniciativa es el modificador por
   // Destreza. Dote "Alerta": suma el bonificador por competencia.
-  const initiative = applyNumericEffects(
-    modifiers.dex +
-      (granted.has("proficiency.initiative") ? proficiencyBonus : 0),
-    effectsFor(effects, "initiative"),
-    modifiers,
-  );
+  // La iniciativa es una prueba de Destreza: el cansancio la reduce.
+  const initiative =
+    applyNumericEffects(
+      modifiers.dex +
+        (granted.has("proficiency.initiative") ? proficiencyBonus : 0),
+      effectsFor(effects, "initiative"),
+      modifiers,
+    ) - d20Penalty;
 
   // --- Puntos de golpe y dados de golpe ---
   const cappedLevel = Math.min(totalLevel, MAX_CHARACTER_LEVEL);
@@ -555,14 +584,20 @@ export function calculateSheet(
   const insufficientStrength = wornArmor.some(
     ({ item }) => (item.data.armor?.strengthRequirement ?? 0) > scores.str,
   );
-  const speed = applyNumericEffects(
-    Math.max(
-      0,
-      (species?.data.speed ?? 0) -
-        (insufficientStrength ? HEAVY_ARMOR_SPEED_PENALTY : 0),
-    ),
-    effectsFor(effects, "speed"),
-    modifiers,
+  // SRD 5.2.1, "Cansancio", "Velocidad reducida": 1,5 m × nivel. Se resta
+  // al final y la velocidad no baja de 0.
+  const speedPenalty = EXHAUSTION_SPEED_PENALTY * exhaustionLevel;
+  const speed = Math.max(
+    0,
+    applyNumericEffects(
+      Math.max(
+        0,
+        (species?.data.speed ?? 0) -
+          (insufficientStrength ? HEAVY_ARMOR_SPEED_PENALTY : 0),
+      ),
+      effectsFor(effects, "speed"),
+      modifiers,
+    ) - speedPenalty,
   );
 
   // --- Visión en la oscuridad ---
@@ -591,11 +626,14 @@ export function calculateSheet(
           effectsFor(effects, "spell.dc"),
           modifiers,
         ),
-        attackBonus: applyNumericEffects(
-          base,
-          effectsFor(effects, "spell.attack"),
-          modifiers,
-        ),
+        // Es una tirada de ataque: el cansancio la reduce. La CD no, porque
+        // la tira el objetivo.
+        attackBonus:
+          applyNumericEffects(
+            base,
+            effectsFor(effects, "spell.attack"),
+            modifiers,
+          ) - d20Penalty,
         // SRD 5.2.1, "Entrenamiento con armaduras": sin entrenamiento con la
         // armadura que llevás, no podés lanzar conjuros.
         canCast: !untrainedArmor,
@@ -629,6 +667,7 @@ export function calculateSheet(
     darkvision,
     spellcasting,
     armorPenalties: { untrainedArmor, untrainedShield, insufficientStrength },
+    exhaustion: { level: exhaustionLevel, d20Penalty, speedPenalty },
     damageDefenses,
     issues,
   };

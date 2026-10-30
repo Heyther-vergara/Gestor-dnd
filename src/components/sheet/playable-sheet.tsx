@@ -88,6 +88,7 @@ export function PlayableSheet({
             hitPoints={sheet.hitPoints}
             hitDice={sheet.hitDice}
             deathSaves={sheet.deathSaves}
+            exhaustion={sheet.exhaustion}
             message={session.message}
             dispatch={dispatch}
           />
