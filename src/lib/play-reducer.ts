@@ -13,6 +13,8 @@ import {
   heal,
   longRest,
   type PlayResult,
+  reduceMaxHp,
+  restoreMaxHp,
   rollDeathSave,
   spendHitDie,
   stabilize,
@@ -37,6 +39,8 @@ export type PlayAction =
   | { type: "temp-hp"; amount: number }
   | { type: "spend-hit-die"; die: HitDie; roll: number }
   | { type: "long-rest" }
+  | { type: "reduce-max-hp"; amount: number }
+  | { type: "restore-max-hp" }
   | { type: "death-save"; roll: number }
   | { type: "stabilize" }
   | { type: "reset"; character: Character };
@@ -172,6 +176,23 @@ export function createPlayReducer(contentIndex: ContentIndex) {
         return apply(session, longRest(character, contentIndex), () => ({
           tone: "info",
           text: "Descanso largo: PG y dados de golpe al máximo.",
+        }));
+      case "reduce-max-hp":
+        return apply(
+          session,
+          reduceMaxHp(character, contentIndex, action.amount),
+          ({ reducedBy, outcome }) => ({
+            tone: "danger",
+            text:
+              outcome === "died"
+                ? "Tus PG máximos llegaron a 0: el personaje muere."
+                : `Tus PG máximos bajaron ${reducedBy}. Vuelven con un descanso largo.`,
+          }),
+        );
+      case "restore-max-hp":
+        return apply(session, restoreMaxHp(character, contentIndex), () => ({
+          tone: "info",
+          text: "Tus PG máximos vuelven a la normalidad.",
         }));
       case "death-save":
         return apply(

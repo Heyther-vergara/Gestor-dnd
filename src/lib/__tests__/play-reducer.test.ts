@@ -88,6 +88,31 @@ describe("play reducer (Brunhilda: 22 of 31 HP)", () => {
     expect(stable.character.playState.stable).toBe(true);
   });
 
+  it("reduces and restores max hit points", () => {
+    const drained = reducer(start, { type: "reduce-max-hp", amount: 12 });
+    const sheet = calculateSheet(drained.character, srd2024Index);
+    // 31 − 12 = 19: los 22 PG actuales bajan a 19.
+    expect(sheet.hitPoints).toMatchObject({ max: 19, current: 19 });
+    expect(drained.message).toEqual({
+      tone: "danger",
+      text: "Tus PG máximos bajaron 12. Vuelven con un descanso largo.",
+    });
+    const restored = reducer(drained, { type: "restore-max-hp" });
+    expect(
+      calculateSheet(restored.character, srd2024Index).hitPoints,
+    ).toMatchObject({
+      max: 31,
+      current: 19,
+    });
+  });
+
+  it("says when max hit points reach 0", () => {
+    const next = reducer(start, { type: "reduce-max-hp", amount: 31 });
+    expect(next.message?.text).toBe(
+      "Tus PG máximos llegaron a 0: el personaje muere.",
+    );
+  });
+
   it("resets to the given character", () => {
     const hurt = reducer(start, { type: "damage", amount: 5 });
     const reset = reducer(hurt, { type: "reset", character: sampleCharacter });

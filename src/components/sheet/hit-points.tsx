@@ -6,7 +6,7 @@ export function HitPoints({
   hitPoints,
   hitDice,
 }: Pick<ComputedSheet, "hitPoints" | "hitDice">) {
-  const { current, max, temp } = hitPoints;
+  const { current, max, temp, maxReduction } = hitPoints;
   const percent = max > 0 ? Math.round((current / max) * 100) : 0;
   // Debajo de la mitad (el "malherido" de muchas mesas) la barra pasa a rojo.
   const low = current * 2 < max;
@@ -26,6 +26,11 @@ export function HitPoints({
           {temp > 0 && <span className="text-gold"> +{temp} temp.</span>}
         </span>
       </div>
+      {maxReduction > 0 && (
+        <p className="text-sm text-destructive tabular-nums">
+          Máximo reducido en {maxReduction} hasta un descanso largo.
+        </p>
+      )}
       <div
         role="meter"
         aria-label="Puntos de golpe"

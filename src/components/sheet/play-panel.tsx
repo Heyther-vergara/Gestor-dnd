@@ -25,11 +25,13 @@ const toNumber = (value: string) => (value.trim() === "" ? NaN : Number(value));
 // salvaciones contra muerte. Solo
 // manda acciones; qué pasa con cada una lo decide el motor.
 export function PlayPanel({
+  hitPoints,
   hitDice,
   deathSaves,
   message,
   dispatch,
 }: {
+  hitPoints: ComputedSheet["hitPoints"];
   hitDice: ComputedSheet["hitDice"];
   deathSaves: ComputedSheet["deathSaves"];
   message: PlayMessage | null;
@@ -57,7 +59,9 @@ export function PlayPanel({
     ? chosenDie
     : availableDice[0]?.[0];
 
-  const sendAmount = (type: "damage" | "heal" | "temp-hp") => {
+  const sendAmount = (
+    type: "damage" | "heal" | "temp-hp" | "reduce-max-hp",
+  ) => {
     if (type === "damage") {
       dispatch({
         type,
@@ -101,6 +105,20 @@ export function PlayPanel({
           <Button variant="outline" onClick={() => sendAmount("temp-hp")}>
             PG temp.
           </Button>
+        </div>
+        {/* Efectos que "absorben la energía vital": usan la misma cantidad. */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button variant="outline" onClick={() => sendAmount("reduce-max-hp")}>
+            Reducir PG máx.
+          </Button>
+          {hitPoints.maxReduction > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => dispatch({ type: "restore-max-hp" })}
+            >
+              Restablecer máx.
+            </Button>
+          )}
         </div>
         {/* Con tipo, el motor aplica resistencias, vulnerabilidades e inmunidades. */}
         <div className="grid grid-cols-[auto_1fr] items-center gap-2">

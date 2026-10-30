@@ -106,6 +106,10 @@ const playStateSchema = z.strictObject({
   // Se guarda porque la muerte no se deduce de los PG: con 0 PG podés estar
   // agonizando, estable o muerto.
   dead: z.boolean().default(false),
+  // Cuánto se redujeron los PG máximos (por ejemplo, por daño necrótico que
+  // "absorbe la energía vital"). Es estado, no un valor derivado: lo causa un
+  // efecto de la partida y se quita con un descanso largo (ADR 0012).
+  maxHpReduction: z.int().min(0).default(0),
 });
 
 export const characterSchema = z.strictObject({
@@ -126,6 +130,7 @@ export const characterSchema = z.strictObject({
     deathSaves: { successes: 0, failures: 0 },
     stable: false,
     dead: false,
+    maxHpReduction: 0,
   }),
 });
 

@@ -1311,8 +1311,36 @@ describe("calculateSheet: hit points", () => {
       }),
       index,
     );
-    expect(hurt.hitPoints).toEqual({ max: 28, current: 18, temp: 4 });
+    expect(hurt.hitPoints).toEqual({
+      max: 28,
+      current: 18,
+      temp: 4,
+      maxReduction: 0,
+    });
     expect(down.hitPoints.current).toBe(0);
+  });
+
+  // SRD 5.2.1, "Puntos de golpe máximos de 0": ciertos efectos reducen los
+  // PG máximos. El daño recibido se cuenta desde el máximo ya reducido.
+  it("subtracts a max hit point reduction", () => {
+    const drained = calculateSheet(
+      makeCharacter({ playState: { damageTaken: 3, maxHpReduction: 8 } }),
+      index,
+    );
+    expect(drained.hitPoints).toEqual({
+      max: 20,
+      current: 17,
+      temp: 0,
+      maxReduction: 8,
+    });
+  });
+
+  it("never drops max hit points below 0", () => {
+    const sheet = calculateSheet(
+      makeCharacter({ playState: { maxHpReduction: 99 } }),
+      index,
+    );
+    expect(sheet.hitPoints).toMatchObject({ max: 0, current: 0 });
   });
 
   // SRD 5.2.1, "Multiclase": tu total de dados de golpe es la suma de los de

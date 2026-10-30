@@ -1,5 +1,6 @@
-// Acciones de partida: daño, curación, PG temporales, descansos y
-// salvaciones contra muerte (ADR 0009 y 0010).
+// Acciones de partida: daño, curación, PG temporales, descansos,
+// salvaciones contra muerte (ADR 0009 y 0010), y PG máximos reducidos y
+// cansancio (ADR 0012).
 // Cada una recibe el personaje y devuelve un playState nuevo, sin modificar
 // el original. Son puras: el motor no tira dados, recibe el resultado (ADR 0009).
 
@@ -277,8 +278,9 @@ export function spendHitDie(
 }
 
 // SRD 5.2.1, "Descanso largo": recuperás todos los PG perdidos y todos los
-// dados de golpe gastados. "Puntos de golpe temporales": duran hasta que
-// finalizás un descanso largo.
+// dados de golpe gastados, y "si tus puntos de golpe máximos se habían
+// reducido, vuelven a la normalidad". "Puntos de golpe temporales": duran
+// hasta que finalizás un descanso largo.
 export function longRest(
   character: Character,
   contentIndex: ContentIndex,
@@ -295,6 +297,62 @@ export function longRest(
       deathSaves: NO_SAVES,
       stable: false,
       dead: false,
+      maxHpReduction: 0,
+    },
+  };
+}
+
+// SRD 5.2.1, "Puntos de golpe máximos de 0": ciertos efectos absorben la
+// energía vital y reducen los PG máximos; si llegan a 0, la criatura muere.
+// "Curación": los PG actuales no pueden superar el máximo, así que bajan con
+// él si hace falta. Cuánto reduce lo dice el efecto (en general, el daño
+// necrótico recibido); el jugador lo carga.
+export function reduceMaxHp(
+  character: Character,
+  contentIndex: ContentIndex,
+  amount: number,
+): PlayResult<{ reducedBy: number; outcome: "reduced" | "died" }> {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const invalid = invalidAmount(amount);
+  if (invalid) return { ok: false, reason: invalid };
+
+  const { current, max } = calculateSheet(character, contentIndex).hitPoints;
+  // La reducción no pasa del máximo que queda.
+  const reducedBy = Math.min(max, amount);
+  const newMax = max - reducedBy;
+  const playState: PlayState = {
+    ...withCurrentHp(character.playState, newMax, Math.min(current, newMax)),
+    maxHpReduction: character.playState.maxHpReduction + reducedBy,
+  };
+  if (newMax === 0) {
+    return {
+      ok: true,
+      playState: { ...playState, dead: true },
+      reducedBy,
+      outcome: "died",
+    };
+  }
+  return { ok: true, playState, reducedBy, outcome: "reduced" };
+}
+
+// SRD 5.2.1, conjuro "Restablecimiento mayor": elimina "cualquier reducción
+// de los puntos de golpe máximos del objetivo". No es curación: los PG
+// actuales quedan igual. (El descanso largo también lo hace, y además cura.)
+export function restoreMaxHp(
+  character: Character,
+  contentIndex: ContentIndex,
+): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  if (character.playState.maxHpReduction === 0) {
+    return { ok: false, reason: "Los PG máximos no están reducidos" };
+  }
+  const { current, max } = calculateSheet(character, contentIndex).hitPoints;
+  const fullMax = max + character.playState.maxHpReduction;
+  return {
+    ok: true,
+    playState: {
+      ...withCurrentHp(character.playState, fullMax, current),
+      maxHpReduction: 0,
     },
   };
 }

@@ -53,7 +53,13 @@ export type ComputedSheet = {
   >;
   passivePerception: number;
   initiative: number;
-  hitPoints: { max: number; current: number; temp: number };
+  // `max` ya descuenta `maxReduction`, la reducción de PG máximos guardada.
+  hitPoints: {
+    max: number;
+    current: number;
+    temp: number;
+    maxReduction: number;
+  };
   // Salvaciones contra muerte. El estado se deduce de los PG y de lo
   // guardado: con PG está consciente; con 0, agonizando, estable o muerto.
   deathSaves: {
@@ -499,13 +505,25 @@ export function calculateSheet(
     effectsFor(effects, "hp.max"),
     modifiers,
   );
-  const { damageTaken, tempHp, hitDiceSpent, deathSaves, stable, dead } =
-    character.playState;
+  const {
+    damageTaken,
+    tempHp,
+    hitDiceSpent,
+    deathSaves,
+    stable,
+    dead,
+    maxHpReduction,
+  } = character.playState;
+  // SRD 5.2.1, "Puntos de golpe máximos de 0": ciertos efectos reducen los
+  // PG máximos. No bajan de 0 (con 0, el personaje muere; lo guarda
+  // reduceMaxHp).
+  const reducedMax = Math.max(0, maxHitPoints - maxHpReduction);
   const hitPoints = {
-    max: maxHitPoints,
+    max: reducedMax,
     // SRD 5.2.1, "Puntos de golpe": no bajan de 0.
-    current: Math.max(0, maxHitPoints - damageTaken),
+    current: Math.max(0, reducedMax - damageTaken),
     temp: tempHp,
+    maxReduction: maxHpReduction,
   };
   // La muerte va primero: un personaje muerto sigue muerto aunque sus PG
   // cambien. Con PG, las salvaciones no cuentan (ADR 0010).

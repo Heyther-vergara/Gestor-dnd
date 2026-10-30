@@ -47,6 +47,7 @@ describe("characterSchema", () => {
       deathSaves: { successes: 0, failures: 0 },
       stable: false,
       dead: false,
+      maxHpReduction: 0,
     });
   });
 

@@ -6,6 +6,8 @@ import {
   gainTempHp,
   heal,
   longRest,
+  reduceMaxHp,
+  restoreMaxHp,
   rollDeathSave,
   spendHitDie,
   stabilize,
@@ -446,6 +448,22 @@ describe("longRest", () => {
       deathSaves: { successes: 0, failures: 0 },
       stable: false,
       dead: false,
+      maxHpReduction: 0,
+    });
+  });
+
+  // SRD 5.2.1, "Descanso largo", "Puntos de golpe al máximo": si tus PG
+  // máximos se habían reducido, vuelven a la normalidad.
+  it("restores reduced max hit points", () => {
+    const drained = makeCharacter({ maxHpReduction: 8, damageTaken: 5 });
+    const result = expectOk(longRest(drained, index));
+    expect(result.playState).toMatchObject({
+      maxHpReduction: 0,
+      damageTaken: 0,
+    });
+    expect(hitPointsAfter(drained, result.playState)).toMatchObject({
+      max: MAX_HP,
+      current: MAX_HP,
     });
   });
 
@@ -454,6 +472,79 @@ describe("longRest", () => {
     expect(longRest(makeCharacter({ damageTaken: MAX_HP }), index).ok).toBe(
       false,
     );
+  });
+});
+
+// --- PG máximos reducidos (ADR 0012) ---
+
+describe("reduceMaxHp", () => {
+  // SRD 5.2.1, "Curación": tus PG no pueden superar tus PG máximos. Si
+  // estabas al máximo, bajás con él.
+  it("lowers max hit points and caps current hit points", () => {
+    const character = makeCharacter();
+    const result = expectOk(reduceMaxHp(character, index, 5));
+    expect(result).toMatchObject({ reducedBy: 5, outcome: "reduced" });
+    expect(hitPointsAfter(character, result.playState)).toMatchObject({
+      max: MAX_HP - 5,
+      current: MAX_HP - 5,
+    });
+  });
+
+  // Si ya estabas herido por debajo del máximo nuevo, tus PG actuales no
+  // cambian: la reducción no es daño.
+  it("keeps current hit points that fit under the new max", () => {
+    const hurt = makeCharacter({ damageTaken: 10 }); // 18 de 28
+    const result = expectOk(reduceMaxHp(hurt, index, 5));
+    expect(hitPointsAfter(hurt, result.playState)).toMatchObject({
+      max: 23,
+      current: 18,
+    });
+  });
+
+  it("adds up several reductions", () => {
+    const drained = makeCharacter({ maxHpReduction: 4 });
+    const result = expectOk(reduceMaxHp(drained, index, 3));
+    expect(result.playState.maxHpReduction).toBe(7);
+  });
+
+  // SRD 5.2.1, "Puntos de golpe máximos de 0": una criatura muere si sus PG
+  // máximos llegan a 0. La reducción no pasa del máximo.
+  it("kills when max hit points reach 0", () => {
+    const result = expectOk(reduceMaxHp(makeCharacter(), index, 40));
+    expect(result).toMatchObject({ reducedBy: MAX_HP, outcome: "died" });
+    expect(result.playState).toMatchObject({
+      maxHpReduction: MAX_HP,
+      dead: true,
+    });
+  });
+
+  it("caps healing at the reduced max", () => {
+    const drained = makeCharacter({ maxHpReduction: 8, damageTaken: 10 });
+    const result = expectOk(heal(drained, index, 50));
+    expect(hitPointsAfter(drained, result.playState).current).toBe(20);
+  });
+
+  it("rejects invalid amounts and dead characters", () => {
+    expect(reduceMaxHp(makeCharacter(), index, -1).ok).toBe(false);
+    expect(reduceMaxHp(makeCharacter({ dead: true }), index, 1).ok).toBe(false);
+  });
+});
+
+describe("restoreMaxHp", () => {
+  // SRD 5.2.1, conjuro "Restablecimiento mayor": elimina "cualquier reducción
+  // de los puntos de golpe máximos". Los PG actuales no suben: no es curación.
+  it("removes the reduction without healing", () => {
+    const drained = makeCharacter({ maxHpReduction: 8 }); // 20 de 20
+    const result = expectOk(restoreMaxHp(drained, index));
+    expect(result.playState.maxHpReduction).toBe(0);
+    expect(hitPointsAfter(drained, result.playState)).toMatchObject({
+      max: MAX_HP,
+      current: 20,
+    });
+  });
+
+  it("fails when max hit points are not reduced", () => {
+    expect(restoreMaxHp(makeCharacter(), index).ok).toBe(false);
   });
 });
 
