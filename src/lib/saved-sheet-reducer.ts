@@ -1,5 +1,5 @@
 // Reducer de la hoja guardada: envuelve al de partida (play-reducer) y le
-// suma el estado del guardado en el navegador (ADR 0011).
+// suma el estado del guardado (ADR 0011, y la nube en el ADR 0013).
 //
 // Se junta todo en un solo reducer porque "terminó la carga" cambia dos cosas
 // a la vez (el personaje y el estado del guardado). Con un único dispatch,
@@ -15,9 +15,12 @@ import {
 } from "./play-reducer";
 
 // - "loading": todavía no leímos lo guardado (primer render, también en el servidor).
-// - "saved": lo que ves está guardado en este navegador.
+// - "cloud": lo que ves está guardado en la nube (y en este navegador).
+// - "local": está guardado solo en este navegador (la nube no está configurada).
+// - "cloud-error": la nube falló (sin conexión…); queda la copia del navegador.
 // - "unavailable": el navegador no deja guardar (modo privado, sin espacio…).
-export type SaveStatus = "loading" | "saved" | "unavailable";
+export type SaveStatus =
+  "loading" | "cloud" | "local" | "cloud-error" | "unavailable";
 
 export type SavedSheetState = {
   session: PlaySession;
@@ -26,10 +29,17 @@ export type SavedSheetState = {
 
 export type SavedSheetAction =
   | PlayAction
-  // Terminó de leer el navegador. `character` es null si no había nada
-  // guardado (o no servía): se sigue con el personaje inicial.
-  | { type: "storage-loaded"; character: Character | null }
-  | { type: "storage-failed" };
+  // Terminó de leer lo guardado. `character` es null si no había nada (o no
+  // servía): se sigue con el personaje inicial. `where` dice si la nube
+  // respondió.
+  | {
+      type: "storage-loaded";
+      character: Character | null;
+      where: "cloud" | "local";
+    }
+  | { type: "storage-failed" }
+  // Terminó un guardado en la nube, bien o mal.
+  | { type: "cloud-result"; ok: boolean };
 
 export function initialSavedSheetState(character: Character): SavedSheetState {
   return { session: { character, message: null }, saveStatus: "loading" };
@@ -48,10 +58,19 @@ export function createSavedSheetReducer(contentIndex: ContentIndex) {
           session: action.character
             ? { character: action.character, message: null }
             : state.session,
-          saveStatus: "saved",
+          saveStatus: action.where,
         };
       case "storage-failed":
         return { ...state, saveStatus: "unavailable" };
+      case "cloud-result": {
+        // Un resultado que llega antes de terminar la carga no cambia nada.
+        if (state.saveStatus === "loading") return state;
+        const saveStatus = action.ok ? "cloud" : "cloud-error";
+        // Mismo estado → mismo objeto, así React no vuelve a dibujar.
+        return state.saveStatus === saveStatus
+          ? state
+          : { ...state, saveStatus };
+      }
       default:
         return { ...state, session: playReducer(state.session, action) };
     }

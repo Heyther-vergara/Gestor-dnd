@@ -1,5 +1,5 @@
-// Guardado del personaje en el navegador (localStorage), hasta que haya base
-// de datos (ADR 0011). Guarda solo el personaje, que ya es "elecciones + estado":
+// Guardado del personaje en el navegador (localStorage, ADR 0011). Desde el
+// ADR 0013 es la copia local: la copia en la nube la maneja `character-sync`. Guarda solo el personaje, que ya es "elecciones + estado":
 // la hoja se recalcula con el motor al cargar.
 //
 // Recibe el almacenamiento como parámetro (en vez de usar `window.localStorage`
@@ -19,7 +19,8 @@ export type KeyValueStorage = Pick<
 // sabemos qué versión leímos y podemos migrarla en vez de perder la hoja.
 const STORAGE_VERSION = 1;
 
-const savedCharacterSchema = z.strictObject({
+// El mismo formato se usa en el navegador y en la base de datos (ADR 0013).
+export const savedCharacterSchema = z.strictObject({
   version: z.literal(STORAGE_VERSION),
   savedAt: z.iso.datetime(),
   character: characterSchema,
@@ -51,9 +52,16 @@ export function loadCharacter(
   } catch {
     return { status: "invalid" };
   }
+  return parseSavedCharacter(json, characterId);
+}
 
-  // Lo guardado viene de afuera del programa (el usuario puede editarlo a
-  // mano): se valida con Zod igual que cualquier dato externo.
+// Valida algo guardado que viene de afuera del programa (el navegador o la
+// base de datos). El usuario puede editarlo a mano o puede venir de una
+// versión vieja de la app: se valida con Zod igual que cualquier dato externo.
+export function parseSavedCharacter(
+  json: unknown,
+  characterId: string,
+): LoadResult {
   const parsed = savedCharacterSchema.safeParse(json);
   if (!parsed.success) return { status: "invalid" };
   // Un personaje guardado con otro id no es este personaje.
@@ -61,17 +69,32 @@ export function loadCharacter(
   return { status: "loaded", saved: parsed.data };
 }
 
+// Arma el sobre con versión y fecha que se guarda.
+export function toSavedCharacter(
+  character: Character,
+  now: Date = new Date(),
+): SavedCharacter {
+  return { version: STORAGE_VERSION, savedAt: now.toISOString(), character };
+}
+
 export function saveCharacter(
   storage: KeyValueStorage,
   character: Character,
   now: Date = new Date(),
 ): void {
-  const saved: SavedCharacter = {
-    version: STORAGE_VERSION,
-    savedAt: now.toISOString(),
-    character,
-  };
-  storage.setItem(characterStorageKey(character.id), JSON.stringify(saved));
+  writeSavedCharacter(storage, toSavedCharacter(character, now));
+}
+
+// Guarda un sobre ya armado (por ejemplo, el que vino de la nube) tal cual,
+// sin cambiarle la fecha.
+export function writeSavedCharacter(
+  storage: KeyValueStorage,
+  saved: SavedCharacter,
+): void {
+  storage.setItem(
+    characterStorageKey(saved.character.id),
+    JSON.stringify(saved),
+  );
 }
 
 export function clearCharacter(
