@@ -38,6 +38,10 @@ export type SavedSheetAction =
       where: "cloud" | "local";
     }
   | { type: "storage-failed" }
+  // Cambió el usuario (entró o salió de la cuenta, ADR 0014): vuelve a
+  // "loading" con `character` hasta que termine de leer lo guardado. Mientras
+  // está en "loading" no se guarda nada, así no se pisa la hoja de la cuenta.
+  | { type: "reload"; character: Character }
   // Terminó un guardado en la nube, bien o mal.
   | { type: "cloud-result"; ok: boolean };
 
@@ -59,6 +63,11 @@ export function createSavedSheetReducer(contentIndex: ContentIndex) {
             ? { character: action.character, message: null }
             : state.session,
           saveStatus: action.where,
+        };
+      case "reload":
+        return {
+          session: { character: action.character, message: null },
+          saveStatus: "loading",
         };
       case "storage-failed":
         return { ...state, saveStatus: "unavailable" };

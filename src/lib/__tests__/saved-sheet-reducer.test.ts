@@ -77,4 +77,18 @@ describe("saved sheet reducer", () => {
   it("ignores cloud results while still loading", () => {
     expect(reducer(start, { type: "cloud-result", ok: true })).toBe(start);
   });
+
+  // Al entrar o salir de la cuenta se vuelve a leer lo guardado: mientras
+  // tanto no se guarda nada, para no pisar la hoja de la otra cuenta.
+  it("goes back to loading with the given character on reload", () => {
+    const loaded = reducer(start, {
+      type: "storage-loaded",
+      character: null,
+      where: "cloud",
+    });
+    const hurt = reducer(loaded, { type: "damage", amount: 5 });
+    const next = reducer(hurt, { type: "reload", character: sampleCharacter });
+    expect(next.saveStatus).toBe("loading");
+    expect(next.session.character).toBe(sampleCharacter);
+  });
 });

@@ -172,3 +172,36 @@ describe("createRemoteSaver", () => {
     expect(offline.calls).toEqual(["save:1", "save:2"]);
   });
 });
+
+// Al entrar a una cuenta desde otro dispositivo, la hoja de la cuenta manda
+// aunque la copia del navegador (del usuario anónimo anterior) sea más nueva.
+describe("loadAndSync with preferRemote", () => {
+  it("keeps the account sheet over a newer browser copy", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(2), later);
+    const cloud = memoryCloud();
+    cloud.rows.set(id, toSavedCharacter(hurt(8), earlier));
+
+    const result = await loadAndSync(local, cloud.store, id, {
+      preferRemote: true,
+    });
+
+    expect(result).toEqual({ character: hurt(8), where: "cloud" });
+    expect(JSON.parse(local.data.get(characterStorageKey(id))!)).toEqual(
+      toSavedCharacter(hurt(8), earlier),
+    );
+  });
+
+  it("still uploads the browser copy when the account has no sheet", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(5), later);
+    const cloud = memoryCloud();
+
+    const result = await loadAndSync(local, cloud.store, id, {
+      preferRemote: true,
+    });
+
+    expect(result.character).toEqual(hurt(5));
+    expect((cloud.rows.get(id) as SavedCharacter).character).toEqual(hurt(5));
+  });
+});
