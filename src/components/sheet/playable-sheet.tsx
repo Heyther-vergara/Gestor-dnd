@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
+import { clearCharacter, saveCharacter } from "@/lib/character-storage";
 import {
-  clearCharacter,
-  loadCharacter,
-  saveCharacter,
-} from "@/lib/character-storage";
+  createRemoteSaver,
+  loadAndSync,
+  type RemoteCharacterStore,
+} from "@/lib/character-sync";
 import {
   createSavedSheetReducer,
   initialSavedSheetState,
   type SaveStatus,
 } from "@/lib/saved-sheet-reducer";
 import { srd2024Index } from "@/lib/srd-2024";
+import { createSupabaseCharacterStore } from "@/lib/supabase/character-store";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { calculateSheet } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
@@ -24,9 +27,14 @@ import { SheetView } from "./sheet-view";
 // calcule los PG máximos y los dados de golpe.
 const savedSheetReducer = createSavedSheetReducer(srd2024Index);
 
+type Cloud = {
+  store: RemoteCharacterStore;
+  saver: ReturnType<typeof createRemoteSaver>;
+};
+
 // La hoja en partida. Lleva el personaje en memoria (useReducer), recalcula la
-// hoja en cada cambio y la guarda en el navegador (ADR 0011), así recargar la
-// página no borra el daño ni las salvaciones.
+// hoja en cada cambio y la guarda en la nube (ADR 0013) y en el navegador
+// (ADR 0011), así recargar la página no borra el daño ni las salvaciones.
 export function PlayableSheet({
   initialCharacter,
   subtitle,
@@ -40,37 +48,74 @@ export function PlayableSheet({
     initialSavedSheetState,
   );
   const characterId = initialCharacter.id;
+  const loaded = saveStatus !== "loading";
 
-  // 1) Al montar, recupera lo guardado. Se hace en un efecto y no al crear el
-  // estado porque el servidor no tiene localStorage: si el primer render del
-  // cliente fuera distinto al del servidor, React avisa un error de hidratación.
+  // La nube se arma una sola vez y solo en el navegador (en un efecto, nunca
+  // durante el render, que también corre en el servidor). Queda en null si
+  // Supabase no está configurado.
+  const cloudRef = useRef<Cloud | null | undefined>(undefined);
+  function getCloud(): Cloud | null {
+    if (cloudRef.current === undefined) {
+      const supabase = getSupabaseClient();
+      const store = supabase ? createSupabaseCharacterStore(supabase) : null;
+      cloudRef.current = store
+        ? {
+            store,
+            saver: createRemoteSaver(store, (ok) =>
+              dispatch({ type: "cloud-result", ok }),
+            ),
+          }
+        : null;
+    }
+    return cloudRef.current;
+  }
+
+  // 1) Al montar, recupera lo guardado (nube y navegador) y se queda con lo
+  // más nuevo. Se hace en un efecto y no al crear el estado porque el
+  // servidor no tiene localStorage ni sesión: si el primer render del cliente
+  // fuera distinto al del servidor, React avisa un error de hidratación.
   useEffect(() => {
+    // Si el usuario sale de la página antes de que responda la nube, no
+    // tocamos un componente que ya no existe.
+    let cancelled = false;
+    let local: Storage;
     try {
-      const result = loadCharacter(window.localStorage, characterId);
-      dispatch({
-        type: "storage-loaded",
-        character: result.status === "loaded" ? result.saved.character : null,
-      });
+      local = window.localStorage;
     } catch {
       dispatch({ type: "storage-failed" });
+      return;
     }
+    loadAndSync(local, getCloud()?.store ?? null, characterId)
+      .then((result) => {
+        if (!cancelled) dispatch({ type: "storage-loaded", ...result });
+      })
+      .catch(() => {
+        if (!cancelled) dispatch({ type: "storage-failed" });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [characterId]);
 
   // 2) Cada vez que cambia el personaje, lo guarda. Espera a que termine la
   // carga: si no, guardaría el personaje inicial encima de lo guardado.
   useEffect(() => {
-    if (saveStatus !== "saved") return;
+    if (!loaded) return;
+    // Volver al estado inicial borra lo guardado en vez de copiarlo.
+    const isReset = session.character === initialCharacter;
     try {
-      // Volver al estado inicial borra lo guardado en vez de copiarlo.
-      if (session.character === initialCharacter) {
-        clearCharacter(window.localStorage, characterId);
-      } else {
-        saveCharacter(window.localStorage, session.character);
-      }
+      if (isReset) clearCharacter(window.localStorage, characterId);
+      else saveCharacter(window.localStorage, session.character);
     } catch {
       dispatch({ type: "storage-failed" });
     }
-  }, [session.character, initialCharacter, characterId, saveStatus]);
+    // La nube va aparte y sin esperar: el resultado llega como "cloud-result".
+    const saver = getCloud()?.saver;
+    if (saver) {
+      if (isReset) void saver.remove(characterId);
+      else void saver.save(session.character);
+    }
+  }, [session.character, initialCharacter, characterId, loaded]);
 
   const sheet = useMemo(
     () => calculateSheet(session.character, srd2024Index),
@@ -118,7 +163,10 @@ export function PlayableSheet({
 
 const saveStatusText: Record<SaveStatus, string> = {
   loading: "",
-  saved: "Los cambios se guardan en este navegador.",
+  cloud: "Los cambios se guardan en la nube.",
+  local: "Los cambios se guardan en este navegador.",
+  "cloud-error":
+    "No se pudo guardar en la nube: por ahora los cambios quedan en este navegador.",
   unavailable:
     "Este navegador no permite guardar: los cambios se pierden al recargar.",
 };
