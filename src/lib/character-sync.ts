@@ -37,10 +37,15 @@ export type SyncResult = {
 // Al abrir la hoja: lee las dos copias, se queda con la más nueva y deja las
 // dos iguales. Si la nube está vacía pero el navegador tiene algo (lo que se
 // guardaba antes del ADR 0013), lo sube: así no se pierde nada.
+//
+// `preferRemote`: al entrar a una cuenta desde otro dispositivo (ADR 0014),
+// la hoja de la cuenta gana aunque la del navegador sea más nueva. La del
+// navegador era de otro usuario (el anónimo), y no debe pisar la de la cuenta.
 export async function loadAndSync(
   local: KeyValueStorage,
   remote: RemoteCharacterStore | null,
   characterId: string,
+  options: { preferRemote?: boolean } = {},
 ): Promise<SyncResult> {
   const localResult = loadCharacter(local, characterId);
   const localSaved = localResult.status === "loaded" ? localResult.saved : null;
@@ -58,7 +63,10 @@ export async function loadAndSync(
     return { character: localSaved?.character ?? null, where: "local" };
   }
 
-  const newest = pickNewest(localSaved, remoteSaved);
+  const newest =
+    options.preferRemote && remoteSaved
+      ? remoteSaved
+      : pickNewest(localSaved, remoteSaved);
   if (!newest) return { character: null, where: "cloud" };
 
   try {

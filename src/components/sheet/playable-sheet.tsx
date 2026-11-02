@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { clearCharacter, saveCharacter } from "@/lib/character-storage";
@@ -20,6 +20,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { calculateSheet } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
+import { AccountPanel } from "./account-panel";
 import { PlayPanel } from "./play-panel";
 import { SheetView } from "./sheet-view";
 
@@ -49,6 +50,9 @@ export function PlayableSheet({
   );
   const characterId = initialCharacter.id;
   const loaded = saveStatus !== "loading";
+  // Pedido de volver a leer lo guardado. Cambia al entrar o salir de la
+  // cuenta (ADR 0014); cada objeto nuevo vuelve a correr el efecto de carga.
+  const [syncRequest, setSyncRequest] = useState({ preferRemote: false });
 
   // La nube se arma una sola vez y solo en el navegador (en un efecto, nunca
   // durante el render, que también corre en el servidor). Queda en null si
@@ -85,7 +89,7 @@ export function PlayableSheet({
       dispatch({ type: "storage-failed" });
       return;
     }
-    loadAndSync(local, getCloud()?.store ?? null, characterId)
+    loadAndSync(local, getCloud()?.store ?? null, characterId, syncRequest)
       .then((result) => {
         if (!cancelled) dispatch({ type: "storage-loaded", ...result });
       })
@@ -95,7 +99,7 @@ export function PlayableSheet({
     return () => {
       cancelled = true;
     };
-  }, [characterId]);
+  }, [characterId, syncRequest]);
 
   // 2) Cada vez que cambia el personaje, lo guarda. Espera a que termine la
   // carga: si no, guardaría el personaje inicial encima de lo guardado.
@@ -116,6 +120,22 @@ export function PlayableSheet({
       else void saver.save(session.character);
     }
   }, [session.character, initialCharacter, characterId, loaded]);
+
+  // Cambió el usuario: se vuelve a cargar la hoja desde la nube.
+  // - Al entrar a una cuenta que ya existía, gana la hoja de la cuenta.
+  // - Al salir, se borra la copia de este navegador (puede ser una
+  //   computadora compartida) y se empieza de cero con un usuario anónimo.
+  function handleUserSwitched(change: "signed-in" | "signed-out") {
+    if (change === "signed-out") {
+      try {
+        clearCharacter(window.localStorage, characterId);
+      } catch {
+        // Si el navegador no deja tocar el almacenamiento, no hay copia.
+      }
+    }
+    dispatch({ type: "reload", character: initialCharacter });
+    setSyncRequest({ preferRemote: change === "signed-in" });
+  }
 
   const sheet = useMemo(
     () => calculateSheet(session.character, srd2024Index),
@@ -155,6 +175,7 @@ export function PlayableSheet({
               Volver al estado inicial
             </Button>
           </div>
+          <AccountPanel onUserSwitched={handleUserSwitched} />
         </div>
       }
     />
