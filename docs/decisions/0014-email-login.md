@@ -1,7 +1,7 @@
 # 0014 — Login con email (código por email) y vinculación de la hoja anónima
 
 - Fecha: 2026-11-02
-- Estado: aceptada
+- Estado: aceptada, en pausa desde 2026-11-12 (ver "Actualización")
 
 ## Contexto
 
@@ -31,3 +31,9 @@ Opciones para entrar:
 - El servidor de emails que trae Supabase es para pruebas: manda pocos emails por hora y solo a direcciones del equipo del proyecto. Para usuarios reales hace falta un SMTP propio (por ejemplo Resend); queda para cuando la app tenga usuarios.
 - El usuario anónimo del segundo dispositivo queda huérfano en la base al entrar a la cuenta (igual que los anónimos que no vuelven, ADR 0013).
 - Sigue siendo **una hoja por usuario** (la de ejemplo). Varias hojas por cuenta llegan con el creador de personajes.
+
+## Actualización 2026-11-12: login en pausa
+
+El login con email necesita SMTP propio y editar las plantillas de email de Supabase, y todavía no se probó contra el Supabase real. Para mantener la app simple mientras no haya hojas propias que pasar entre dispositivos, **se oculta el botón "Entrar con email"** (`EMAIL_LOGIN_ENABLED = false` en `components/sheet/account-panel.tsx`). La hoja se sigue guardando con el usuario anónimo (ADR 0013).
+
+No se borra el código: para volver a usarlo alcanza con poner la constante en `true`. Cuando haga falta una cuenta, se evaluará también entrar con GitHub o Google (OAuth de Supabase), que no necesitan SMTP.
