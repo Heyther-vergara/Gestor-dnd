@@ -103,3 +103,26 @@ export function clearCharacter(
 ): void {
   storage.removeItem(characterStorageKey(characterId));
 }
+
+// Para listar hace falta recorrer las claves, cosa que `KeyValueStorage` no
+// pide. localStorage lo permite con `length` y `key(i)`.
+export type EnumerableStorage = KeyValueStorage &
+  Pick<Storage, "length" | "key">;
+
+const KEY_PREFIX = characterStorageKey("");
+
+// Todos los personajes guardados en este navegador que siguen siendo válidos.
+// Los inválidos se saltean, igual que al cargar uno.
+export function listLocalCharacters(
+  storage: EnumerableStorage,
+): SavedCharacter[] {
+  const ids: string[] = [];
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key?.startsWith(KEY_PREFIX)) ids.push(key.slice(KEY_PREFIX.length));
+  }
+  return ids.flatMap((id) => {
+    const result = loadCharacter(storage, id);
+    return result.status === "loaded" ? [result.saved] : [];
+  });
+}

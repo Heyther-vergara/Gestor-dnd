@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { feetToMeters, formatModifier } from "@/lib/format";
+import { characterSubtitle, feetToMeters, formatModifier } from "@/lib/format";
+import { sampleCharacter } from "@/lib/sample-character";
+import { srd2024Index } from "@/lib/srd-2024";
 
 describe("formatModifier", () => {
   it("adds a plus sign to zero and positives", () => {
@@ -24,5 +26,23 @@ describe("feetToMeters", () => {
 
   it("uses a decimal comma", () => {
     expect(feetToMeters(25)).toBe("7,5 m");
+  });
+});
+
+describe("characterSubtitle", () => {
+  // SRD 5.2.1 (español): Enano, Guerrero, Soldado.
+  it("names species, classes with level and background in Spanish", () => {
+    expect(characterSubtitle(sampleCharacter, srd2024Index)).toBe(
+      "Enano · Guerrero 3 · Soldado",
+    );
+  });
+
+  it("falls back to the id when the content is missing", () => {
+    expect(
+      characterSubtitle(
+        { ...sampleCharacter, backgroundId: "unknown-bg" },
+        srd2024Index,
+      ),
+    ).toBe("Enano · Guerrero 3 · unknown-bg");
   });
 });

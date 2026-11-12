@@ -15,8 +15,7 @@ import {
   type SaveStatus,
 } from "@/lib/saved-sheet-reducer";
 import { srd2024Index } from "@/lib/srd-2024";
-import { createSupabaseCharacterStore } from "@/lib/supabase/character-store";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getCharacterStore } from "@/lib/supabase/character-store";
 import { calculateSheet } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
@@ -36,12 +35,20 @@ type Cloud = {
 // La hoja en partida. Lleva el personaje en memoria (useReducer), recalcula la
 // hoja en cada cambio y la guarda en la nube (ADR 0013) y en el navegador
 // (ADR 0011), así recargar la página no borra el daño ni las salvaciones.
+//
+// `resetMode` dice qué hace "Volver al estado inicial":
+// - "clear" (hoja de ejemplo): borra lo guardado; el personaje vive en el código.
+// - "keep" (personajes creados, ADR 0015): guarda `initialCharacter`, que
+//   es el personaje con el estado de partida en cero. Borrar lo guardado
+//   borraría el personaje entero.
 export function PlayableSheet({
   initialCharacter,
   subtitle,
+  resetMode = "clear",
 }: {
   initialCharacter: Character;
   subtitle: string;
+  resetMode?: "clear" | "keep";
 }) {
   const [{ session, saveStatus }, dispatch] = useReducer(
     savedSheetReducer,
@@ -60,8 +67,7 @@ export function PlayableSheet({
   const cloudRef = useRef<Cloud | null | undefined>(undefined);
   function getCloud(): Cloud | null {
     if (cloudRef.current === undefined) {
-      const supabase = getSupabaseClient();
-      const store = supabase ? createSupabaseCharacterStore(supabase) : null;
+      const store = getCharacterStore();
       cloudRef.current = store
         ? {
             store,
@@ -106,7 +112,8 @@ export function PlayableSheet({
   useEffect(() => {
     if (!loaded) return;
     // Volver al estado inicial borra lo guardado en vez de copiarlo.
-    const isReset = session.character === initialCharacter;
+    const isReset =
+      resetMode === "clear" && session.character === initialCharacter;
     try {
       if (isReset) clearCharacter(window.localStorage, characterId);
       else saveCharacter(window.localStorage, session.character);
@@ -119,7 +126,7 @@ export function PlayableSheet({
       if (isReset) void saver.remove(characterId);
       else void saver.save(session.character);
     }
-  }, [session.character, initialCharacter, characterId, loaded]);
+  }, [session.character, initialCharacter, characterId, loaded, resetMode]);
 
   // Cambió el usuario: se vuelve a cargar la hoja desde la nube.
   // - Al entrar a una cuenta que ya existía, gana la hoja de la cuenta.

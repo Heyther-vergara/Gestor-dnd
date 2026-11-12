@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { RemoteCharacterStore } from "../character-sync";
+import { getSupabaseClient } from "./client";
 
 const TABLE = "characters";
 
@@ -39,6 +40,15 @@ export function createSupabaseCharacterStore(
       return (data as { data: unknown } | null)?.data ?? null;
     },
 
+    async list() {
+      await ensureUserId(supabase);
+      // RLS devuelve solo las filas del usuario. Cada `data` se valida con Zod
+      // en `character-sync`.
+      const { data, error } = await supabase.from(TABLE).select("data");
+      if (error) throw error;
+      return ((data ?? []) as { data: unknown }[]).map((row) => row.data);
+    },
+
     async save(saved) {
       const userId = await ensureUserId(supabase);
       // upsert = insertar o, si ya existe la fila (mismo usuario y personaje),
@@ -61,4 +71,16 @@ export function createSupabaseCharacterStore(
       if (error) throw error;
     },
   };
+}
+
+// Una sola nube para toda la app (la lista, el creador y la hoja). null si
+// Supabase no está configurado: entonces todo se guarda en el navegador.
+let sharedStore: RemoteCharacterStore | null | undefined;
+
+export function getCharacterStore(): RemoteCharacterStore | null {
+  if (sharedStore === undefined) {
+    const supabase = getSupabaseClient();
+    sharedStore = supabase ? createSupabaseCharacterStore(supabase) : null;
+  }
+  return sharedStore;
 }

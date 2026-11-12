@@ -12,9 +12,14 @@ export default function Home() {
         Hojas de personaje compatibles con 5e (SRD 5.1 y 5.2.1), con contenido
         homebrew. En construcción.
       </p>
-      <Button asChild>
-        <Link href="/sheet/example">Ver hoja de ejemplo</Link>
-      </Button>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button asChild>
+          <Link href="/characters">Mis personajes</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/sheet/example">Ver hoja de ejemplo</Link>
+        </Button>
+      </div>
     </main>
   );
 }
