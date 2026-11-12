@@ -10,10 +10,13 @@
 import type { Character } from "@/rules-engine/schemas";
 
 import {
+  type EnumerableStorage,
   type KeyValueStorage,
+  listLocalCharacters,
   loadCharacter,
   parseSavedCharacter,
   type SavedCharacter,
+  savedCharacterSchema,
   toSavedCharacter,
   writeSavedCharacter,
 } from "./character-storage";
@@ -22,6 +25,8 @@ import {
 // validar (`unknown`): viene de afuera y se valida con Zod acá.
 export type RemoteCharacterStore = {
   load(characterId: string): Promise<unknown | null>;
+  // Todos los personajes del usuario, sin validar.
+  list(): Promise<unknown[]>;
   save(saved: SavedCharacter): Promise<void>;
   remove(characterId: string): Promise<void>;
 };
@@ -76,6 +81,41 @@ export async function loadAndSync(
   }
   if (newest !== localSaved) writeSavedCharacter(local, newest);
   return { character: newest.character, where: "cloud" };
+}
+
+// La lista de "Mis personajes" (ADR 0015): junta los de la nube y los del
+// navegador. Si un personaje está en los dos lados, gana la copia más nueva,
+// como al abrir la hoja. Los más recientes van primero.
+// Solo lee: la copia que falte en algún lado se completa al abrir la hoja.
+export async function listCharacters(
+  local: EnumerableStorage,
+  remote: RemoteCharacterStore | null,
+): Promise<{ characters: SavedCharacter[]; where: "cloud" | "local" }> {
+  const byId = new Map<string, SavedCharacter>();
+  for (const saved of listLocalCharacters(local)) {
+    byId.set(saved.character.id, saved);
+  }
+
+  let where: "cloud" | "local" = "local";
+  if (remote) {
+    try {
+      for (const raw of await remote.list()) {
+        const parsed = savedCharacterSchema.safeParse(raw);
+        if (!parsed.success) continue;
+        const saved = parsed.data;
+        const newest = pickNewest(byId.get(saved.character.id) ?? null, saved);
+        if (newest) byId.set(saved.character.id, newest);
+      }
+      where = "cloud";
+    } catch {
+      // Sin conexión: mostramos lo que hay en este navegador.
+    }
+  }
+
+  const characters = [...byId.values()].sort(
+    (a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt),
+  );
+  return { characters, where };
 }
 
 // La copia con la fecha de guardado más reciente. Si hay empate gana la nube.

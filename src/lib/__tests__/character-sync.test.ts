@@ -2,23 +2,28 @@ import { describe, expect, it } from "vitest";
 
 import {
   characterStorageKey,
-  type KeyValueStorage,
+  type EnumerableStorage,
   type SavedCharacter,
   saveCharacter,
   toSavedCharacter,
 } from "@/lib/character-storage";
 import {
   createRemoteSaver,
+  listCharacters,
   loadAndSync,
   type RemoteCharacterStore,
 } from "@/lib/character-sync";
 import { sampleCharacter } from "@/lib/sample-character";
 import type { Character } from "@/rules-engine/schemas";
 
-function memoryStorage(): KeyValueStorage & { data: Map<string, string> } {
+function memoryStorage(): EnumerableStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
   return {
     data,
+    get length() {
+      return data.size;
+    },
+    key: (i) => [...data.keys()][i] ?? null,
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
     removeItem: (key) => void data.delete(key),
@@ -34,6 +39,11 @@ function memoryCloud(options: { fail?: boolean } = {}) {
       calls.push(`load:${id}`);
       if (options.fail) throw new Error("offline");
       return rows.get(id) ?? null;
+    },
+    async list() {
+      calls.push("list");
+      if (options.fail) throw new Error("offline");
+      return [...rows.values()];
     },
     async save(saved) {
       calls.push(`save:${saved.character.playState.damageTaken}`);
@@ -203,5 +213,58 @@ describe("loadAndSync with preferRemote", () => {
 
     expect(result.character).toEqual(hurt(5));
     expect((cloud.rows.get(id) as SavedCharacter).character).toEqual(hurt(5));
+  });
+});
+
+describe("listCharacters", () => {
+  const other: Character = { ...sampleCharacter, id: "other", name: "Otro" };
+
+  it("joins cloud and browser copies, newest first", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(1), earlier);
+    local.setItem("unrelated-key", "{}");
+    const cloud = memoryCloud();
+    cloud.rows.set("other", toSavedCharacter(other, later));
+
+    const { characters, where } = await listCharacters(local, cloud.store);
+
+    expect(where).toBe("cloud");
+    expect(characters.map((c) => c.character.id)).toEqual(["other", id]);
+  });
+
+  it("keeps the newest copy of a character saved in both places", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(3), later);
+    const cloud = memoryCloud();
+    cloud.rows.set(id, toSavedCharacter(hurt(7), earlier));
+
+    const { characters } = await listCharacters(local, cloud.store);
+
+    expect(characters).toHaveLength(1);
+    expect(characters[0]?.character).toEqual(hurt(3));
+  });
+
+  it("skips invalid saves", async () => {
+    const local = memoryStorage();
+    local.setItem(characterStorageKey("broken"), "{not json");
+    const cloud = memoryCloud();
+    cloud.rows.set("bad", { version: 99 });
+
+    const { characters } = await listCharacters(local, cloud.store);
+
+    expect(characters).toEqual([]);
+  });
+
+  it("falls back to the browser when the cloud fails", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(2), earlier);
+
+    const { characters, where } = await listCharacters(
+      local,
+      memoryCloud({ fail: true }).store,
+    );
+
+    expect(where).toBe("local");
+    expect(characters.map((c) => c.character.id)).toEqual([id]);
   });
 });
