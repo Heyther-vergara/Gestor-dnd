@@ -15,7 +15,7 @@
     "content:import": "node scripts/import-srd-2024.mts"
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
