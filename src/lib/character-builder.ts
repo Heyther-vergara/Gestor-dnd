@@ -5,7 +5,8 @@
 // personaje. La pantalla solo muestra lo que dice este módulo, así las reglas
 // de creación se testean sin navegador.
 //
-// Reglas: SRD 5.2.1, "Creación de personajes", pasos 1 a 3.
+// Reglas: SRD 5.2.1, "Creación de personajes", pasos 1 a 3, y "Elige el
+// equipo inicial" (ADR 0017).
 
 import type { ContentIndex } from "@/rules-engine/engine";
 import {
@@ -14,7 +15,9 @@ import {
   type Choice,
   characterSchema,
   type Content,
+  type InventoryItem,
   type Skill,
+  type StartingEquipmentOption,
 } from "@/rules-engine/schemas";
 
 export const ABILITIES: readonly Ability[] = [
@@ -49,6 +52,19 @@ export type AbilityBonusPlan =
   | { mode: "two-one"; plusTwo: Ability | null; plusOne: Ability | null }
   | { mode: "one-one-one" };
 
+// La opción de equipo inicial elegida ("A", "B"… como índice) y, para cada
+// entrada de esa opción que ofrece varios objetos, cuál eligió. `picks` va
+// alineado con `items` de la opción; en las entradas fijas no importa.
+export type EquipmentChoice = {
+  option: number | null;
+  picks: (string | null)[];
+};
+
+export const emptyEquipmentChoice = (): EquipmentChoice => ({
+  option: null,
+  picks: [],
+});
+
 // Lo que el jugador va eligiendo. Todo empieza vacío (null) y se valida al
 // final: así el formulario puede guardar elecciones a medias.
 export type CharacterDraft = {
@@ -60,6 +76,8 @@ export type CharacterDraft = {
   backgroundId: string | null;
   abilityBonus: AbilityBonusPlan;
   baseAbilityScores: Record<Ability, number | null>;
+  classEquipment: EquipmentChoice;
+  backgroundEquipment: EquipmentChoice;
 };
 
 export const emptyDraft = (): CharacterDraft => ({
@@ -78,6 +96,8 @@ export const emptyDraft = (): CharacterDraft => ({
     wis: null,
     cha: null,
   },
+  classEquipment: emptyEquipmentChoice(),
+  backgroundEquipment: emptyEquipmentChoice(),
 });
 
 // Los pasos del formulario, en orden. Cada error pertenece a un paso, así la
@@ -88,6 +108,7 @@ export const BUILDER_STEPS = [
   "class",
   "background",
   "abilities",
+  "equipment",
 ] as const;
 export type BuilderStep = (typeof BUILDER_STEPS)[number];
 export type DraftErrors = Partial<Record<BuilderStep, string>>;
@@ -208,7 +229,100 @@ export function draftErrors(
   if (!isStandardArrayAssignment(draft.baseAbilityScores))
     errors.abilities = "Usá cada número del conjunto estándar una sola vez.";
 
+  // SRD 5.2.1, "Elige el equipo inicial": una opción de la clase y una del
+  // trasfondo. Sin clase o trasfondo el error ya está en su paso.
+  const equipmentError =
+    (cls &&
+      equipmentChoiceError(
+        cls.data.startingEquipment,
+        draft.classEquipment,
+        "de la clase",
+      )) ||
+    (background &&
+      equipmentChoiceError(
+        background.data.startingEquipment,
+        draft.backgroundEquipment,
+        "del trasfondo",
+      ));
+  if (equipmentError) errors.equipment = equipmentError;
+
   return errors;
+}
+
+// Los objetos de la opción elegida, con la elección hecha en las entradas
+// de "elegí uno". null si falta elegir algo o la elección no es válida.
+function resolveEquipmentOption(
+  options: readonly StartingEquipmentOption[],
+  choice: EquipmentChoice,
+): { items: { itemId: string; quantity: number }[]; gp: number } | null {
+  if (choice.option === null) return null;
+  const option = options[choice.option];
+  if (!option) return null;
+  const items: { itemId: string; quantity: number }[] = [];
+  for (const [i, entry] of option.items.entries()) {
+    const itemId =
+      entry.itemIds.length === 1 ? entry.itemIds[0] : choice.picks[i];
+    if (!itemId || !entry.itemIds.includes(itemId)) return null;
+    items.push({ itemId, quantity: entry.quantity });
+  }
+  return { items, gp: option.gp };
+}
+
+function equipmentChoiceError(
+  options: readonly StartingEquipmentOption[],
+  choice: EquipmentChoice,
+  source: string,
+): string | undefined {
+  // Contenido sin equipo inicial (homebrew): no hay nada que elegir.
+  if (options.length === 0) return undefined;
+  if (choice.option === null || !options[choice.option])
+    return `Elegí el equipo ${source}.`;
+  if (!resolveEquipmentOption(options, choice))
+    return `Elegí qué objeto querés en el equipo ${source}.`;
+  return undefined;
+}
+
+// El inventario y las monedas que dan las dos opciones elegidas. Un mismo
+// objeto de la clase y del trasfondo se junta en una sola entrada (el mago
+// erudito tiene dos bastones). La primera armadura y el primer escudo entran
+// equipados, así la CA de la hoja ya los cuenta (ADR 0017).
+export function startingEquipment(
+  draft: CharacterDraft,
+  index: ContentIndex,
+): { inventory: InventoryItem[]; gp: number } | null {
+  const cls = contentOfType(index, draft.classId, "class");
+  const background = contentOfType(index, draft.backgroundId, "background");
+  if (!cls || !background) return null;
+
+  const parts = [
+    { options: cls.data.startingEquipment, choice: draft.classEquipment },
+    {
+      options: background.data.startingEquipment,
+      choice: draft.backgroundEquipment,
+    },
+  ];
+  const quantities = new Map<string, number>();
+  let gp = 0;
+  for (const { options, choice } of parts) {
+    if (options.length === 0) continue;
+    const resolved = resolveEquipmentOption(options, choice);
+    if (!resolved) return null;
+    for (const { itemId, quantity } of resolved.items)
+      quantities.set(itemId, (quantities.get(itemId) ?? 0) + quantity);
+    gp += resolved.gp;
+  }
+
+  let wearingArmor = false;
+  let holdingShield = false;
+  const inventory = [...quantities].map(([itemId, quantity]) => {
+    const category = contentOfType(index, itemId, "item")?.data.category;
+    let equipped = false;
+    if (category === "armor" && !wearingArmor) equipped = wearingArmor = true;
+    if (category === "shield" && !holdingShield)
+      equipped = holdingShield = true;
+    return { itemId, quantity, equipped, attuned: false };
+  });
+  return { inventory, gp };
 }
 
 // Habilidades de la clase que ya da el trasfondo: elegirlas no suma nada,
@@ -241,12 +355,14 @@ export function buildCharacter(
   const bonuses = background
     ? abilityBonuses(draft.abilityBonus, background)
     : null;
+  const equipment = startingEquipment(draft, index);
   if (
     Object.keys(errors).length > 0 ||
     !species ||
     !cls ||
     !background ||
     !bonuses ||
+    !equipment ||
     !isStandardArrayAssignment(draft.baseAbilityScores)
   ) {
     return { ok: false, errors };
@@ -277,7 +393,8 @@ export function buildCharacter(
     backgroundId: background.id,
     baseAbilityScores: draft.baseAbilityScores,
     choices,
-    inventory: [],
+    inventory: equipment.inventory,
+    coins: { gp: equipment.gp },
   });
   return { ok: true, character };
 }

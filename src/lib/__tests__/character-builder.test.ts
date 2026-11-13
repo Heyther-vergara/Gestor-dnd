@@ -6,14 +6,18 @@ import {
   type CharacterDraft,
   draftErrors,
   emptyDraft,
+  emptyEquipmentChoice,
   isStandardArrayAssignment,
   overlappingSkills,
+  startingEquipment,
   suggestedAbilityScores,
 } from "@/lib/character-builder";
 import { srd2024Index } from "@/lib/srd-2024";
 import { calculateSheet } from "@/rules-engine/engine";
 
 // Guerrera humana soldado, con el conjunto estándar sugerido para guerrero.
+// De equipo elige solo oro (guerrero C: 155 po; soldado B: 50 po), así el
+// inventario queda vacío y la CA es la de sin armadura.
 function fighterDraft(): CharacterDraft {
   return {
     ...emptyDraft(),
@@ -25,6 +29,8 @@ function fighterDraft(): CharacterDraft {
     backgroundId: "soldier",
     abilityBonus: { mode: "two-one", plusTwo: "str", plusOne: "con" },
     baseAbilityScores: { str: 15, dex: 14, con: 13, int: 8, wis: 10, cha: 12 },
+    classEquipment: { option: 2, picks: [] },
+    backgroundEquipment: { option: 1, picks: [] },
   };
 }
 
@@ -103,6 +109,8 @@ describe("standard array", () => {
 });
 
 describe("draftErrors", () => {
+  // El paso de equipo depende de la clase y el trasfondo: sin ellos, el
+  // error queda en esos pasos.
   it("has an error in every step for an empty draft", () => {
     expect(Object.keys(draftErrors(emptyDraft(), srd2024Index))).toEqual([
       "name",
@@ -212,6 +220,8 @@ describe("buildCharacter", () => {
       speciesId: "human",
       backgroundId: "soldier",
       inventory: [],
+      // 155 po del guerrero (C) + 50 po del soldado (B).
+      coins: { cp: 0, sp: 0, ep: 0, gp: 205, pp: 0 },
     });
     expect(character.choices).toEqual([
       {
@@ -262,6 +272,8 @@ describe("buildCharacter", () => {
       classSkills: ["arcana", "investigation"],
       backgroundId: "sage",
       abilityBonus: { mode: "one-one-one" },
+      classEquipment: { option: 1, picks: [] },
+      backgroundEquipment: { option: 1, picks: [] },
       baseAbilityScores: suggestedAbilityScores("wizard") ?? {
         ...emptyDraft().baseAbilityScores,
       },
@@ -280,5 +292,146 @@ describe("buildCharacter", () => {
     expect(sheet.abilities.int.score).toBe(16);
     expect(sheet.abilities.wis.score).toBe(15);
     expect(sheet.hitPoints.max).toBe(9);
+  });
+});
+
+describe("starting equipment", () => {
+  // SRD 5.2.1, "Elige el equipo inicial": la clase y el trasfondo dan parte
+  // del equipo inicial, cada uno con "Elige A o B".
+  it("requires an option from the class and from the background", () => {
+    const noClass = {
+      ...fighterDraft(),
+      classEquipment: emptyEquipmentChoice(),
+    };
+    expect(draftErrors(noClass, srd2024Index).equipment).toBe(
+      "Elegí el equipo de la clase.",
+    );
+
+    const noBackground = {
+      ...fighterDraft(),
+      backgroundEquipment: emptyEquipmentChoice(),
+    };
+    expect(draftErrors(noBackground, srd2024Index).equipment).toBe(
+      "Elegí el equipo del trasfondo.",
+    );
+
+    // El guerrero tiene A, B y C: no hay D.
+    const missing = {
+      ...fighterDraft(),
+      classEquipment: { option: 3, picks: [] },
+    };
+    expect(draftErrors(missing, srd2024Index).equipment).toBeDefined();
+  });
+
+  // SRD 5.2.1, Soldado: "juego (el mismo que arriba)". Hay que elegir cuál,
+  // y solo vale un juego de la lista.
+  it("asks which item to take when an entry offers several", () => {
+    const soldierA = (pick: string | null) => ({
+      ...fighterDraft(),
+      backgroundEquipment: { option: 0, picks: [null, null, null, null, pick] },
+    });
+    expect(draftErrors(soldierA(null), srd2024Index).equipment).toBe(
+      "Elegí qué objeto querés en el equipo del trasfondo.",
+    );
+    expect(
+      draftErrors(soldierA("chain-mail"), srd2024Index).equipment,
+    ).toBeDefined();
+    expect(
+      draftErrors(soldierA("dice"), srd2024Index).equipment,
+    ).toBeUndefined();
+  });
+
+  // SRD 5.2.1, Guerrero (A): "cota de malla, espadón, mangual, 8 jabalinas,
+  // paquete de explorador de mazmorras y 4 po". Soldado (A): "lanza, arco
+  // corto, 20 flechas, aljaba, juego, útiles de sanador, ropas de viaje y
+  // 14 po".
+  it("fills the inventory and coins, with the armor equipped", () => {
+    const draft: CharacterDraft = {
+      ...fighterDraft(),
+      classEquipment: { option: 0, picks: [] },
+      backgroundEquipment: {
+        option: 0,
+        picks: [null, null, null, null, "playing-cards"],
+      },
+    };
+    const result = buildCharacter(draft, srd2024Index, "new-3");
+    if (!result.ok) throw new Error("expected a character");
+    const { inventory, coins } = result.character;
+
+    expect(coins.gp).toBe(18);
+    expect(inventory.map((i) => i.itemId)).toEqual([
+      "chain-mail",
+      "greatsword",
+      "flail",
+      "javelin",
+      "dungeoneer-pack",
+      "spear",
+      "shortbow",
+      "arrows",
+      "quiver",
+      "playing-cards",
+      "healers-kit",
+      "clothes-travelers",
+    ]);
+    expect(inventory.find((i) => i.itemId === "javelin")?.quantity).toBe(8);
+    expect(inventory.find((i) => i.itemId === "arrows")?.quantity).toBe(20);
+    // Solo la armadura entra equipada; las armas quedan en la mochila.
+    expect(inventory.filter((i) => i.equipped).map((i) => i.itemId)).toEqual([
+      "chain-mail",
+    ]);
+
+    // SRD 5.2.1, "Armaduras": cota de malla, CA 16 sin Destreza. Pide
+    // Fuerza 13 y la guerrera tiene 17, así que no hay penalización.
+    const sheet = calculateSheet(result.character, srd2024Index);
+    expect(sheet.issues).toEqual([]);
+    expect(sheet.ac).toBe(16);
+  });
+
+  // SRD 5.2.1, Mago (A): "2 dagas, canalizador arcano (bastón), libro de
+  // conjuros, paquete de erudito, túnica y 5 po". Erudito (A): "bastón,
+  // suministros de calígrafo, libro (de historia), pergamino (8 hojas),
+  // túnica y 8 po".
+  it("merges the same item from class and background", () => {
+    const draft: CharacterDraft = {
+      ...emptyDraft(),
+      name: "Borin",
+      speciesId: "dwarf",
+      classId: "wizard",
+      classSkills: ["arcana", "investigation"],
+      backgroundId: "sage",
+      abilityBonus: { mode: "one-one-one" },
+      baseAbilityScores: {
+        str: 8,
+        dex: 12,
+        con: 13,
+        int: 15,
+        wis: 14,
+        cha: 10,
+      },
+      classEquipment: { option: 0, picks: [] },
+      backgroundEquipment: { option: 0, picks: [] },
+    };
+    const equipment = startingEquipment(draft, srd2024Index);
+
+    expect(equipment?.gp).toBe(13);
+    const quantity = (id: string) =>
+      equipment?.inventory.find((i) => i.itemId === id)?.quantity;
+    expect(quantity("quarterstaff")).toBe(2);
+    expect(quantity("robe")).toBe(2);
+    expect(quantity("dagger")).toBe(2);
+    expect(quantity("parchment")).toBe(8);
+    expect(equipment?.inventory.some((i) => i.equipped)).toBe(false);
+  });
+
+  it("only lists items that exist in the package", () => {
+    for (const content of srd2024Index.values()) {
+      if (content.type !== "class" && content.type !== "background") continue;
+      for (const option of content.data.startingEquipment)
+        for (const entry of option.items)
+          for (const id of entry.itemIds)
+            expect(srd2024Index.get(id)?.type, `${content.id}: ${id}`).toBe(
+              "item",
+            );
+    }
   });
 });

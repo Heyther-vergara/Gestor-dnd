@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
 
-import { damageTypeNames, feetToMeters } from "@/lib/format";
+import {
+  damageTypeNames,
+  feetToMeters,
+  type inventoryLines,
+} from "@/lib/format";
 import type { ComputedSheet } from "@/rules-engine/engine";
 
 import { AbilityGrid } from "./ability-grid";
 import { ArmorWarnings } from "./armor-warnings";
+import { EquipmentList } from "./equipment-list";
 import { FeatureList } from "./feature-list";
 import { HitPoints } from "./hit-points";
 import { SheetSection } from "./sheet-section";
@@ -14,16 +19,20 @@ import { VitalsRow } from "./vitals-row";
 
 // La hoja completa. Recibe la hoja ya calculada: este componente no conoce
 // reglas, solo las muestra. `playPanel` son los controles de partida, si los hay.
+// `equipment` es el inventario y las monedas ya en texto (no son valores
+// calculados: los guarda el personaje).
 export function SheetView({
   name,
   subtitle,
   sheet,
   playPanel,
+  equipment,
 }: {
   name: string;
   subtitle: string;
   sheet: ComputedSheet;
   playPanel?: ReactNode;
+  equipment?: { items: ReturnType<typeof inventoryLines>; coins: string };
 }) {
   return (
     <article className="mx-auto grid w-full max-w-2xl gap-5 px-4 py-6">
@@ -79,6 +88,12 @@ export function SheetView({
       {sheet.spellcasting.length > 0 && (
         <SheetSection title="Conjuros">
           <SpellcastingSummary spellcasting={sheet.spellcasting} />
+        </SheetSection>
+      )}
+
+      {equipment && (
+        <SheetSection title="Equipo">
+          <EquipmentList items={equipment.items} coins={equipment.coins} />
         </SheetSection>
       )}
 

@@ -14,6 +14,7 @@ import {
   initialSavedSheetState,
   type SaveStatus,
 } from "@/lib/saved-sheet-reducer";
+import { coinsText, inventoryLines } from "@/lib/format";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
 import { calculateSheet } from "@/rules-engine/engine";
@@ -154,6 +155,10 @@ export function PlayableSheet({
       name={session.character.name}
       subtitle={subtitle}
       sheet={sheet}
+      equipment={{
+        items: inventoryLines(session.character.inventory, srd2024Index),
+        coins: coinsText(session.character.coins),
+      }}
       playPanel={
         <div className="grid gap-2">
           <PlayPanel

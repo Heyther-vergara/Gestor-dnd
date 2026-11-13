@@ -53,6 +53,27 @@ describe("characterSchema", () => {
   });
 
   // SRD 5.2.1, "Cansancio": "Morirás si tu nivel de cansancio es 6".
+  // Los personajes guardados antes de las monedas (ADR 0017) siguen abriendo.
+  it("starts with no coins when they are missing", () => {
+    expect(characterSchema.parse(fighter).coins).toEqual({
+      cp: 0,
+      sp: 0,
+      ep: 0,
+      gp: 0,
+      pp: 0,
+    });
+  });
+
+  // SRD 5.2.1, "Monedas": no hay monedas negativas ni fraccionarias.
+  it("rejects negative or fractional coins", () => {
+    expect(
+      characterSchema.safeParse({ ...fighter, coins: { gp: -1 } }).success,
+    ).toBe(false);
+    expect(
+      characterSchema.safeParse({ ...fighter, coins: { sp: 1.5 } }).success,
+    ).toBe(false);
+  });
+
   it("keeps exhaustion between 0 and 6", () => {
     const withLevel = (exhaustion: number) =>
       characterSchema.safeParse({ ...fighter, playState: { exhaustion } })
