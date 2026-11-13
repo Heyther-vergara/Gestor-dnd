@@ -26,6 +26,9 @@ const MAX_LEVEL = 5; // MVP: niveles 1–5
 // --- Qué importamos ---
 
 const CLASS_IDS = ["fighter", "wizard"];
+// Las del SRD 5.2.1 para esas clases: "Subclase de guerrero: Campeón" y
+// "Subclase de mago: Evocador".
+const SUBCLASS_IDS = ["champion", "evoker"];
 const SPECIES_IDS = ["dwarf", "human", "halfling"];
 const BACKGROUND_IDS = ["acolyte", "sage", "soldier"];
 const SPELL_IDS = [
@@ -65,6 +68,8 @@ const SIZE_OVERRIDES: Record<string, SpeciesSize[]> = {
 const TRAIT_EFFECTS: Record<string, Effect[]> = {
   "darkvision-120": [{ target: "senses.darkvision", op: "base", value: 120 }],
   "dwarven-toughness": [{ target: "hp.max-per-level", op: "add", value: 1 }],
+  // SRD 5.2.1, enano, "Resiliencia enana": resistencia al daño de veneno.
+  "dwarven-resilience": [{ target: "resistance.poison", op: "grant" }],
 };
 
 // Errores de 5e-bits en la tabla "Armas" del SRD 5.2.1 (verificados contra el PDF en español).
@@ -73,6 +78,15 @@ const WEAPON_OVERRIDES: Record<string, Partial<WeaponData>> = {
   sling: { damage: { dice: "1d4", type: "bludgeoning" } },
   // Tridente: 1d8 perforante, versátil (1d10) (5e-bits dice 1d6 / 1d8).
   trident: { damage: { dice: "1d8", type: "piercing" }, versatileDice: "1d10" },
+};
+
+// Rasgos de clase que piden una elección al subir de nivel (ADR 0016).
+// 5e-bits no lo marca, así que se reconoce por el índice del rasgo.
+const FEATURE_GRANTS: Record<string, FeatureGrant> = {
+  "fighter-subclass": "subclass",
+  "wizard-subclass": "subclass",
+  "fighter-ability-score-improvement": "ability-score-improvement",
+  "wizard-ability-score-improvement": "ability-score-improvement",
 };
 
 // Ids que chocan con otro contenido del paquete: el escudo y el conjuro Escudo
@@ -109,6 +123,21 @@ type SourceFeature = {
   level: Ref;
   class: Ref;
   subclass?: Ref;
+};
+type SourceSubclass = {
+  index: string;
+  name: string;
+  class: Ref;
+  summary: string;
+  description: string;
+  features: { name: string; level: number; description: string }[];
+};
+// Una fila de la tabla de cada clase. Solo usamos los espacios de conjuro.
+type SourceLevel = {
+  level: number;
+  class: Ref;
+  subclass?: Ref;
+  spellcasting?: Record<string, number>;
 };
 type SourceSpecies = {
   index: string;
@@ -178,6 +207,7 @@ type SourceSpell = {
 // Tipos de nuestro esquema, derivados de Content para no duplicarlos.
 type DataOf<T extends Content["type"]> = Extract<Content, { type: T }>["data"];
 type SpeciesSize = DataOf<"species">["size"][number];
+type FeatureGrant = NonNullable<DataOf<"class">["features"][number]["grants"]>;
 type FeatCategory = DataOf<"feat">["category"];
 type SpellSchool = DataOf<"spell">["school"];
 type HitDie = DataOf<"class">["hitDie"];
@@ -225,7 +255,31 @@ const WEAPON_PROFICIENCIES: Record<string, string> = {
 
 // --- Conversores ---
 
-function convertClass(source: SourceClass, features: SourceFeature[]): Content {
+// Espacios por nivel de conjuro de una fila de 5e-bits ("spell_slots_level_1"
+// … "_9"), sin los ceros del final: [4, 3, 2] = 4 de nivel 1, 3 de nivel 2…
+function spellSlotsOf(row: SourceLevel): number[] {
+  const slots = Array.from(
+    { length: 9 },
+    (_, i) => row.spellcasting?.[`spell_slots_level_${i + 1}`] ?? 0,
+  );
+  while (slots.length > 0 && slots.at(-1) === 0) slots.pop();
+  return slots;
+}
+
+function convertClass(
+  source: SourceClass,
+  features: SourceFeature[],
+  levels: SourceLevel[],
+): Content {
+  // La tabla de la clase (sin las filas de subclase), del nivel 1 al MAX_LEVEL.
+  const slotsByLevel = levels
+    .filter(
+      (l) =>
+        l.class.index === source.index && !l.subclass && l.level <= MAX_LEVEL,
+    )
+    .sort((a, b) => a.level - b.level)
+    .map(spellSlotsOf);
+
   const primary = source.primary_ability.ability_scores ?? [];
   const primaryOptions =
     source.primary_ability.ability_score_options?.from.options.flatMap((o) =>
@@ -266,6 +320,7 @@ function convertClass(source: SourceClass, features: SourceFeature[]): Content {
         ? {
             ability: toAbility(source.spellcasting.spellcasting_ability),
             preparation: "prepared", // en 2024 todas las clases preparan conjuros
+            slotsByLevel,
           }
         : undefined,
       features: features
@@ -277,6 +332,29 @@ function convertClass(source: SourceClass, features: SourceFeature[]): Content {
         )
         .map((f) => ({
           level: levelOf(f.level),
+          name: f.name,
+          description: f.description,
+          effects: [],
+          ...(FEATURE_GRANTS[f.index] && { grants: FEATURE_GRANTS[f.index] }),
+        })),
+    },
+  };
+}
+
+function convertSubclass(source: SourceSubclass): Content {
+  return {
+    id: source.index,
+    packageId: PACKAGE_ID,
+    type: "subclass",
+    name: source.name,
+    description: `${source.summary}\n${source.description}`,
+    effects: [],
+    data: {
+      classId: source.class.index,
+      features: source.features
+        .filter((f) => f.level <= MAX_LEVEL)
+        .map((f) => ({
+          level: f.level,
           name: f.name,
           description: f.description,
           effects: [],
@@ -516,7 +594,9 @@ async function main() {
   console.log(`Descargando 5e-bits @ ${SOURCE_COMMIT.slice(0, 7)}…`);
   const [
     classes,
+    subclasses,
     features,
+    levels,
     species,
     traits,
     backgrounds,
@@ -525,7 +605,9 @@ async function main() {
     equipment,
   ] = await Promise.all([
     load<SourceClass>("Classes"),
+    load<SourceSubclass>("Subclasses"),
     load<SourceFeature>("Features"),
+    load<SourceLevel>("Levels"),
     load<SourceSpecies>("Species"),
     load<SourceTrait>("Traits"),
     load<SourceBackground>("Backgrounds"),
@@ -543,7 +625,11 @@ async function main() {
   await writeJson("manifest.json", manifest);
   await writeJson(
     "classes.json",
-    pick(classes, CLASS_IDS).map((c) => convertClass(c, features)),
+    pick(classes, CLASS_IDS).map((c) => convertClass(c, features, levels)),
+  );
+  await writeJson(
+    "subclasses.json",
+    pick(subclasses, SUBCLASS_IDS).map(convertSubclass),
   );
   await writeJson(
     "species.json",

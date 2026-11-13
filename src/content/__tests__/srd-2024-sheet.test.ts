@@ -6,6 +6,7 @@ import feats from "@/content/srd-2024/feats.json";
 import items from "@/content/srd-2024/items.json";
 import species from "@/content/srd-2024/species.json";
 import spells from "@/content/srd-2024/spells.json";
+import subclasses from "@/content/srd-2024/subclasses.json";
 import { calculateSheet, createContentIndex } from "@/rules-engine/engine";
 import { characterSchema, contentSchema } from "@/rules-engine/schemas";
 
@@ -13,9 +14,15 @@ import { characterSchema, contentSchema } from "@/rules-engine/schemas";
 // comprobar que el JSON importado y el motor encajan.
 
 const index = createContentIndex(
-  [...classes, ...species, ...backgrounds, ...feats, ...spells, ...items].map(
-    (c) => contentSchema.parse(c),
-  ),
+  [
+    ...classes,
+    ...subclasses,
+    ...species,
+    ...backgrounds,
+    ...feats,
+    ...spells,
+    ...items,
+  ].map((c) => contentSchema.parse(c)),
 );
 
 // Thora: maga enana sabia de nivel 1. El trasfondo Sabio le da +2 Int y +1 Con.
@@ -74,6 +81,8 @@ describe("SRD 2024 sample character: Thora, dwarf wizard 1", () => {
         saveDc: 13,
         attackBonus: 5,
         canCast: true,
+        // SRD 5.2.1, tabla "Rasgos de mago": 2 espacios de nivel 1.
+        slots: [2],
       },
     ]);
   });
@@ -164,5 +173,98 @@ describe("SRD 2024 sample character: Bram, human fighter 1 with real armor", () 
   // El humano no tiene visión en la oscuridad.
   it("has no darkvision", () => {
     expect(calculateSheet(bram([]), index).darkvision).toBe(0);
+  });
+});
+
+// Thora en el nivel 5: Evocadora, con la mejora de característica del nivel
+// 4 en Inteligencia (+2).
+const thora5 = characterSchema.parse({
+  ...thora,
+  classes: [{ classId: "wizard", level: 5, subclassId: "evoker" }],
+  choices: [
+    ...thora.choices,
+    {
+      kind: "ability-score-improvement",
+      contentId: "wizard",
+      level: 4,
+      bonuses: { int: 2 },
+    },
+  ],
+});
+
+describe("SRD 2024 sample character: Thora, dwarf Evoker wizard 5", () => {
+  const sheet = calculateSheet(thora5, index);
+
+  it("has no data issues", () => {
+    expect(sheet.issues).toEqual([]);
+  });
+
+  // SRD 5.2.1, "Subir de nivel", tabla "Puntos de golpe establecidos por
+  // clase": mago 4 + Con por nivel después del 1. Nivel 1: 6 + Con (+3).
+  // "Aguante enano": +1 por nivel.
+  it("has 42 hit points and 5d6 hit dice", () => {
+    expect(sheet.hitPoints.max).toBe(6 + 3 + 4 * (4 + 3) + 5);
+    expect(sheet.hitDice.byDie).toEqual({ d6: { total: 5, remaining: 5 } });
+  });
+
+  // SRD 5.2.1, tabla "Rasgos de mago": competencia +3 en el nivel 5.
+  // Inteligencia 15 + 2 (trasfondo) + 2 (mejora) = 19 → +4.
+  // CD 8 + 4 + 3 = 15; ataque 4 + 3 = +7. Espacios 4, 3 y 2.
+  it("has spell save DC 15, attack +7 and slots 4/3/2", () => {
+    expect(sheet.proficiencyBonus).toBe(3);
+    expect(sheet.abilities.int.score).toBe(19);
+    expect(sheet.spellcasting[0]).toMatchObject({
+      saveDc: 15,
+      attackBonus: 7,
+      slots: [4, 3, 2],
+    });
+  });
+
+  it("has the Evoker features", () => {
+    expect(
+      sheet.features.filter((f) => f.sourceId === "evoker").map((f) => f.name),
+    ).toEqual(["Evocation Savant", "Potent Cantrip"]);
+  });
+});
+
+// Bram en el nivel 4: Campeón, con +1 Fue y +1 Con de la mejora.
+describe("SRD 2024 sample character: Bram, human Champion fighter 4", () => {
+  const sheet = calculateSheet(
+    characterSchema.parse({
+      ...bram([]),
+      classes: [{ classId: "fighter", level: 4, subclassId: "champion" }],
+      choices: [
+        ...bram([]).choices,
+        {
+          kind: "ability-score-improvement",
+          contentId: "fighter",
+          level: 4,
+          bonuses: { str: 1, con: 1 },
+        },
+      ],
+    }),
+    index,
+  );
+
+  it("has no data issues", () => {
+    expect(sheet.issues).toEqual([]);
+  });
+
+  // Fue 13 + 2 + 1 = 16; Con 14 + 1 + 1 = 16 (+3).
+  // Guerrero: 10 + Con en el nivel 1 y 6 + Con en cada nivel siguiente.
+  it("has 40 hit points", () => {
+    expect(sheet.abilities.str.score).toBe(16);
+    expect(sheet.abilities.con.score).toBe(16);
+    expect(sheet.hitPoints.max).toBe(10 + 3 + 3 * (6 + 3));
+  });
+
+  // Un guerrero no lanza conjuros.
+  it("has no spellcasting", () => {
+    expect(sheet.spellcasting).toEqual([]);
+  });
+
+  it("has the class and Champion features up to level 4", () => {
+    expect(sheet.features.map((f) => f.name)).toContain("Improved Critical");
+    expect(sheet.features.map((f) => f.name)).not.toContain("Extra Attack");
   });
 });

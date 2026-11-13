@@ -18,9 +18,26 @@ const traitSchema = z.strictObject({
   effects: effectsSchema,
 });
 
+// Algunos rasgos de clase piden una elección al subir de nivel (ADR 0016):
+// "subclass" (SRD 5.2.1, "Subclase de guerrero/mago", nivel 3) y
+// "ability-score-improvement" (rasgo "Mejora de característica", nivel 4).
+// Marcarlo en los datos, y no por el nombre, deja que una clase homebrew
+// pida esas elecciones en otros niveles.
+export const featureGrantSchema = z.enum([
+  "subclass",
+  "ability-score-improvement",
+]);
+
 const levelFeatureSchema = traitSchema.extend({
   level: z.int().min(1).max(20),
+  grants: featureGrantSchema.optional(),
 });
+
+// SRD 5.2.1, tabla "Rasgos de mago", columna "Espacios de conjuro por cada
+// nivel de conjuro": una fila por nivel de clase (la posición 0 es el nivel 1)
+// y, en cada fila, cuántos espacios hay de cada nivel de conjuro (la posición
+// 0 es nivel 1). Va en los datos para que una clase homebrew traiga su tabla.
+const spellSlotTableSchema = z.array(z.array(z.int().min(0)).max(9)).max(20);
 
 // --- Datos específicos de cada tipo de contenido ---
 
@@ -42,6 +59,7 @@ const classDataSchema = z.strictObject({
     .strictObject({
       ability: abilitySchema,
       preparation: z.enum(["prepared", "known"]),
+      slotsByLevel: spellSlotTableSchema.default([]),
     })
     .optional(),
   features: z.array(levelFeatureSchema),

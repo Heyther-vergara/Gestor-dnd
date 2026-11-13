@@ -5,9 +5,11 @@ import type { ComputedSheet } from "@/rules-engine/engine";
 
 import { AbilityGrid } from "./ability-grid";
 import { ArmorWarnings } from "./armor-warnings";
+import { FeatureList } from "./feature-list";
 import { HitPoints } from "./hit-points";
 import { SheetSection } from "./sheet-section";
 import { SkillList } from "./skill-list";
+import { SpellcastingSummary } from "./spellcasting-summary";
 import { VitalsRow } from "./vitals-row";
 
 // La hoja completa. Recibe la hoja ya calculada: este componente no conoce
@@ -73,6 +75,18 @@ export function SheetView({
       <SheetSection title="Habilidades">
         <SkillList skills={sheet.skills} />
       </SheetSection>
+
+      {sheet.spellcasting.length > 0 && (
+        <SheetSection title="Conjuros">
+          <SpellcastingSummary spellcasting={sheet.spellcasting} />
+        </SheetSection>
+      )}
+
+      {sheet.features.length > 0 && (
+        <SheetSection title="Rasgos">
+          <FeatureList features={sheet.features} />
+        </SheetSection>
+      )}
     </article>
   );
 }

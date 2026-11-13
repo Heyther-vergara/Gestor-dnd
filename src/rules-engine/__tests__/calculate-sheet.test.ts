@@ -1595,6 +1595,7 @@ describe("calculateSheet: spellcasting", () => {
         saveDc: 13,
         attackBonus: 5,
         canCast: true,
+        slots: [],
       },
     ]);
   });
@@ -1620,6 +1621,7 @@ describe("calculateSheet: spellcasting", () => {
         saveDc: 14,
         attackBonus: 6,
         canCast: true,
+        slots: [],
       },
       {
         classId: "cleric",
@@ -1627,6 +1629,7 @@ describe("calculateSheet: spellcasting", () => {
         saveDc: 13,
         attackBonus: 5,
         canCast: true,
+        slots: [],
       },
     ]);
   });
