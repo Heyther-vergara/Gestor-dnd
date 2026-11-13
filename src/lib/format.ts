@@ -71,6 +71,8 @@ export const feetToMeters = (feet: number): string =>
 const contentNamesEs: Record<string, string> = {
   fighter: "Guerrero",
   wizard: "Mago",
+  champion: "Campeón",
+  evoker: "Evocador",
   dwarf: "Enano",
   human: "Humano",
   halfling: "Mediano",
@@ -91,7 +93,7 @@ export const sizeNames: Record<"tiny" | "small" | "medium" | "large", string> =
     large: "Grande",
   };
 
-// "Enano · Guerrero 3 · Soldado": la línea bajo el nombre del personaje.
+// "Enano · Guerrero 3 (Campeón) · Soldado": la línea bajo el nombre del personaje.
 export function characterSubtitle(
   character: Pick<Character, "speciesId" | "classes" | "backgroundId">,
   index: ContentIndex,
@@ -102,7 +104,11 @@ export function characterSubtitle(
   };
   return [
     nameOf(character.speciesId),
-    ...character.classes.map((c) => `${nameOf(c.classId)} ${c.level}`),
+    ...character.classes.map(
+      (c) =>
+        `${nameOf(c.classId)} ${c.level}` +
+        (c.subclassId ? ` (${nameOf(c.subclassId)})` : ""),
+    ),
     nameOf(character.backgroundId),
   ].join(" · ");
 }

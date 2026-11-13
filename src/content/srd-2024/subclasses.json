@@ -1,0 +1,52 @@
+[
+  {
+    "id": "champion",
+    "packageId": "srd-2024",
+    "type": "subclass",
+    "name": "Champion",
+    "description": "Pursue Physical Excellence in Combat\nA Champion focuses on the development of martial prowess in a relentless pursuit of victory. Champions combine rigorous training with physical excellence to deal devastating blows, withstand peril, and garner glory. Whether in athletic contests or bloody battle, Champions strive for the crown of the victor.",
+    "effects": [],
+    "data": {
+      "classId": "fighter",
+      "features": [
+        {
+          "level": 3,
+          "name": "Improved Critical",
+          "description": "Your attack rolls with weapons and Unarmed Strikes can score a Critical Hit on a roll of 19 or 20 on the d20.",
+          "effects": []
+        },
+        {
+          "level": 3,
+          "name": "Remarkable Athlete",
+          "description": "Thanks to your athleticism, you have Advantage on Initiative rolls and Strength (Athletics) checks.\n  In addition, immediately after you score a Critical Hit, you can move up to half your Speed without provoking Opportunity Attacks.",
+          "effects": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "evoker",
+    "packageId": "srd-2024",
+    "type": "subclass",
+    "name": "Evoker",
+    "description": "Create Explosive Elemental Effects\nYour studies focus on magic that creates powerful elemental effects such as bitter cold, searing flame, rolling thunder, crackling lightning, and burning acid. Some Evokers find employment in military forces, serving as artillery to blast armies from afar. Others use their power to protect others, while some seek their own gain.",
+    "effects": [],
+    "data": {
+      "classId": "wizard",
+      "features": [
+        {
+          "level": 3,
+          "name": "Evocation Savant",
+          "description": "Choose two Wizard spells from the Evocation school, each of which must be no higher than level 2, and add them to your spellbook for free.\n  In addition, whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Evocation school to your spellbook for free. The chosen spell must be of a level for which you have spell slots.",
+          "effects": []
+        },
+        {
+          "level": 3,
+          "name": "Potent Cantrip",
+          "description": "Your damaging cantrips affect even creatures that avoid the brunt of the effect. When you cast a cantrip at a creature and you miss with the attack roll or the target succeeds on a saving throw against the cantrip, the target takes half the cantrip's damage (if any) but suffers no additional effect from the cantrip.",
+          "effects": []
+        }
+      ]
+    }
+  }
+]

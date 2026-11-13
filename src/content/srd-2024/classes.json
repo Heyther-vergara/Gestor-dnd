@@ -79,13 +79,15 @@
           "level": 3,
           "name": "Fighter Subclass",
           "description": "You gain a Fighter subclass of your choice. A subclass is a specialization that grants you features at certain Fighter levels. For the rest of your career, you gain each of your subclass's features that are of your Fighter level or lower.",
-          "effects": []
+          "effects": [],
+          "grants": "subclass"
         },
         {
           "level": 4,
           "name": "Ability Score Improvement",
           "description": "You gain the Ability Score Improvement feat (see \"Feats\") or another feat of your choice for which you qualify. You gain this feature again at Fighter levels 6, 8, 12, 14, and 16.",
-          "effects": []
+          "effects": [],
+          "grants": "ability-score-improvement"
         },
         {
           "level": 5,
@@ -136,7 +138,28 @@
       ],
       "spellcasting": {
         "ability": "int",
-        "preparation": "prepared"
+        "preparation": "prepared",
+        "slotsByLevel": [
+          [
+            2
+          ],
+          [
+            3
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            3,
+            2
+          ]
+        ]
       },
       "features": [
         {
@@ -167,13 +190,15 @@
           "level": 3,
           "name": "Wizard Subclass",
           "description": "You gain a Wizard subclass of your choice. The Evoker subclass is detailed after this class’s description.\nA subclass is a specialization that grants you features at certain Wizard levels. For the rest of your career, you gain each of your subclass’s features that are of your Wizard level or lower.",
-          "effects": []
+          "effects": [],
+          "grants": "subclass"
         },
         {
           "level": 4,
           "name": "Ability Score Improvement",
           "description": "You gain the Ability Score Improvement feat (see \"Feats\") or another feat of your choice for which you qualify. You gain this feature again at Wizard levels 8, 12, and 16.",
-          "effects": []
+          "effects": [],
+          "grants": "ability-score-improvement"
         },
         {
           "level": 5,

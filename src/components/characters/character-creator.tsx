@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
+import { Fieldset, Option } from "@/components/characters/choice-fields";
 import { AbilityGrid } from "@/components/sheet/ability-grid";
 import { VitalsRow } from "@/components/sheet/vitals-row";
 import { Button } from "@/components/ui/button";
@@ -196,66 +197,6 @@ type StepProps = {
   draft: CharacterDraft;
   update: (patch: Partial<CharacterDraft>) => void;
 };
-
-// Grupo de opciones con título. `fieldset` + `legend` hace que el lector de
-// pantalla lea el título al entrar a cualquiera de las opciones.
-function Fieldset({
-  legend,
-  hint,
-  children,
-}: {
-  legend: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <fieldset className="grid gap-2">
-      <legend className="mb-1 font-heading text-lg font-bold text-primary">
-        {legend}
-      </legend>
-      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
-      {children}
-    </fieldset>
-  );
-}
-
-// Una opción grande, fácil de tocar en el celular.
-function Option({
-  type,
-  name,
-  checked,
-  disabled,
-  onChange,
-  title,
-  detail,
-}: {
-  type: "radio" | "checkbox";
-  name: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: () => void;
-  title: string;
-  detail?: string;
-}) {
-  return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 has-checked:border-primary has-checked:bg-accent has-disabled:cursor-not-allowed has-disabled:opacity-50">
-      <input
-        type={type}
-        name={name}
-        checked={checked}
-        disabled={disabled}
-        onChange={onChange}
-        className="mt-1 accent-primary"
-      />
-      <span className="grid gap-0.5">
-        <span className="font-medium">{title}</span>
-        {detail && (
-          <span className="text-sm text-muted-foreground">{detail}</span>
-        )}
-      </span>
-    </label>
-  );
-}
 
 function NameStep({ draft, update }: StepProps) {
   const id = useId();

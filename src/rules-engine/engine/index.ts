@@ -80,6 +80,9 @@ export type ComputedSheet = {
   darkvision: number;
   // Una entrada por clase con lanzamiento de conjuros, en el orden de `classes`.
   spellcasting: SpellcastingStats[];
+  // Rasgos de clase y de subclase ya alcanzados, ordenados por nivel. La hoja
+  // los muestra como texto; los que tienen efectos ya están aplicados.
+  features: SheetFeature[];
   // Consecuencias de la armadura equipada que no son un número de la hoja.
   // La interfaz las muestra como avisos (ADR 0007).
   armorPenalties: ArmorPenalties;
@@ -118,6 +121,20 @@ export type SpellcastingStats = {
   attackBonus: number;
   // false si llevás una armadura sin entrenamiento.
   canCast: boolean;
+  // Espacios por nivel de conjuro según la tabla de la clase: [4, 3, 2] son
+  // 4 de nivel 1, 3 de nivel 2 y 2 de nivel 3. Vacío si la tabla no llega.
+  // Con multiclase, el SRD suma los niveles en una tabla común; eso queda
+  // pendiente (ADR 0016) y acá va la tabla de cada clase por separado.
+  slots: number[];
+};
+
+export type SheetFeature = {
+  name: string;
+  description: string;
+  // Nivel de la clase en que se gana.
+  level: number;
+  // La clase o subclase que lo da.
+  sourceId: string;
 };
 
 export type ArmorPenalties = {
@@ -159,6 +176,10 @@ const MAX_CHARACTER_LEVEL = 20;
 // SRD 5.2.1, "Crear un personaje": el aumento del trasfondo no puede subir
 // una puntuación por encima de 20.
 const BACKGROUND_BONUS_CAP = 20;
+
+// SRD 5.2.1, dote "Mejora de característica": "no puede aumentar una
+// puntuación de característica por encima de 20".
+const ABILITY_SCORE_CAP = 20;
 
 const ABILITIES = abilitySchema.options;
 const SKILLS = skillSchema.options;
@@ -248,16 +269,49 @@ export function calculateSheet(
     level: number;
     starting: boolean;
   }[] = [];
-  for (const [position, { classId, level }] of character.classes.entries()) {
+  const features: SheetFeature[] = [];
+  for (const [position, entry] of character.classes.entries()) {
+    const { classId, level } = entry;
     const cls = find(classId, "class");
     if (!cls) continue;
     ownedClasses.push({ cls, level, starting: position === 0 });
     collected.push(...cls.effects);
     // Solo los rasgos que ya se alcanzaron con el nivel de esa clase.
-    for (const feature of cls.data.features) {
-      if (feature.level <= level) collected.push(...feature.effects);
+    const reached = cls.data.features.filter((f) => f.level <= level);
+    for (const feature of reached) {
+      collected.push(...feature.effects);
+      features.push(sheetFeature(feature, cls.id));
+    }
+
+    // SRD 5.2.1, "Subclase de guerrero/mago": "obtienes todos los rasgos de
+    // tu subclase que sean de tu nivel de <clase> e inferiores".
+    if (entry.subclassId === undefined) continue;
+    const subclass = find(entry.subclassId, "subclass");
+    if (!subclass) continue;
+    if (subclass.data.classId !== cls.id) {
+      issues.push(`La subclase "${subclass.id}" no es de la clase "${cls.id}"`);
+      continue;
+    }
+    const subclassLevel = cls.data.features.find(
+      (f) => f.grants === "subclass",
+    )?.level;
+    if (subclassLevel === undefined || subclassLevel > level) {
+      issues.push(
+        subclassLevel === undefined
+          ? `La clase "${cls.id}" no tiene subclases`
+          : `La clase "${cls.id}" da la subclase en el nivel ${subclassLevel}, no en el ${level}`,
+      );
+      continue;
+    }
+    collected.push(...subclass.effects);
+    for (const feature of subclass.data.features) {
+      if (feature.level > level) continue;
+      collected.push(...feature.effects);
+      features.push(sheetFeature(feature, subclass.id));
     }
   }
+  // Orden estable: a igual nivel, la clase antes que la subclase.
+  features.sort((a, b) => a.level - b.level);
 
   // Los efectos del escudo dependen del entrenamiento, que a su vez sale de
   // los demás efectos. Por eso se juntan aparte y se agregan después.
@@ -333,6 +387,39 @@ export function calculateSheet(
     }
     for (const [ability, bonus] of entries) {
       scores[ability] = Math.min(scores[ability] + bonus, BACKGROUND_BONUS_CAP);
+    }
+  }
+
+  // SRD 5.2.1, dote "Mejora de característica": +2 a una o +1 a dos, sin
+  // pasar de 20. Cada una tiene que venir de un rasgo de clase ya alcanzado
+  // con `grants: "ability-score-improvement"`, y una sola por rasgo.
+  const usedImprovements = new Set<string>();
+  for (const choice of character.choices) {
+    if (choice.kind !== "ability-score-improvement") continue;
+    const owned = ownedClasses.find(({ cls }) => cls.id === choice.contentId);
+    const offered = owned?.cls.data.features.some(
+      (f) =>
+        f.grants === "ability-score-improvement" &&
+        f.level === choice.level &&
+        f.level <= owned.level,
+    );
+    if (!offered) {
+      issues.push(
+        `La clase "${choice.contentId}" no da una mejora de característica en el nivel ${choice.level}`,
+      );
+      continue;
+    }
+    const key = `${choice.contentId}:${choice.level}`;
+    if (usedImprovements.has(key)) {
+      issues.push(
+        `Hay más de una mejora de característica de "${choice.contentId}" en el nivel ${choice.level}`,
+      );
+      continue;
+    }
+    usedImprovements.add(key);
+    const entries = Object.entries(choice.bonuses) as [Ability, number][];
+    for (const [ability, bonus] of entries) {
+      scores[ability] = Math.min(scores[ability] + bonus, ABILITY_SCORE_CAP);
     }
   }
 
@@ -613,33 +700,38 @@ export function calculateSheet(
   // SRD 5.2.1, "Rellena los números": CD = 8 + aptitud mágica + competencia;
   // ataque = aptitud mágica + competencia. "Multiclase": cada conjuro usa la
   // aptitud de su clase, así que va una entrada por clase.
-  const spellcasting: SpellcastingStats[] = ownedClasses.flatMap(({ cls }) => {
-    if (!cls.data.spellcasting) return [];
-    const { ability } = cls.data.spellcasting;
-    const base = modifiers[ability] + proficiencyBonus;
-    return [
-      {
-        classId: cls.id,
-        ability,
-        saveDc: applyNumericEffects(
-          8 + base,
-          effectsFor(effects, "spell.dc"),
-          modifiers,
-        ),
-        // Es una tirada de ataque: el cansancio la reduce. La CD no, porque
-        // la tira el objetivo.
-        attackBonus:
-          applyNumericEffects(
-            base,
-            effectsFor(effects, "spell.attack"),
+  const spellcasting: SpellcastingStats[] = ownedClasses.flatMap(
+    ({ cls, level }) => {
+      if (!cls.data.spellcasting) return [];
+      const { ability, slotsByLevel } = cls.data.spellcasting;
+      const base = modifiers[ability] + proficiencyBonus;
+      return [
+        {
+          classId: cls.id,
+          ability,
+          saveDc: applyNumericEffects(
+            8 + base,
+            effectsFor(effects, "spell.dc"),
             modifiers,
-          ) - d20Penalty,
-        // SRD 5.2.1, "Entrenamiento con armaduras": sin entrenamiento con la
-        // armadura que llevás, no podés lanzar conjuros.
-        canCast: !untrainedArmor,
-      },
-    ];
-  });
+          ),
+          // Es una tirada de ataque: el cansancio la reduce. La CD no, porque
+          // la tira el objetivo.
+          attackBonus:
+            applyNumericEffects(
+              base,
+              effectsFor(effects, "spell.attack"),
+              modifiers,
+            ) - d20Penalty,
+          // SRD 5.2.1, "Entrenamiento con armaduras": sin entrenamiento con la
+          // armadura que llevás, no podés lanzar conjuros.
+          canCast: !untrainedArmor,
+          // SRD 5.2.1, tabla de la clase, "Espacios de conjuro por cada nivel
+          // de conjuro". La fila 0 es el nivel 1 de la clase.
+          slots: [...(slotsByLevel[level - 1] ?? [])],
+        },
+      ];
+    },
+  );
 
   // --- Defensas contra el daño ---
   // SRD 5.2.1, "No se acumulan": varias resistencias o vulnerabilidades al
@@ -666,11 +758,20 @@ export function calculateSheet(
     speed,
     darkvision,
     spellcasting,
+    features,
     armorPenalties: { untrainedArmor, untrainedShield, insufficientStrength },
     exhaustion: { level: exhaustionLevel, d20Penalty, speedPenalty },
     damageDefenses,
     issues,
   };
+}
+
+function sheetFeature(
+  feature: { name: string; description: string; level: number },
+  sourceId: string,
+): SheetFeature {
+  const { name, description, level } = feature;
+  return { name, description, level, sourceId };
 }
 
 function modifiersOf(scores: Record<Ability, number>): Modifiers {

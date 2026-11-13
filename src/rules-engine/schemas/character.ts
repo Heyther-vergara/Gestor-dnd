@@ -25,6 +25,9 @@ const abilityScoresSchema = z.strictObject({
 const classLevelSchema = z.strictObject({
   classId: slugSchema,
   level: z.int().min(1).max(20),
+  // Se elige en el nivel que marca el rasgo con `grants: "subclass"` (nivel 3
+  // en el SRD). Que exista y sea de esta clase lo comprueba el motor.
+  subclassId: slugSchema.optional(),
 });
 
 // --- Elecciones del jugador, cada una asociada al contenido que la ofrece ---
@@ -65,6 +68,22 @@ const abilityBonusChoiceSchema = z.strictObject({
   ),
 });
 
+// SRD 5.2.1, dote "Mejora de característica" (la da el rasgo de clase del
+// mismo nombre, nivel 4): +2 a una característica o +1 a dos, sin pasar de
+// 20. `contentId` es la clase que dio el rasgo y `level`, el nivel de esa
+// clase en que se tomó: así hay una por rasgo y el motor puede comprobarlo.
+const abilityScoreImprovementChoiceSchema = z.strictObject({
+  ...choiceBase,
+  kind: z.literal("ability-score-improvement"),
+  bonuses: z.partialRecord(abilitySchema, z.int().min(1).max(2)).refine(
+    (bonuses) => {
+      const pattern = Object.values(bonuses).sort().join(",");
+      return pattern === "2" || pattern === "1,1";
+    },
+    { message: "Debe ser +2 a una característica o +1 a dos" },
+  ),
+});
+
 const sizeChoiceSchema = z.strictObject({
   ...choiceBase,
   kind: z.literal("size"),
@@ -75,6 +94,7 @@ export const choiceSchema = z.discriminatedUnion("kind", [
   skillsChoiceSchema,
   expertiseChoiceSchema,
   abilityBonusChoiceSchema,
+  abilityScoreImprovementChoiceSchema,
   sizeChoiceSchema,
 ]);
 

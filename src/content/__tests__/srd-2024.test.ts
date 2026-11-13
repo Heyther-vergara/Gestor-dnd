@@ -7,11 +7,20 @@ import items from "@/content/srd-2024/items.json";
 import manifest from "@/content/srd-2024/manifest.json";
 import species from "@/content/srd-2024/species.json";
 import spells from "@/content/srd-2024/spells.json";
+import subclasses from "@/content/srd-2024/subclasses.json";
 import { contentSchema, packageSchema } from "@/rules-engine/schemas";
 
 // Criterio de la fase 1: todo el JSON del paquete valida contra los esquemas.
 
-const files = { classes, species, backgrounds, feats, spells, items };
+const files = {
+  classes,
+  subclasses,
+  species,
+  backgrounds,
+  feats,
+  spells,
+  items,
+};
 const allContent = Object.values(files).flat();
 
 describe("SRD 2024 package", () => {
@@ -33,6 +42,7 @@ describe("SRD 2024 package", () => {
   it("only contains content of the matching type in each file", () => {
     const expectedType = {
       classes: "class",
+      subclasses: "subclass",
       species: "species",
       backgrounds: "background",
       feats: "feat",
@@ -64,6 +74,53 @@ describe("SRD 2024 package", () => {
     expect(species).toHaveLength(3);
     expect(backgrounds).toHaveLength(3);
     expect(spells).toHaveLength(20);
+  });
+
+  // SRD 5.2.1: "Subclase de guerrero: Campeón" y "Subclase de mago: Evocador".
+  it("has one subclass for each class", () => {
+    const classIds = classes.map((c) => c.id);
+    expect(subclasses.map((s) => [s.id, s.data.classId])).toEqual([
+      ["champion", "fighter"],
+      ["evoker", "wizard"],
+    ]);
+    for (const subclass of subclasses) {
+      expect(classIds).toContain(subclass.data.classId);
+    }
+  });
+
+  // SRD 5.2.1, tablas "Rasgos de guerrero" y "Rasgos de mago": subclase en el
+  // nivel 3 y "Mejora de característica" en el 4 (ADR 0016).
+  it.each(["fighter", "wizard"])(
+    "%s asks for a subclass at 3 and an improvement at 4",
+    (id) => {
+      const cls = classes.find((c) => c.id === id);
+      const grants = cls?.data.features.flatMap((f) =>
+        "grants" in f ? [[f.level, f.grants]] : [],
+      );
+      expect(grants).toEqual([
+        [3, "subclass"],
+        [4, "ability-score-improvement"],
+      ]);
+    },
+  );
+
+  // SRD 5.2.1, tabla "Rasgos de mago", "Espacios de conjuro por cada nivel de
+  // conjuro", niveles 1 a 5: 2 · 3 · 4 2 · 4 3 · 4 3 2.
+  it("has the wizard spell slot table", () => {
+    const wizard = contentSchema.parse(classes.find((c) => c.id === "wizard"));
+    expect(
+      wizard.type === "class" && wizard.data.spellcasting?.slotsByLevel,
+    ).toEqual([[2], [3], [4, 2], [4, 3], [4, 3, 2]]);
+  });
+
+  // SRD 5.2.1, enano, "Resistencia enana": resistencia al daño de veneno.
+  it("gives the dwarf poison resistance", () => {
+    const dwarf = species.find((s) => s.id === "dwarf");
+    const effects = dwarf?.data.traits.flatMap((t) => t.effects);
+    expect(effects).toContainEqual({
+      target: "resistance.poison",
+      op: "grant",
+    });
   });
 
   it("references feats that exist in the package", () => {

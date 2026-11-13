@@ -7,6 +7,7 @@ import { PlayableSheet } from "@/components/sheet/playable-sheet";
 import { Button } from "@/components/ui/button";
 import { loadAndSync } from "@/lib/character-sync";
 import { characterSubtitle } from "@/lib/format";
+import { planLevelUp } from "@/lib/level-up";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
 import { type Character, characterSchema } from "@/rules-engine/schemas";
@@ -70,12 +71,25 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
   // PlayableSheet vuelve a leer lo guardado (con el daño, los dados gastados,
   // etc.). Lo que recibe acá es el "estado inicial": el mismo personaje sin
   // nada de la partida, para "Volver al estado inicial".
+  // Subir de nivel solo aparece si se puede (una clase y nivel menor a 5).
+  const canLevelUp = planLevelUp(state.character, srd2024Index).ok;
   return (
-    <PlayableSheet
-      initialCharacter={state.character}
-      subtitle={characterSubtitle(state.character, srd2024Index)}
-      resetMode="keep"
-    />
+    <>
+      <PlayableSheet
+        initialCharacter={state.character}
+        subtitle={characterSubtitle(state.character, srd2024Index)}
+        resetMode="keep"
+      />
+      {canLevelUp && (
+        <div className="mx-auto w-full max-w-2xl px-4 pb-8">
+          <Button asChild className="w-full">
+            <Link href={`/characters/${state.character.id}/level-up`}>
+              Subir a nivel {(state.character.classes[0]?.level ?? 0) + 1}
+            </Link>
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
 

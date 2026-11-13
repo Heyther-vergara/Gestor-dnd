@@ -37,6 +37,19 @@ describe("characterSubtitle", () => {
     );
   });
 
+  // SRD 5.2.1 (español), "Subclase de guerrero: Campeón".
+  it("adds the subclass after the class", () => {
+    expect(
+      characterSubtitle(
+        {
+          ...sampleCharacter,
+          classes: [{ classId: "fighter", level: 3, subclassId: "champion" }],
+        },
+        srd2024Index,
+      ),
+    ).toBe("Enano · Guerrero 3 (Campeón) · Soldado");
+  });
+
   it("falls back to the id when the content is missing", () => {
     expect(
       characterSubtitle(
