@@ -56,7 +56,6 @@ const index = createContentIndex([
       featId: "savage-attacker",
       skillProficiencies: ["athletics", "intimidation"],
       toolProficiency: "Gaming Set",
-      equipment: "",
     },
   }),
   content({

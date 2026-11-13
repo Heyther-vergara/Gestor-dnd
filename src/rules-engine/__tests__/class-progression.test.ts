@@ -120,7 +120,6 @@ const sage = content({
     featId: "magic-initiate",
     skillProficiencies: ["arcana", "history"],
     toolProficiency: "Calligrapher's Supplies",
-    equipment: "",
   },
 });
 

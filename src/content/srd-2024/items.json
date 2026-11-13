@@ -1,5 +1,39 @@
 [
   {
+    "id": "amulet",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Amulet",
+    "description": "A Holy Symbol takes one of the forms in the Holy Symbol table and is bejeweled or painted to channel divine magic. A Cleric or Paladin can use a Holy Symbol as a Spellcasting Focus.\nThe table indicates whether a Holy Symbol needs to be held, worn, or borne on fabric (such as a tabard or banner) or a Shield.",
+    "effects": [],
+    "data": {
+      "weight": 1,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
+    "id": "arrows",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Arrows",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 1,
+      "cost": {
+        "amount": 1,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
     "id": "battleaxe",
     "packageId": "srd-2024",
     "type": "item",
@@ -64,6 +98,23 @@
     }
   },
   {
+    "id": "book",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Book",
+    "description": "A Book contains fiction or nonfiction. If you consult an accurate nonfiction Book about its topic, you gain a +5 bonus to Intelligence (Arcana, History, Nature, or Religion) checks you make about that topic.",
+    "effects": [],
+    "data": {
+      "weight": 5,
+      "cost": {
+        "amount": 25,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
     "id": "breastplate",
     "packageId": "srd-2024",
     "type": "item",
@@ -92,6 +143,23 @@
         "armorCategory": "medium",
         "stealthDisadvantage": false
       }
+    }
+  },
+  {
+    "id": "calligraphers-supplies",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Calligrapher's Supplies",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 5,
+      "cost": {
+        "amount": 10,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "tool"
     }
   },
   {
@@ -151,6 +219,23 @@
         "armorCategory": "medium",
         "stealthDisadvantage": false
       }
+    }
+  },
+  {
+    "id": "clothes-travelers",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Clothes, Traveler's",
+    "description": "Traveler's Clothes are resilient garments designed for travel in various environments.",
+    "effects": [],
+    "data": {
+      "weight": 4,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
     }
   },
   {
@@ -249,6 +334,74 @@
           "long": 60
         }
       }
+    }
+  },
+  {
+    "id": "dice",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Dice",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 1,
+        "unit": "sp"
+      },
+      "requiresAttunement": false,
+      "category": "tool"
+    }
+  },
+  {
+    "id": "dragonchess",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Dragonchess",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 1,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "tool"
+    }
+  },
+  {
+    "id": "dungeoneer-pack",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Dungeoneer's Pack",
+    "description": "A Dungeoneer's Pack contains the following items: Backpack, Caltrops, Crowbar, 2 flasks of Oil, 10 days of Rations, Rope, Tinderbox, 10 Torches, and Waterskin.",
+    "effects": [],
+    "data": {
+      "weight": 55,
+      "cost": {
+        "amount": 12,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
+    "id": "emblem",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Emblem",
+    "description": "A Holy Symbol takes one of the forms in the Holy Symbol table and is bejeweled or painted to channel divine magic. A Cleric or Paladin can use a Holy Symbol as a Spellcasting Focus.\nThe table indicates whether a Holy Symbol needs to be held, worn, or borne on fabric (such as a tabard or banner) or a Shield.",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
     }
   },
   {
@@ -527,6 +680,23 @@
           "long": 60
         }
       }
+    }
+  },
+  {
+    "id": "healers-kit",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Healer's Kit",
+    "description": "A Healer's Kit has ten uses. As a Utilize action, you can expend one of its uses to stabilize an Unconscious creature that has 0 Hit Points without needing to make a Wisdom (Medicine) check.",
+    "effects": [],
+    "data": {
+      "weight": 3,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
     }
   },
   {
@@ -974,6 +1144,23 @@
     }
   },
   {
+    "id": "parchment",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Parchment",
+    "description": "One sheet of Parchment can hold about 250 handwritten words.",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 3,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
     "id": "pike",
     "packageId": "srd-2024",
     "type": "item",
@@ -1067,6 +1254,23 @@
     }
   },
   {
+    "id": "playing-cards",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Playing Cards",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 5,
+        "unit": "sp"
+      },
+      "requiresAttunement": false,
+      "category": "tool"
+    }
+  },
+  {
     "id": "quarterstaff",
     "packageId": "srd-2024",
     "type": "item",
@@ -1094,6 +1298,23 @@
         ],
         "mastery": "topple"
       }
+    }
+  },
+  {
+    "id": "quiver",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Quiver",
+    "description": "A Quiver holds up to 20 Arrows.",
+    "effects": [],
+    "data": {
+      "weight": 1,
+      "cost": {
+        "amount": 1,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
     }
   },
   {
@@ -1126,6 +1347,23 @@
     }
   },
   {
+    "id": "reliquary",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Reliquary",
+    "description": "A Holy Symbol takes one of the forms in the Holy Symbol table and is bejeweled or painted to channel divine magic. A Cleric or Paladin can use a Holy Symbol as a Spellcasting Focus.\nThe table indicates whether a Holy Symbol needs to be held, worn, or borne on fabric (such as a tabard or banner) or a Shield.",
+    "effects": [],
+    "data": {
+      "weight": 2,
+      "cost": {
+        "amount": 5,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
     "id": "ring-mail",
     "packageId": "srd-2024",
     "type": "item",
@@ -1150,6 +1388,23 @@
         "armorCategory": "heavy",
         "stealthDisadvantage": true
       }
+    }
+  },
+  {
+    "id": "robe",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Robe",
+    "description": "A Robe has vocational or ceremonial significance. Some events and locations admit only people wearing a Robe bearing certain colors or symbols.",
+    "effects": [],
+    "data": {
+      "weight": 1,
+      "cost": {
+        "amount": 1,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
     }
   },
   {
@@ -1181,6 +1436,23 @@
         "armorCategory": "medium",
         "stealthDisadvantage": true
       }
+    }
+  },
+  {
+    "id": "scholars-pack",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Scholar's Pack",
+    "description": "A Scholar's Pack contains the following items: Backpack, Blanket, Book, Ink, Ink Pen, Lamp, 10 flasks of Oil, 10 sheets of Parchment, and Tinderbox.",
+    "effects": [],
+    "data": {
+      "weight": 22,
+      "cost": {
+        "amount": 40,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
     }
   },
   {
@@ -1398,6 +1670,23 @@
     }
   },
   {
+    "id": "spellbook",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Spellbook",
+    "description": "Essential for wizards, a spellbook is a leather-bound tome with 100 blank vellum pages suitable for recording spells.",
+    "effects": [],
+    "data": {
+      "weight": 3,
+      "cost": {
+        "amount": 50,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "gear"
+    }
+  },
+  {
     "id": "splint-armor",
     "packageId": "srd-2024",
     "type": "item",
@@ -1453,6 +1742,23 @@
         "armorCategory": "light",
         "stealthDisadvantage": false
       }
+    }
+  },
+  {
+    "id": "three-dragon-ante",
+    "packageId": "srd-2024",
+    "type": "item",
+    "name": "Three-Dragon Ante",
+    "description": "",
+    "effects": [],
+    "data": {
+      "weight": 0,
+      "cost": {
+        "amount": 1,
+        "unit": "gp"
+      },
+      "requiresAttunement": false,
+      "category": "tool"
     }
   },
   {

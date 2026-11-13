@@ -101,6 +101,94 @@
           "description": "Whenever you activate your Second Wind with a Bonus Action, you can move up to half your Speed without provoking Opportunity Attacks.",
           "effects": []
         }
+      ],
+      "startingEquipment": [
+        {
+          "items": [
+            {
+              "itemIds": [
+                "chain-mail"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "greatsword"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "flail"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "javelin"
+              ],
+              "quantity": 8
+            },
+            {
+              "itemIds": [
+                "dungeoneer-pack"
+              ],
+              "quantity": 1
+            }
+          ],
+          "gp": 4
+        },
+        {
+          "items": [
+            {
+              "itemIds": [
+                "studded-leather-armor"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "scimitar"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "shortsword"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "longbow"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "arrows"
+              ],
+              "quantity": 20
+            },
+            {
+              "itemIds": [
+                "quiver"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "dungeoneer-pack"
+              ],
+              "quantity": 1
+            }
+          ],
+          "gp": 11
+        },
+        {
+          "items": [],
+          "gp": 155
+        }
       ]
     }
   },
@@ -205,6 +293,47 @@
           "name": "Memorize Spell",
           "description": "Whenever you finish a Short Rest, you can study your spellbook and replace one of the level 1+ Wizard spells you have prepared for your Spellcasting feature with another level 1+ spell from the book.",
           "effects": []
+        }
+      ],
+      "startingEquipment": [
+        {
+          "items": [
+            {
+              "itemIds": [
+                "dagger"
+              ],
+              "quantity": 2
+            },
+            {
+              "itemIds": [
+                "quarterstaff"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "spellbook"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "scholars-pack"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "robe"
+              ],
+              "quantity": 1
+            }
+          ],
+          "gp": 5
+        },
+        {
+          "items": [],
+          "gp": 55
         }
       ]
     }

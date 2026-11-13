@@ -4,8 +4,11 @@ import type { ContentIndex } from "@/rules-engine/engine";
 import type {
   Ability,
   Character,
+  Coins,
   DamageType,
+  InventoryItem,
   Skill,
+  StartingEquipmentOption,
 } from "@/rules-engine/schemas";
 
 // SRD 5.2.1 (español), "Cómo jugar": nombres de las características.
@@ -79,6 +82,40 @@ const contentNamesEs: Record<string, string> = {
   acolyte: "Acólito",
   sage: "Erudito",
   soldier: "Soldado",
+  // Objetos del equipo inicial (ADR 0017). SRD 5.2.1 (español): "Equipo
+  // inicial" de cada clase y trasfondo, tablas "Armas", "Armaduras",
+  // "Equipo de aventurero" y "Herramientas".
+  "chain-mail": "Cota de malla",
+  "studded-leather-armor": "Armadura de cuero tachonado",
+  "shield-item": "Escudo",
+  greatsword: "Espadón",
+  flail: "Mangual",
+  javelin: "Jabalina",
+  scimitar: "Cimitarra",
+  shortsword: "Espada corta",
+  longbow: "Arco largo",
+  shortbow: "Arco corto",
+  spear: "Lanza",
+  dagger: "Daga",
+  quarterstaff: "Bastón",
+  arrows: "Flechas",
+  quiver: "Aljaba",
+  "dungeoneer-pack": "Paquete de explorador de mazmorras",
+  "scholars-pack": "Paquete de erudito",
+  spellbook: "Libro de conjuros",
+  book: "Libro",
+  parchment: "Pergamino (hojas)",
+  robe: "Túnica",
+  "calligraphers-supplies": "Suministros de calígrafo",
+  "healers-kit": "Útiles de sanador",
+  "clothes-travelers": "Ropas de viaje",
+  amulet: "Amuleto (símbolo sagrado)",
+  emblem: "Emblema (símbolo sagrado)",
+  reliquary: "Relicario (símbolo sagrado)",
+  dragonchess: "Ajedrez dragón",
+  "three-dragon-ante": "Apuesta de los tres dragones",
+  dice: "Dados",
+  "playing-cards": "Naipes",
 };
 
 export const contentName = (content: { id: string; name: string }): string =>
@@ -111,4 +148,70 @@ export function characterSubtitle(
     ),
     nameOf(character.backgroundId),
   ].join(" · ");
+}
+
+// Nombre en español de un id de contenido, o el id si no está en el paquete.
+export function contentNameById(id: string, index: ContentIndex): string {
+  const content = index.get(id);
+  return content ? contentName(content) : id;
+}
+
+// "A, B y C".
+function joinList(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts.join("");
+  return `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}`;
+}
+
+// "Jabalina ×8": la cantidad solo si es más de uno.
+const withQuantity = (name: string, quantity: number) =>
+  quantity > 1 ? `${name} ×${quantity}` : name;
+
+// Una opción de equipo inicial en una línea: "Espadón, Jabalina ×8 y 4 po".
+// Una entrada con varios objetos se muestra como "Dados / Naipes": con comas
+// se confundiría con objetos que vienen todos juntos.
+export function equipmentOptionText(
+  option: StartingEquipmentOption,
+  index: ContentIndex,
+): string {
+  const parts = option.items.map((entry) =>
+    withQuantity(
+      entry.itemIds.map((id) => contentNameById(id, index)).join(" / "),
+      entry.quantity,
+    ),
+  );
+  if (option.gp > 0) parts.push(`${option.gp} po`);
+  return joinList(parts);
+}
+
+// "Opción A", "Opción B"…, como en el SRD ("Elige A o B").
+export const optionLetter = (i: number): string =>
+  String.fromCharCode("A".charCodeAt(0) + i);
+
+// El inventario listo para mostrar, en el orden guardado.
+export function inventoryLines(
+  inventory: readonly InventoryItem[],
+  index: ContentIndex,
+) {
+  return inventory.map((entry) => ({
+    itemId: entry.itemId,
+    label: withQuantity(contentNameById(entry.itemId, index), entry.quantity),
+    equipped: entry.equipped,
+  }));
+}
+
+// SRD 5.2.1, "Monedas": abreviaturas en español, de mayor a menor valor.
+const coinAbbreviations: [keyof Coins, string][] = [
+  ["pp", "ppt"],
+  ["gp", "po"],
+  ["ep", "pe"],
+  ["sp", "pp"],
+  ["cp", "pc"],
+];
+
+// "18 po, 5 pp". Vacío si no tiene monedas.
+export function coinsText(coins: Coins): string {
+  return coinAbbreviations
+    .filter(([key]) => coins[key] > 0)
+    .map(([key, abbreviation]) => `${coins[key]} ${abbreviation}`)
+    .join(", ");
 }

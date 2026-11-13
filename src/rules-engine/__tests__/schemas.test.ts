@@ -345,7 +345,19 @@ describe("contentSchema", () => {
         featId: "savage-attacker",
         skillProficiencies: ["athletics", "intimidation"],
         toolProficiency: "Gaming set",
-        equipment: "Spear, shortbow, 20 arrows...",
+        // SRD 5.2.1, Soldado: "(A) lanza, arco corto, 20 flechas, aljaba,
+        // juego (el mismo que arriba)… y 14 po, o (B) 50 po". Recortado.
+        startingEquipment: [
+          {
+            items: [
+              { itemIds: ["spear"] },
+              { itemIds: ["arrows"], quantity: 20 },
+              { itemIds: ["dice", "playing-cards"] },
+            ],
+            gp: 14,
+          },
+          { gp: 50 },
+        ],
       },
     });
     expect(result.success).toBe(true);

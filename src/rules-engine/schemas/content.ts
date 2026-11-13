@@ -39,6 +39,27 @@ const levelFeatureSchema = traitSchema.extend({
 // 0 es nivel 1). Va en los datos para que una clase homebrew traiga su tabla.
 const spellSlotTableSchema = z.array(z.array(z.int().min(0)).max(9)).max(20);
 
+// SRD 5.2.1, "Elige el equipo inicial": la clase y el trasfondo ofrecen cada
+// uno varias opciones ("Elige A o B") y el jugador se queda con una. Cada
+// opción es una lista de objetos más monedas de oro (ADR 0017).
+//
+// `itemIds` con un solo id es un objeto fijo. Con varios, el jugador elige
+// uno: "símbolo sagrado" (amuleto, emblema o relicario) o el juego del soldado.
+const equipmentEntrySchema = z.strictObject({
+  itemIds: z.array(slugSchema).min(1),
+  quantity: z.int().min(1).default(1),
+});
+
+const startingEquipmentOptionSchema = z.strictObject({
+  items: z.array(equipmentEntrySchema).default([]),
+  gp: z.int().min(0).default(0),
+});
+
+// Sin opciones = la clase o el trasfondo no da equipo (por ejemplo, homebrew).
+const startingEquipmentSchema = z
+  .array(startingEquipmentOptionSchema)
+  .default([]);
+
 // --- Datos específicos de cada tipo de contenido ---
 
 const classDataSchema = z.strictObject({
@@ -63,6 +84,7 @@ const classDataSchema = z.strictObject({
     })
     .optional(),
   features: z.array(levelFeatureSchema),
+  startingEquipment: startingEquipmentSchema,
 });
 
 const subclassDataSchema = z.strictObject({
@@ -83,7 +105,7 @@ const backgroundDataSchema = z.strictObject({
   featId: slugSchema,
   skillProficiencies: z.array(skillSchema).length(2),
   toolProficiency: z.string().min(1),
-  equipment: z.string(),
+  startingEquipment: startingEquipmentSchema,
 });
 
 const featDataSchema = z.strictObject({
@@ -252,4 +274,7 @@ export const contentSchema = z.discriminatedUnion("type", [
 ]);
 
 export type Content = z.infer<typeof contentSchema>;
+export type StartingEquipmentOption = z.infer<
+  typeof startingEquipmentOptionSchema
+>;
 export type ContentType = Content["type"];

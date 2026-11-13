@@ -18,7 +18,49 @@
         "religion"
       ],
       "toolProficiency": "Calligrapher's Supplies",
-      "equipment": "Choose A or B: (A) Calligrapher's Supplies, Book (prayers), Holy Symbol, Parchment (10 sheets), Robe, 8 GP; or (B) 50 GP"
+      "startingEquipment": [
+        {
+          "items": [
+            {
+              "itemIds": [
+                "calligraphers-supplies"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "book"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "parchment"
+              ],
+              "quantity": 10
+            },
+            {
+              "itemIds": [
+                "amulet",
+                "emblem",
+                "reliquary"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "robe"
+              ],
+              "quantity": 1
+            }
+          ],
+          "gp": 8
+        },
+        {
+          "items": [],
+          "gp": 50
+        }
+      ]
     }
   },
   {
@@ -40,7 +82,47 @@
         "history"
       ],
       "toolProficiency": "Calligrapher's Supplies",
-      "equipment": "Choose A or B: (A) Quarterstaff, Calligrapher's Supplies, Book (history), Parchment (8 sheets), Robe, 8 GP; or (B) 50 GP"
+      "startingEquipment": [
+        {
+          "items": [
+            {
+              "itemIds": [
+                "quarterstaff"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "calligraphers-supplies"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "book"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "parchment"
+              ],
+              "quantity": 8
+            },
+            {
+              "itemIds": [
+                "robe"
+              ],
+              "quantity": 1
+            }
+          ],
+          "gp": 8
+        },
+        {
+          "items": [],
+          "gp": 50
+        }
+      ]
     }
   },
   {
@@ -62,7 +144,62 @@
         "intimidation"
       ],
       "toolProficiency": "Choose one kind of Gaming Set (see \"Equipment\")",
-      "equipment": "Choose A or B: (A) Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP; or (B) 50 GP"
+      "startingEquipment": [
+        {
+          "items": [
+            {
+              "itemIds": [
+                "spear"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "shortbow"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "arrows"
+              ],
+              "quantity": 20
+            },
+            {
+              "itemIds": [
+                "quiver"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "dragonchess",
+                "three-dragon-ante",
+                "dice",
+                "playing-cards"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "healers-kit"
+              ],
+              "quantity": 1
+            },
+            {
+              "itemIds": [
+                "clothes-travelers"
+              ],
+              "quantity": 1
+            }
+          ],
+          "gp": 14
+        },
+        {
+          "items": [],
+          "gp": 50
+        }
+      ]
     }
   }
 ]

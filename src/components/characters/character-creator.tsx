@@ -5,6 +5,7 @@ import { useId, useMemo, useState } from "react";
 
 import { Fieldset, Option } from "@/components/characters/choice-fields";
 import { AbilityGrid } from "@/components/sheet/ability-grid";
+import { EquipmentList } from "@/components/sheet/equipment-list";
 import { VitalsRow } from "@/components/sheet/vitals-row";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +18,8 @@ import {
   type CharacterDraft,
   draftErrors,
   emptyDraft,
+  emptyEquipmentChoice,
+  type EquipmentChoice,
   MAX_NAME_LENGTH,
   overlappingSkills,
   STANDARD_ARRAY,
@@ -26,15 +29,24 @@ import { toSavedCharacter, writeSavedCharacter } from "@/lib/character-storage";
 import {
   abilityNames,
   characterSubtitle,
+  coinsText,
   contentName,
+  contentNameById,
+  equipmentOptionText,
   feetToMeters,
+  inventoryLines,
+  optionLetter,
   sizeNames,
   skillNames,
 } from "@/lib/format";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
 import { calculateSheet } from "@/rules-engine/engine";
-import type { Ability, Skill } from "@/rules-engine/schemas";
+import type {
+  Ability,
+  Skill,
+  StartingEquipmentOption,
+} from "@/rules-engine/schemas";
 
 const options = builderOptions(srd2024Index);
 
@@ -48,6 +60,7 @@ const stepTitles: Record<Step, string> = {
   class: "Clase",
   background: "Trasfondo",
   abilities: "Características",
+  equipment: "Equipo",
   summary: "Resumen",
 };
 
@@ -158,6 +171,9 @@ export function CharacterCreator() {
         )}
         {step === "abilities" && (
           <AbilitiesStep draft={draft} update={update} />
+        )}
+        {step === "equipment" && (
+          <EquipmentStep draft={draft} update={update} />
         )}
         {step === "summary" && <SummaryStep draft={draft} />}
 
@@ -286,10 +302,15 @@ function ClassStep({ draft, update }: StepProps) {
             type="radio"
             name="class"
             checked={draft.classId === c.id}
-            // Las habilidades son de cada clase: al cambiar, se vacían.
+            // Las habilidades y el equipo son de cada clase: al cambiar,
+            // se vacían.
             onChange={() =>
               c.id !== draft.classId &&
-              update({ classId: c.id, classSkills: [] })
+              update({
+                classId: c.id,
+                classSkills: [],
+                classEquipment: emptyEquipmentChoice(),
+              })
             }
             title={contentName(c)}
             detail={`Dado de golpe d${c.data.hitDie} · característica principal: ${c.data.primaryAbilities.map((a) => abilityNames[a].name).join(" o ")}`}
@@ -339,12 +360,14 @@ function BackgroundStep({ draft, update }: StepProps) {
             type="radio"
             name="background"
             checked={draft.backgroundId === b.id}
-            // Las características que se pueden subir son de cada trasfondo.
+            // Las características que se pueden subir y el equipo son de
+            // cada trasfondo.
             onChange={() =>
               b.id !== draft.backgroundId &&
               update({
                 backgroundId: b.id,
                 abilityBonus: { mode: "two-one", plusTwo: null, plusOne: null },
+                backgroundEquipment: emptyEquipmentChoice(),
               })
             }
             title={contentName(b)}
@@ -528,6 +551,137 @@ function ScoreSelect({
   );
 }
 
+// SRD 5.2.1, "Elige el equipo inicial": una opción de la clase y una del
+// trasfondo (ADR 0017).
+function EquipmentStep({ draft, update }: StepProps) {
+  const cls = options.classes.find((c) => c.id === draft.classId);
+  const background = options.backgrounds.find(
+    (b) => b.id === draft.backgroundId,
+  );
+  return (
+    <>
+      {cls && (
+        <EquipmentOptions
+          legend={`Equipo de ${contentName(cls)}`}
+          name="class-equipment"
+          options={cls.data.startingEquipment}
+          choice={draft.classEquipment}
+          onChange={(classEquipment) => update({ classEquipment })}
+        />
+      )}
+      {background && (
+        <EquipmentOptions
+          legend={`Equipo de ${contentName(background)}`}
+          name="background-equipment"
+          options={background.data.startingEquipment}
+          choice={draft.backgroundEquipment}
+          onChange={(backgroundEquipment) => update({ backgroundEquipment })}
+        />
+      )}
+      <p className="text-sm text-muted-foreground">
+        La armadura y el escudo quedan equipados. Las monedas se guardan en la
+        hoja para comprar más adelante.
+      </p>
+    </>
+  );
+}
+
+function EquipmentOptions({
+  legend,
+  name,
+  options: equipmentOptions,
+  choice,
+  onChange,
+}: {
+  legend: string;
+  name: string;
+  options: readonly StartingEquipmentOption[];
+  choice: EquipmentChoice;
+  onChange: (choice: EquipmentChoice) => void;
+}) {
+  if (equipmentOptions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {legend}: no da equipo inicial.
+      </p>
+    );
+  }
+  const chosen =
+    choice.option === null ? undefined : equipmentOptions[choice.option];
+  return (
+    <Fieldset legend={legend}>
+      {equipmentOptions.map((option, i) => (
+        <Option
+          key={i}
+          type="radio"
+          name={name}
+          checked={choice.option === i}
+          // Las elecciones de "elegí uno" son de cada opción.
+          onChange={() =>
+            choice.option !== i && onChange({ option: i, picks: [] })
+          }
+          title={`Opción ${optionLetter(i)}`}
+          detail={equipmentOptionText(option, srd2024Index)}
+        />
+      ))}
+      {chosen?.items.map((entry, i) =>
+        entry.itemIds.length > 1 ? (
+          <ItemSelect
+            key={i}
+            label="Elegí uno"
+            value={choice.picks[i] ?? null}
+            itemIds={entry.itemIds}
+            onChange={(itemId) => {
+              const picks = [...choice.picks];
+              picks[i] = itemId;
+              onChange({ ...choice, picks });
+            }}
+          />
+        ) : null,
+      )}
+    </Fieldset>
+  );
+}
+
+function ItemSelect({
+  label,
+  value,
+  itemIds,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  itemIds: readonly string[];
+  onChange: (itemId: string) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="grid gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <select
+        id={id}
+        className={inputClass}
+        value={value ?? ""}
+        onChange={(e) => {
+          const itemId = itemIds.find((i) => i === e.target.value);
+          if (itemId) onChange(itemId);
+        }}
+      >
+        <option value="" disabled>
+          Elegí…
+        </option>
+        {itemIds.map((itemId) => (
+          <option key={itemId} value={itemId}>
+            {contentNameById(itemId, srd2024Index)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function SummaryStep({ draft }: { draft: CharacterDraft }) {
   // El id es provisorio: es solo para mostrar la hoja antes de guardar.
   const result = buildCharacter(draft, srd2024Index, "preview");
@@ -561,9 +715,13 @@ function SummaryStep({ draft }: { draft: CharacterDraft }) {
           clase no suma nada. Podés volver al paso Clase y cambiar.
         </p>
       )}
+      <EquipmentList
+        items={inventoryLines(result.character.inventory, srd2024Index)}
+        coins={coinsText(result.character.coins)}
+      />
       <p className="text-sm text-muted-foreground">
-        Todavía no se eligen el equipo inicial, la dote del trasfondo ni los
-        conjuros: los podés anotar aparte por ahora.
+        Todavía no se eligen la dote del trasfondo ni los conjuros: los podés
+        anotar aparte por ahora.
       </p>
     </section>
   );

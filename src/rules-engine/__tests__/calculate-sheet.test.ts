@@ -67,7 +67,6 @@ const soldier = content({
     featId: "savage-attacker",
     skillProficiencies: ["athletics", "intimidation"],
     toolProficiency: "Gaming Set",
-    equipment: "",
   },
 });
 
@@ -310,7 +309,6 @@ const criminal = content({
     featId: "alert",
     skillProficiencies: ["sleight-of-hand", "stealth"],
     toolProficiency: "Thieves' Tools",
-    equipment: "",
   },
 });
 

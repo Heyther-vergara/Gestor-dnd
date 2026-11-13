@@ -89,6 +89,121 @@ const FEATURE_GRANTS: Record<string, FeatureGrant> = {
   "wizard-ability-score-improvement": "ability-score-improvement",
 };
 
+// SRD 5.2.1, "Equipo inicial" de cada clase y "Equipo" de cada trasfondo
+// (ADR 0017). 5e-bits lo trae como texto, así que se escribe a mano con los
+// ids de objeto de 5e-bits. Una entrada con varios ids es "elegí uno".
+type StartingEquipment = DataOf<"class">["startingEquipment"];
+const item = (id: string, quantity = 1) => ({ itemIds: [id], quantity });
+// "Símbolo sagrado": amuleto, emblema o relicario (tabla "Símbolos sagrados").
+const HOLY_SYMBOL = { itemIds: ["amulet", "emblem", "reliquary"], quantity: 1 };
+// "Juego": ajedrez dragón, apuesta de los tres dragones, dados o naipes.
+const GAMING_SET = {
+  itemIds: ["dragonchess", "three-dragon-ante", "dice", "playing-cards"],
+  quantity: 1,
+};
+const STARTING_EQUIPMENT: Record<string, StartingEquipment> = {
+  // Guerrero: "(A) cota de malla, espadón, mangual, 8 jabalinas, paquete de
+  // explorador de mazmorras y 4 po; (B) armadura de cuero tachonado,
+  // cimitarra, espada corta, arco largo, 20 flechas, aljaba, paquete de
+  // explorador de mazmorras y 11 po, o (C) 155 po".
+  fighter: [
+    {
+      items: [
+        item("chain-mail"),
+        item("greatsword"),
+        item("flail"),
+        item("javelin", 8),
+        item("dungeoneer-pack"),
+      ],
+      gp: 4,
+    },
+    {
+      items: [
+        item("studded-leather-armor"),
+        item("scimitar"),
+        item("shortsword"),
+        item("longbow"),
+        item("arrows", 20),
+        item("quiver"),
+        item("dungeoneer-pack"),
+      ],
+      gp: 11,
+    },
+    { items: [], gp: 155 },
+  ],
+  // Mago: "(A) 2 dagas, canalizador arcano (bastón), libro de conjuros,
+  // paquete de erudito, túnica y 5 po, o (B) 55 po". El bastón es el arma
+  // (5e-bits lo marca también como canalizador arcano).
+  wizard: [
+    {
+      items: [
+        item("dagger", 2),
+        item("quarterstaff"),
+        item("spellbook"),
+        item("scholars-pack"),
+        item("robe"),
+      ],
+      gp: 5,
+    },
+    { items: [], gp: 55 },
+  ],
+  // Acólito: "(A) suministros de calígrafo, libro (de oraciones), pergamino
+  // (10 hojas), símbolo sagrado, túnica y 8 po, o (B) 50 po".
+  acolyte: [
+    {
+      items: [
+        item("calligraphers-supplies"),
+        item("book"),
+        item("parchment", 10),
+        HOLY_SYMBOL,
+        item("robe"),
+      ],
+      gp: 8,
+    },
+    { items: [], gp: 50 },
+  ],
+  // Erudito: "(A) bastón, suministros de calígrafo, libro (de historia),
+  // pergamino (8 hojas), túnica y 8 po, o (B) 50 po".
+  sage: [
+    {
+      items: [
+        item("quarterstaff"),
+        item("calligraphers-supplies"),
+        item("book"),
+        item("parchment", 8),
+        item("robe"),
+      ],
+      gp: 8,
+    },
+    { items: [], gp: 50 },
+  ],
+  // Soldado: "(A) lanza, arco corto, 20 flechas, aljaba, juego (el mismo que
+  // arriba), útiles de sanador, ropas de viaje y 14 po, o (B) 50 po".
+  soldier: [
+    {
+      items: [
+        item("spear"),
+        item("shortbow"),
+        item("arrows", 20),
+        item("quiver"),
+        GAMING_SET,
+        item("healers-kit"),
+        item("clothes-travelers"),
+      ],
+      gp: 14,
+    },
+    { items: [], gp: 50 },
+  ],
+};
+
+// Objetos que no son armas ni armaduras: se importan solo los que aparecen en
+// el equipo inicial, para no llenar el paquete de cosas que nada usa.
+const GEAR_IDS = new Set(
+  Object.values(STARTING_EQUIPMENT).flatMap((options) =>
+    options.flatMap((o) => o.items.flatMap((entry) => entry.itemIds)),
+  ),
+);
+
 // Ids que chocan con otro contenido del paquete: el escudo y el conjuro Escudo
 // se llaman "shield" en 5e-bits, y el índice de contenido necesita ids únicos.
 const ITEM_ID_OVERRIDES: Record<string, string> = {
@@ -155,7 +270,6 @@ type SourceBackground = {
   feat: Ref;
   proficiencies: Ref[];
   proficiency_choices?: { desc: string }[];
-  equipment_options: { desc: string }[];
 };
 type SourceFeat = {
   index: string;
@@ -337,6 +451,7 @@ function convertClass(
           effects: [],
           ...(FEATURE_GRANTS[f.index] && { grants: FEATURE_GRANTS[f.index] }),
         })),
+      startingEquipment: STARTING_EQUIPMENT[source.index] ?? [],
     },
   };
 }
@@ -412,7 +527,7 @@ function convertBackground(source: SourceBackground): Content {
           .filter((p) => p.index.startsWith("tool-"))
           .map((p) => p.name.replace(/^Tool: /, ""))
           .join(", "),
-      equipment: source.equipment_options[0]?.desc ?? "",
+      startingEquipment: STARTING_EQUIPMENT[source.index] ?? [],
     },
   };
 }
@@ -463,8 +578,8 @@ function convertSpell(source: SourceSpell): Content {
   };
 }
 
-// Solo armaduras, escudo y armas por ahora: es lo que usa el motor.
-// El equipo de aventurero, herramientas, munición y objetos mágicos quedan para más adelante.
+// Todas las armaduras, el escudo y las armas, que usa el motor. Del resto
+// (equipo de aventurero, herramientas, munición) solo lo del equipo inicial.
 function convertEquipment(source: SourceEquipment): Content | undefined {
   const categories = source.equipment_categories.map((c) => c.index);
   const common = {
@@ -567,6 +682,19 @@ function convertEquipment(source: SourceEquipment): Content | undefined {
     };
   }
 
+  // Equipo de aventurero, herramientas y munición: sin efectos en el motor.
+  // Ojo: 5e-bits da el precio por paquete (las flechas, 1 po las 20).
+  if (GEAR_IDS.has(source.index)) {
+    return {
+      ...common,
+      effects: [],
+      data: {
+        ...base,
+        category: categories.includes("tools") ? "tool" : "gear",
+      },
+    };
+  }
+
   return undefined;
 }
 
@@ -638,10 +766,13 @@ async function main() {
   await writeJson("backgrounds.json", pickedBackgrounds.map(convertBackground));
   await writeJson("feats.json", pick(feats, featIds).map(convertFeat));
   await writeJson("spells.json", pick(spells, SPELL_IDS).map(convertSpell));
-  await writeJson(
-    "items.json",
-    equipment.flatMap((e) => convertEquipment(e) ?? []),
-  );
+  const items = equipment.flatMap((e) => convertEquipment(e) ?? []);
+  // Que el equipo inicial no nombre un objeto que no existe en 5e-bits.
+  for (const id of GEAR_IDS) {
+    if (!items.some((i) => i.id === (ITEM_ID_OVERRIDES[id] ?? id)))
+      throw new Error(`Equipo inicial: no existe el objeto "${id}"`);
+  }
+  await writeJson("items.json", items);
   console.log("Listo. Valida con: pnpm test");
 }
 

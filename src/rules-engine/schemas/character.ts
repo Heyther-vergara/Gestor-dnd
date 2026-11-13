@@ -105,6 +105,17 @@ const inventoryItemSchema = z.strictObject({
   attuned: z.boolean().default(false),
 });
 
+// SRD 5.2.1, "Monedas": pc (cobre), pp (plata), pe (electro), po (oro) y
+// pt (platino). Es estado, como el inventario: se gana y se gasta jugando.
+// Las claves siguen la abreviatura en inglés del contenido importado.
+const coinsSchema = z.strictObject({
+  cp: z.int().min(0).default(0),
+  sp: z.int().min(0).default(0),
+  ep: z.int().min(0).default(0),
+  gp: z.int().min(0).default(0),
+  pp: z.int().min(0).default(0),
+});
+
 // Se guarda el daño recibido, no los PG actuales: si los PG máximos cambian
 // (subir de nivel, un objeto), los PG actuales se recalculan solos.
 // Los dados de golpe gastados van por tipo ({ d10: 1 }): con multiclase
@@ -146,6 +157,8 @@ export const characterSchema = z.strictObject({
   baseAbilityScores: abilityScoresSchema,
   choices: z.array(choiceSchema).default([]),
   inventory: z.array(inventoryItemSchema).default([]),
+  // Los personajes guardados antes de las monedas (ADR 0017) empiezan en cero.
+  coins: coinsSchema.default({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }),
   playState: playStateSchema.default({
     damageTaken: 0,
     tempHp: 0,
@@ -160,6 +173,7 @@ export const characterSchema = z.strictObject({
 
 export type AbilityScores = z.infer<typeof abilityScoresSchema>;
 export type Choice = z.infer<typeof choiceSchema>;
+export type Coins = z.infer<typeof coinsSchema>;
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 export type Character = z.infer<typeof characterSchema>;
 // Lo que se puede pasar a `characterSchema.parse`: los campos con valor por
