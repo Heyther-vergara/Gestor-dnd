@@ -8,6 +8,7 @@
 import type { ContentIndex } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
+import { giveItem, type HomebrewItem, takeItem } from "./homebrew";
 import {
   createPlayReducer,
   type PlayAction,
@@ -43,7 +44,11 @@ export type SavedSheetAction =
   // está en "loading" no se guarda nada, así no se pisa la hoja de la cuenta.
   | { type: "reload"; character: Character }
   // Terminó un guardado en la nube, bien o mal.
-  | { type: "cloud-result"; ok: boolean };
+  | { type: "cloud-result"; ok: boolean }
+  // Dar o sacar un objeto homebrew (ADR 0019). Cambia el inventario, que se
+  // guarda como cualquier otro cambio del personaje.
+  | { type: "give-item"; item: HomebrewItem }
+  | { type: "take-item"; itemId: string };
 
 export function initialSavedSheetState(character: Character): SavedSheetState {
   return { session: { character, message: null }, saveStatus: "loading" };
@@ -79,6 +84,17 @@ export function createSavedSheetReducer(contentIndex: ContentIndex) {
         return state.saveStatus === saveStatus
           ? state
           : { ...state, saveStatus };
+      }
+      case "give-item":
+      case "take-item": {
+        const { character } = state.session;
+        const next =
+          action.type === "give-item"
+            ? giveItem(character, action.item)
+            : takeItem(character, action.itemId);
+        return next === character
+          ? state
+          : { ...state, session: { character: next, message: null } };
       }
       default:
         return { ...state, session: playReducer(state.session, action) };

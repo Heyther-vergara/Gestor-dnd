@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PlayableSheet } from "@/components/sheet/playable-sheet";
 import { Button } from "@/components/ui/button";
 import { loadAndSync } from "@/lib/character-sync";
 import { characterSubtitle } from "@/lib/format";
+import { type HomebrewItem, withHomebrew } from "@/lib/homebrew";
+import { homebrewItemsFrom } from "@/lib/homebrew-storage";
 import { planLevelUp } from "@/lib/level-up";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
@@ -14,7 +16,7 @@ import { type Character, characterSchema } from "@/rules-engine/schemas";
 
 type LoadState =
   | { status: "loading" }
-  | { status: "found"; character: Character }
+  | { status: "found"; character: Character; homebrew: HomebrewItem[] }
   | { status: "missing" };
 
 // La hoja de un personaje creado (ADR 0015). A diferencia de la hoja de
@@ -37,7 +39,12 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
         if (cancelled) return;
         setState(
           character
-            ? { status: "found", character: withFreshPlayState(character) }
+            ? {
+                status: "found",
+                character: withFreshPlayState(character),
+                // El homebrew vive en este navegador (ADR 0019).
+                homebrew: homebrewItemsFrom(local),
+              }
             : { status: "missing" },
         );
       })
@@ -48,6 +55,13 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
       cancelled = true;
     };
   }, [characterId]);
+
+  // El SRD más el homebrew, para que el motor encuentre esos objetos.
+  const homebrew = state.status === "found" ? state.homebrew : null;
+  const contentIndex = useMemo(
+    () => withHomebrew(srd2024Index, homebrew ?? []),
+    [homebrew],
+  );
 
   if (state.status === "loading") {
     return (
@@ -79,6 +93,8 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
         initialCharacter={state.character}
         subtitle={characterSubtitle(state.character, srd2024Index)}
         resetMode="keep"
+        contentIndex={contentIndex}
+        homebrewItems={state.homebrew}
       />
       {canLevelUp && (
         <div className="mx-auto w-full max-w-2xl px-4 pb-8">
