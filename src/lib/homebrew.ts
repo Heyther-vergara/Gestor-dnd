@@ -286,17 +286,17 @@ export function homebrewItemSummary(item: HomebrewItem): string {
 
 // --- El objeto y el personaje ---
 
-// El contenido del SRD más los objetos homebrew, en un solo índice para el
-// motor. Si un id se repitiera, gana el del SRD: un homebrew no puede pisar
-// contenido oficial.
+// El contenido del SRD más el homebrew (objetos y clases, ADR 0020), en un
+// solo índice para el motor. Si un id se repitiera, gana el del SRD: un
+// homebrew no puede pisar contenido oficial.
 export function withHomebrew(
   base: ContentIndex,
-  items: readonly HomebrewItem[],
+  homebrew: readonly Content[],
 ): ContentIndex {
-  if (items.length === 0) return base;
+  if (homebrew.length === 0) return base;
   return createContentIndex([
-    ...items.filter((item) => !base.has(item.id)),
     ...base.values(),
+    ...homebrew.filter((content) => !base.has(content.id)),
   ]);
 }
 

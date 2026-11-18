@@ -4,11 +4,11 @@ import Link from "next/link";
 import { HomebrewManager } from "@/components/homebrew/homebrew-manager";
 
 export const metadata: Metadata = {
-  title: "Objetos homebrew · Gestor de personajes 5e",
+  title: "Homebrew · Gestor de personajes 5e",
 };
 
 // Server Component: solo el marco. Los objetos viven en el navegador, así
-// que los maneja HomebrewManager del lado del cliente (ADR 0019).
+// que los maneja HomebrewManager del lado del cliente (ADR 0019 y 0020).
 export default function HomebrewPage() {
   return (
     <main className="mx-auto grid w-full max-w-2xl content-start gap-5 px-4 py-6">
@@ -20,11 +20,11 @@ export default function HomebrewPage() {
           ← Mis personajes
         </Link>
         <h1 className="font-heading text-3xl font-bold tracking-wide">
-          Objetos homebrew
+          Homebrew
         </h1>
         <p className="text-muted-foreground">
           Inventá objetos propios y dáselos a tus personajes: la hoja aplica sus
-          efectos sola.
+          efectos sola. También podés importar clases desde un archivo.
         </p>
       </header>
       <HomebrewManager />

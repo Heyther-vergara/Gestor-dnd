@@ -8,15 +8,19 @@ import { Button } from "@/components/ui/button";
 import { loadAndSync } from "@/lib/character-sync";
 import { characterSubtitle } from "@/lib/format";
 import { type HomebrewItem, withHomebrew } from "@/lib/homebrew";
-import { homebrewItemsFrom } from "@/lib/homebrew-storage";
+import { homebrewContentFrom } from "@/lib/homebrew-storage";
 import { planLevelUp } from "@/lib/level-up";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
-import { type Character, characterSchema } from "@/rules-engine/schemas";
+import {
+  type Character,
+  characterSchema,
+  type Content,
+} from "@/rules-engine/schemas";
 
 type LoadState =
   | { status: "loading" }
-  | { status: "found"; character: Character; homebrew: HomebrewItem[] }
+  | { status: "found"; character: Character; homebrew: Content[] }
   | { status: "missing" };
 
 // La hoja de un personaje creado (ADR 0015). A diferencia de la hoja de
@@ -42,8 +46,9 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
             ? {
                 status: "found",
                 character: withFreshPlayState(character),
-                // El homebrew vive en este navegador (ADR 0019).
-                homebrew: homebrewItemsFrom(local),
+                // El homebrew vive en este navegador: objetos (ADR 0019) y
+                // clases importadas (ADR 0020).
+                homebrew: homebrewContentFrom(local),
               }
             : { status: "missing" },
         );
@@ -56,7 +61,7 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
     };
   }, [characterId]);
 
-  // El SRD más el homebrew, para que el motor encuentre esos objetos.
+  // El SRD más el homebrew, para que el motor encuentre esos objetos y clases.
   const homebrew = state.status === "found" ? state.homebrew : null;
   const contentIndex = useMemo(
     () => withHomebrew(srd2024Index, homebrew ?? []),
@@ -86,15 +91,18 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
   // etc.). Lo que recibe acá es el "estado inicial": el mismo personaje sin
   // nada de la partida, para "Volver al estado inicial".
   // Subir de nivel solo aparece si se puede (una clase y nivel menor a 5).
-  const canLevelUp = planLevelUp(state.character, srd2024Index).ok;
+  const canLevelUp = planLevelUp(state.character, contentIndex).ok;
+  const homebrewItems = state.homebrew.filter(
+    (c): c is HomebrewItem => c.type === "item",
+  );
   return (
     <>
       <PlayableSheet
         initialCharacter={state.character}
-        subtitle={characterSubtitle(state.character, srd2024Index)}
+        subtitle={characterSubtitle(state.character, contentIndex)}
         resetMode="keep"
         contentIndex={contentIndex}
-        homebrewItems={state.homebrew}
+        homebrewItems={homebrewItems}
       />
       {canLevelUp && (
         <div className="mx-auto w-full max-w-2xl px-4 pb-8">

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CharacterListItem } from "@/components/characters/character-list-item";
+import { useHomebrewIndex } from "@/components/homebrew/content-index";
 import { Button } from "@/components/ui/button";
 import type { SavedCharacter } from "@/lib/character-storage";
 import { deleteCharacter, listCharacters } from "@/lib/character-sync";
 import { characterSubtitle } from "@/lib/format";
-import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
 
 type ListState =
@@ -20,6 +20,8 @@ type ListState =
 // del navegador. Es un Client Component porque lo guardado solo existe en el
 // navegador (localStorage y la sesión de Supabase).
 export function CharacterList() {
+  // Para nombrar las clases homebrew en la lista (ADR 0020).
+  const index = useHomebrewIndex();
   const [state, setState] = useState<ListState>({ status: "loading" });
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export function CharacterList() {
             <CharacterListItem
               key={character.id}
               character={character}
-              subtitle={characterSubtitle(character, srd2024Index)}
+              subtitle={characterSubtitle(character, index)}
               onDelete={handleDelete}
             />
           ))}

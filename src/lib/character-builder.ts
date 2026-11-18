@@ -387,7 +387,16 @@ export function buildCharacter(
     id,
     name: draft.name.trim(),
     edition: "2024",
-    activePackageIds: ["srd-2024"],
+    // El SRD siempre, más los paquetes de lo elegido: una clase homebrew
+    // (ADR 0020) vive en el paquete homebrew, y sin él el motor la ignora.
+    activePackageIds: [
+      ...new Set([
+        "srd-2024",
+        species.packageId,
+        cls.packageId,
+        background.packageId,
+      ]),
+    ],
     classes: [{ classId: cls.id, level: 1 }],
     speciesId: species.id,
     backgroundId: background.id,

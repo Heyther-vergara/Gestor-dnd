@@ -11,6 +11,7 @@ import { contentSchema, packageSchema } from "@/rules-engine/schemas";
 
 import type { KeyValueStorage } from "./character-storage";
 import type { HomebrewItem } from "./homebrew";
+import type { HomebrewClassContent } from "./homebrew-class";
 
 const STORAGE_VERSION = 1;
 export const HOMEBREW_STORAGE_KEY = "gestor-dnd:homebrew";
@@ -22,6 +23,9 @@ const homebrewLibrarySchema = z
       message: "El paquete tiene que ser homebrew",
     }),
     items: z.array(contentSchema),
+    // Clases y subclases importadas (ADR 0020). Lo guardado antes no las
+    // tiene: empieza sin ninguna, sin cambiar de versión.
+    classes: z.array(contentSchema).default([]),
   })
   // Cada objeto tiene que ser un objeto (no una clase, etc.) de este paquete.
   .refine(
@@ -30,11 +34,21 @@ const homebrewLibrarySchema = z
         (item) => item.type === "item" && item.packageId === library.package.id,
       ),
     { message: "Hay contenido que no es un objeto de este paquete" },
+  )
+  .refine(
+    (library) =>
+      library.classes.every(
+        (c) =>
+          (c.type === "class" || c.type === "subclass") &&
+          c.packageId === library.package.id,
+      ),
+    { message: "Hay contenido que no es una clase de este paquete" },
   );
 
 export type HomebrewLibrary = {
   package: z.infer<typeof packageSchema>;
   items: HomebrewItem[];
+  classes: HomebrewClassContent[];
 };
 
 // Paquete nuevo y vacío. El id lleva un sufijo al azar para que, cuando el
@@ -51,6 +65,7 @@ export function newHomebrewLibrary(suffix: string): HomebrewLibrary {
       source: "homebrew",
     },
     items: [],
+    classes: [],
   };
 }
 
@@ -80,6 +95,9 @@ export function loadHomebrew(storage: KeyValueStorage): LoadHomebrewResult {
       items: parsed.data.items.flatMap((item) =>
         item.type === "item" ? [item] : [],
       ),
+      classes: parsed.data.classes.flatMap((c) =>
+        c.type === "class" || c.type === "subclass" ? [c] : [],
+      ),
     },
   };
 }
@@ -99,6 +117,17 @@ export function saveHomebrew(
 export function homebrewItemsFrom(storage: KeyValueStorage): HomebrewItem[] {
   const result = loadHomebrew(storage);
   return result.status === "loaded" ? result.library.items : [];
+}
+
+// Todo el contenido homebrew de este navegador (objetos y clases), o nada si
+// no hay o no se puede leer. Para armar el índice del motor.
+export function homebrewContentFrom(
+  storage: KeyValueStorage,
+): (HomebrewItem | HomebrewClassContent)[] {
+  const result = loadHomebrew(storage);
+  return result.status === "loaded"
+    ? [...result.library.items, ...result.library.classes]
+    : [];
 }
 
 // Agrega un objeto nuevo o reemplaza uno con el mismo id (editar).

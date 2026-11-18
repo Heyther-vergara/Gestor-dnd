@@ -80,6 +80,14 @@ export type ComputedSheet = {
   darkvision: number;
   // Una entrada por clase con lanzamiento de conjuros, en el orden de `classes`.
   spellcasting: SpellcastingStats[];
+  // Recursos con usos contados de las clases (ADR 0020), en el orden de
+  // `classes`. Vacío si ninguna clase los declara.
+  resources: ClassResourceStats[];
+  // CD de salvación propias de clases sin conjuros ("CD de Brebaje").
+  saveDcs: ClassSaveDc[];
+  // Herramientas con las que es competente: la del trasfondo y las de la
+  // clase inicial, sin repetir. En texto, como vienen en el contenido.
+  toolProficiencies: string[];
   // Rasgos de clase y de subclase ya alcanzados, ordenados por nivel. La hoja
   // los muestra como texto; los que tienen efectos ya están aplicados.
   features: SheetFeature[];
@@ -127,6 +135,29 @@ export type SpellcastingStats = {
   // pendiente (ADR 0016) y acá va la tabla de cada clase por separado.
   slots: number[];
 };
+
+export type ClassResourceStats = {
+  id: string;
+  classId: string;
+  name: string;
+  max: number;
+  // `max` menos lo gastado, sin bajar de 0.
+  remaining: number;
+  // Cuánto se puede gastar de una vez; undefined si no hay límite.
+  perUseLimit?: number;
+};
+
+export type ClassSaveDc = {
+  classId: string;
+  name: string;
+  ability: Ability;
+  value: number;
+};
+
+// El valor de una columna de la tabla de clase para un nivel. La posición 0
+// es el nivel 1; si la tabla es más corta, vale el último valor.
+const valueAtLevel = (column: readonly number[], level: number): number =>
+  column[Math.min(level, column.length) - 1] ?? 0;
 
 export type SheetFeature = {
   name: string;
@@ -733,6 +764,49 @@ export function calculateSheet(
     },
   );
 
+  // --- Recursos de clase (ADR 0020) ---
+  const { resourcesSpent } = character.playState;
+  const resources: ClassResourceStats[] = ownedClasses.flatMap(
+    ({ cls, level }) =>
+      cls.data.resources.map((resource) => {
+        const max = valueAtLevel(resource.maxByLevel, level);
+        const stats: ClassResourceStats = {
+          id: resource.id,
+          classId: cls.id,
+          name: resource.name,
+          max,
+          remaining: Math.max(0, max - (resourcesSpent[resource.id] ?? 0)),
+        };
+        if (resource.perUseLimitByLevel) {
+          stats.perUseLimit = valueAtLevel(resource.perUseLimitByLevel, level);
+        }
+        return stats;
+      }),
+  );
+
+  // --- CD de salvación de clase ---
+  // Igual que la de conjuros (SRD 5.2.1, "Rellena los números"):
+  // 8 + modificador de la característica + bonificador por competencia.
+  const saveDcs: ClassSaveDc[] = ownedClasses.flatMap(({ cls }) =>
+    cls.data.saveDcs.map(({ name, ability }) => ({
+      classId: cls.id,
+      name,
+      ability,
+      value: 8 + modifiers[ability] + proficiencyBonus,
+    })),
+  );
+
+  // --- Herramientas ---
+  // SRD 5.2.1, "Creación de personajes": el trasfondo da una herramienta.
+  // "Como personaje multiclase": las herramientas de la clase solo las da la
+  // clase inicial (simplificación: las demás clases no dan ninguna).
+  const toolProficiencies = [
+    ...new Set([
+      ...(background ? [background.data.toolProficiency] : []),
+      ...(startingClass?.data.toolProficiencies ?? []),
+    ]),
+  ];
+
   // --- Defensas contra el daño ---
   // SRD 5.2.1, "No se acumulan": varias resistencias o vulnerabilidades al
   // mismo tipo cuentan como una. Por eso alcanza con saber si alguna lo da.
@@ -758,6 +832,9 @@ export function calculateSheet(
     speed,
     darkvision,
     spellcasting,
+    resources,
+    saveDcs,
+    toolProficiencies,
     features,
     armorPenalties: { untrainedArmor, untrainedShield, insufficientStrength },
     exhaustion: { level: exhaustionLevel, d20Penalty, speedPenalty },

@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 
 import { Fieldset, Option } from "@/components/characters/choice-fields";
+import {
+  ContentIndexContext,
+  useContentIndex,
+  useHomebrewIndex,
+} from "@/components/homebrew/content-index";
 import { AbilityGrid } from "@/components/sheet/ability-grid";
 import { EquipmentList } from "@/components/sheet/equipment-list";
 import { VitalsRow } from "@/components/sheet/vitals-row";
@@ -39,7 +44,6 @@ import {
   sizeNames,
   skillNames,
 } from "@/lib/format";
-import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
 import { calculateSheet } from "@/rules-engine/engine";
 import type {
@@ -47,8 +51,6 @@ import type {
   Skill,
   StartingEquipmentOption,
 } from "@/rules-engine/schemas";
-
-const options = builderOptions(srd2024Index);
 
 // Los pasos del formulario más el resumen final.
 type Step = BuilderStep | "summary";
@@ -72,6 +74,23 @@ const inputClass =
 // las reglas están en `lib/character-builder`: este componente solo guarda el
 // borrador, muestra los errores que devuelve y, al final, guarda el personaje.
 export function CharacterCreator() {
+  // El SRD más las clases homebrew importadas (ADR 0020).
+  const index = useHomebrewIndex();
+  return (
+    <ContentIndexContext.Provider value={index}>
+      <CreatorSteps />
+    </ContentIndexContext.Provider>
+  );
+}
+
+// Las opciones de cada paso, con el contenido del índice.
+function useOptions() {
+  const index = useContentIndex();
+  return useMemo(() => builderOptions(index), [index]);
+}
+
+function CreatorSteps() {
+  const index = useContentIndex();
   const router = useRouter();
   const [draft, setDraft] = useState<CharacterDraft>(emptyDraft);
   const [stepIndex, setStepIndex] = useState(0);
@@ -81,7 +100,7 @@ export function CharacterCreator() {
   const [saveError, setSaveError] = useState(false);
 
   const step = STEPS[stepIndex] ?? "summary";
-  const errors = useMemo(() => draftErrors(draft, srd2024Index), [draft]);
+  const errors = useMemo(() => draftErrors(draft, index), [draft, index]);
   const stepError = step === "summary" ? undefined : errors[step];
 
   const update = (patch: Partial<CharacterDraft>) =>
@@ -102,7 +121,7 @@ export function CharacterCreator() {
   }
 
   async function create() {
-    const result = buildCharacter(draft, srd2024Index, crypto.randomUUID());
+    const result = buildCharacter(draft, index, crypto.randomUUID());
     if (!result.ok) {
       // No debería pasar (cada paso se valida al avanzar), pero si pasa se
       // vuelve al primer paso con problemas.
@@ -238,6 +257,7 @@ function NameStep({ draft, update }: StepProps) {
 }
 
 function SpeciesStep({ draft, update }: StepProps) {
+  const options = useOptions();
   const species = options.species.find((s) => s.id === draft.speciesId);
   return (
     <>
@@ -279,6 +299,7 @@ function SpeciesStep({ draft, update }: StepProps) {
 }
 
 function ClassStep({ draft, update }: StepProps) {
+  const options = useOptions();
   const cls = options.classes.find((c) => c.id === draft.classId);
   const { count, options: skillOptions } = cls?.data.skillChoices ?? {
     count: 0,
@@ -345,6 +366,7 @@ function ClassStep({ draft, update }: StepProps) {
 }
 
 function BackgroundStep({ draft, update }: StepProps) {
+  const options = useOptions();
   const background = options.backgrounds.find(
     (b) => b.id === draft.backgroundId,
   );
@@ -554,6 +576,7 @@ function ScoreSelect({
 // SRD 5.2.1, "Elige el equipo inicial": una opción de la clase y una del
 // trasfondo (ADR 0017).
 function EquipmentStep({ draft, update }: StepProps) {
+  const options = useOptions();
   const cls = options.classes.find((c) => c.id === draft.classId);
   const background = options.backgrounds.find(
     (b) => b.id === draft.backgroundId,
@@ -599,6 +622,7 @@ function EquipmentOptions({
   choice: EquipmentChoice;
   onChange: (choice: EquipmentChoice) => void;
 }) {
+  const index = useContentIndex();
   if (equipmentOptions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -621,7 +645,7 @@ function EquipmentOptions({
             choice.option !== i && onChange({ option: i, picks: [] })
           }
           title={`Opción ${optionLetter(i)}`}
-          detail={equipmentOptionText(option, srd2024Index)}
+          detail={equipmentOptionText(option, index)}
         />
       ))}
       {chosen?.items.map((entry, i) =>
@@ -654,6 +678,7 @@ function ItemSelect({
   itemIds: readonly string[];
   onChange: (itemId: string) => void;
 }) {
+  const index = useContentIndex();
   const id = useId();
   return (
     <div className="grid gap-1">
@@ -674,7 +699,7 @@ function ItemSelect({
         </option>
         {itemIds.map((itemId) => (
           <option key={itemId} value={itemId}>
-            {contentNameById(itemId, srd2024Index)}
+            {contentNameById(itemId, index)}
           </option>
         ))}
       </select>
@@ -683,11 +708,12 @@ function ItemSelect({
 }
 
 function SummaryStep({ draft }: { draft: CharacterDraft }) {
+  const index = useContentIndex();
   // El id es provisorio: es solo para mostrar la hoja antes de guardar.
-  const result = buildCharacter(draft, srd2024Index, "preview");
+  const result = buildCharacter(draft, index, "preview");
   if (!result.ok) return null;
-  const sheet = calculateSheet(result.character, srd2024Index);
-  const overlap = overlappingSkills(draft, srd2024Index);
+  const sheet = calculateSheet(result.character, index);
+  const overlap = overlappingSkills(draft, index);
 
   return (
     <section className="grid gap-4" aria-label="Resumen del personaje">
@@ -696,7 +722,7 @@ function SummaryStep({ draft }: { draft: CharacterDraft }) {
           {result.character.name}
         </h2>
         <p className="text-muted-foreground">
-          {characterSubtitle(result.character, srd2024Index)}
+          {characterSubtitle(result.character, index)}
         </p>
       </header>
       <VitalsRow sheet={sheet} />
@@ -716,7 +742,7 @@ function SummaryStep({ draft }: { draft: CharacterDraft }) {
         </p>
       )}
       <EquipmentList
-        items={inventoryLines(result.character.inventory, srd2024Index)}
+        items={inventoryLines(result.character.inventory, index)}
         coins={coinsText(result.character.coins)}
       />
       <p className="text-sm text-muted-foreground">

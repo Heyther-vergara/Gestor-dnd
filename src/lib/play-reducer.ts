@@ -19,6 +19,7 @@ import {
   restoreMaxHp,
   rollDeathSave,
   spendHitDie,
+  spendResource,
   stabilize,
 } from "@/rules-engine/engine/play-state";
 import type { Character, DamageType, HitDie } from "@/rules-engine/schemas";
@@ -41,6 +42,7 @@ export type PlayAction =
   | { type: "temp-hp"; amount: number }
   | { type: "spend-hit-die"; die: HitDie; roll: number }
   | { type: "long-rest" }
+  | { type: "spend-resource"; resourceId: string; amount: number }
   | { type: "reduce-max-hp"; amount: number }
   | { type: "restore-max-hp" }
   | { type: "gain-exhaustion" }
@@ -180,13 +182,42 @@ export function createPlayReducer(contentIndex: ContentIndex) {
         return apply(
           session,
           longRest(character, contentIndex),
-          ({ playState }) => ({
-            tone: "info",
-            text:
-              character.playState.exhaustion > 0
-                ? `Descanso largo: PG y dados de golpe al máximo. Cansancio: nivel ${playState.exhaustion}.`
-                : "Descanso largo: PG y dados de golpe al máximo.",
-          }),
+          ({ playState }) => {
+            // Los recursos de clase solo se nombran si había alguno gastado.
+            const recovered = Object.values(
+              character.playState.resourcesSpent,
+            ).some((spent) => spent > 0);
+            const restored = recovered
+              ? "PG, dados de golpe y recursos de clase al máximo"
+              : "PG y dados de golpe al máximo";
+            return {
+              tone: "info",
+              text:
+                character.playState.exhaustion > 0
+                  ? `Descanso largo: ${restored}. Cansancio: nivel ${playState.exhaustion}.`
+                  : `Descanso largo: ${restored}.`,
+            };
+          },
+        );
+      case "spend-resource":
+        return apply(
+          session,
+          spendResource(
+            character,
+            contentIndex,
+            action.resourceId,
+            action.amount,
+          ),
+          ({ playState }) => {
+            const resource = calculateSheet(
+              { ...character, playState },
+              contentIndex,
+            ).resources.find((r) => r.id === action.resourceId);
+            return {
+              tone: "info",
+              text: `Gastaste ${action.amount} de ${resource?.name ?? "tu recurso"}. Te ${resource?.remaining === 1 ? "queda" : "quedan"} ${resource?.remaining ?? 0}.`,
+            };
+          },
         );
       case "gain-exhaustion":
       case "remove-exhaustion": {

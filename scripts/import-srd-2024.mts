@@ -430,6 +430,11 @@ function convertClass(
         const weapon = WEAPON_PROFICIENCIES[p.index];
         return weapon ? [weapon] : [];
       }),
+      // Las herramientas, los recursos y las CD de clase son para homebrew
+      // (ADR 0020); el guerrero y el mago del paquete no los usan.
+      toolProficiencies: [],
+      resources: [],
+      saveDcs: [],
       spellcasting: source.spellcasting
         ? {
             ability: toAbility(source.spellcasting.spellcasting_ability),

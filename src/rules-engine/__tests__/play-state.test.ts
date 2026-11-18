@@ -451,6 +451,7 @@ describe("longRest", () => {
       dead: false,
       maxHpReduction: 0,
       exhaustion: 0,
+      resourcesSpent: {},
     });
   });
 
