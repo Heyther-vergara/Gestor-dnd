@@ -21,7 +21,7 @@ export default function NewCharacterPage() {
           Crear personaje
         </h1>
         <p className="text-muted-foreground">
-          Nivel 1, con el contenido del SRD 5.2.1.
+          Nivel 1, con el contenido del SRD 5.2.1 y tus clases homebrew.
         </p>
       </header>
       <CharacterCreator />

@@ -60,6 +60,31 @@ const startingEquipmentSchema = z
   .array(startingEquipmentOptionSchema)
   .default([]);
 
+// Recurso de clase con usos contados (ADR 0020): por ejemplo, los "Puntos de
+// Catalizador" de una clase homebrew. El SRD tiene rasgos parecidos ("Tomar
+// aliento" del guerrero se usa dos veces y se recupera con descansos), pero
+// por ahora solo el homebrew los declara.
+//
+// `maxByLevel` es una columna de la tabla de la clase: la posición 0 es el
+// nivel 1. Si la tabla no llega a un nivel, se usa el último valor.
+// `perUseLimitByLevel` es opcional: cuánto se puede gastar de una vez.
+const classResourceSchema = z.strictObject({
+  id: slugSchema,
+  name: z.string().min(1),
+  maxByLevel: z.array(z.int().min(0)).min(1).max(20),
+  perUseLimitByLevel: z.array(z.int().min(1)).min(1).max(20).optional(),
+  // Por ahora solo con descanso largo: el corto todavía no está modelado.
+  recharge: z.literal("long-rest"),
+});
+
+// CD de salvación propia de una clase que no lanza conjuros (por ejemplo,
+// "CD de Brebaje"). Se calcula como la de conjuros del SRD 5.2.1:
+// 8 + bonificador por competencia + modificador de la característica.
+const classSaveDcSchema = z.strictObject({
+  name: z.string().min(1),
+  ability: abilitySchema,
+});
+
 // --- Datos específicos de cada tipo de contenido ---
 
 const classDataSchema = z.strictObject({
@@ -76,6 +101,11 @@ const classDataSchema = z.strictObject({
   // que no es la inicial da menos entrenamiento (el guerrero no da pesadas).
   multiclassArmorProficiencies: z.array(armorTrainingSchema).default([]),
   weaponProficiencies: z.array(z.string()),
+  // Herramientas, en texto ("Herramientas de alquimista"). Como las armas,
+  // todavía no cambian ningún número de la hoja: se muestran.
+  toolProficiencies: z.array(z.string().min(1)).default([]),
+  resources: z.array(classResourceSchema).default([]),
+  saveDcs: z.array(classSaveDcSchema).default([]),
   spellcasting: z
     .strictObject({
       ability: abilitySchema,

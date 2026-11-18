@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { HomebrewClasses } from "@/components/homebrew/homebrew-classes";
 import { HomebrewItemForm } from "@/components/homebrew/homebrew-item-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -163,6 +164,8 @@ export function HomebrewManager() {
           “Objetos homebrew”. Se guardan solo en este navegador.
         </p>
       </section>
+
+      <HomebrewClasses library={library} store={store} />
     </div>
   );
 }

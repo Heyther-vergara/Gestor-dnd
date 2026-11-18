@@ -144,6 +144,10 @@ const playStateSchema = z.strictObject({
   // SRD 5.2.1, glosario, "Cansancio [estado]": es acumulativo, de a un nivel.
   // Con nivel 6 el personaje muere, así que no hay nivel 7 (ADR 0012).
   exhaustion: z.int().min(0).max(6).default(0),
+  // Usos gastados de cada recurso de clase, por id ({ "catalyst-points": 3 }).
+  // Se guarda lo gastado y no lo que queda, como con los dados de golpe: si
+  // el máximo sube con el nivel, lo que queda se recalcula solo (ADR 0020).
+  resourcesSpent: z.record(slugSchema, z.int().min(0)).default({}),
 });
 
 export const characterSchema = z.strictObject({
@@ -168,6 +172,7 @@ export const characterSchema = z.strictObject({
     dead: false,
     maxHpReduction: 0,
     exhaustion: 0,
+    resourcesSpent: {},
   }),
 });
 

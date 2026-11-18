@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import {
+  abilityNames,
   damageTypeNames,
   feetToMeters,
   type inventoryLines,
@@ -21,7 +22,8 @@ import { VitalsRow } from "./vitals-row";
 // reglas, solo las muestra. `playPanel` son los controles de partida, si los hay.
 // `equipment` es el inventario y las monedas ya en texto (no son valores
 // calculados: los guarda el personaje). `homebrewPanel` es para darle o
-// sacarle objetos homebrew (ADR 0019).
+// sacarle objetos homebrew (ADR 0019). `resourcePanel` es para gastar los
+// recursos de clase (ADR 0020); sin él, solo se muestran los números.
 export function SheetView({
   name,
   subtitle,
@@ -29,6 +31,7 @@ export function SheetView({
   playPanel,
   equipment,
   homebrewPanel,
+  resourcePanel,
 }: {
   name: string;
   subtitle: string;
@@ -36,6 +39,7 @@ export function SheetView({
   playPanel?: ReactNode;
   equipment?: { items: ReturnType<typeof inventoryLines>; coins: string };
   homebrewPanel?: ReactNode;
+  resourcePanel?: ReactNode;
 }) {
   return (
     <article className="mx-auto grid w-full max-w-2xl gap-5 px-4 py-6">
@@ -70,6 +74,14 @@ export function SheetView({
             <b className="text-foreground">{feetToMeters(sheet.darkvision)}</b>
           </span>
         )}
+        {sheet.toolProficiencies.length > 0 && (
+          <span>
+            Herramientas{" "}
+            <b className="text-foreground">
+              {sheet.toolProficiencies.join(", ")}
+            </b>
+          </span>
+        )}
         {defenseLines(sheet.damageDefenses).map(({ label, types }) => (
           <span key={label}>
             {label} <b className="text-foreground">{types}</b>
@@ -87,6 +99,36 @@ export function SheetView({
       <SheetSection title="Habilidades">
         <SkillList skills={sheet.skills} />
       </SheetSection>
+
+      {(sheet.resources.length > 0 || sheet.saveDcs.length > 0) && (
+        <SheetSection title="Recursos de clase">
+          <div className="grid gap-3">
+            {sheet.saveDcs.length > 0 && (
+              <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
+                {sheet.saveDcs.map((dc) => (
+                  <span key={`${dc.classId}-${dc.name}`}>
+                    {dc.name} <b className="text-foreground">{dc.value}</b> (
+                    {abilityNames[dc.ability].short})
+                  </span>
+                ))}
+              </p>
+            )}
+            {resourcePanel ??
+              (sheet.resources.length > 0 && (
+                <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
+                  {sheet.resources.map((r) => (
+                    <span key={r.id}>
+                      {r.name}{" "}
+                      <b className="text-foreground">
+                        {r.remaining} de {r.max}
+                      </b>
+                    </span>
+                  ))}
+                </p>
+              ))}
+          </div>
+        </SheetSection>
+      )}
 
       {sheet.spellcasting.length > 0 && (
         <SheetSection title="Conjuros">

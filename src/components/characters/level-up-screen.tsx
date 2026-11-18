@@ -19,16 +19,18 @@ import {
   levelUpErrors,
   planLevelUp,
 } from "@/lib/level-up";
+import { withHomebrew } from "@/lib/homebrew";
+import { homebrewContentFrom } from "@/lib/homebrew-storage";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
-import { calculateSheet } from "@/rules-engine/engine";
+import { type ContentIndex, calculateSheet } from "@/rules-engine/engine";
 import type { Ability, Character } from "@/rules-engine/schemas";
 
 const ABILITIES = Object.keys(abilityNames) as Ability[];
 
 type LoadState =
   | { status: "loading" }
-  | { status: "found"; character: Character }
+  | { status: "found"; character: Character; index: ContentIndex }
   | { status: "missing" };
 
 // Pantalla de subir de nivel (ADR 0016). Las reglas están en `lib/level-up`:
@@ -50,7 +52,14 @@ export function LevelUpScreen({ characterId }: { characterId: string }) {
       .then(({ character }) => {
         if (cancelled) return;
         setState(
-          character ? { status: "found", character } : { status: "missing" },
+          character
+            ? {
+                status: "found",
+                character,
+                // Con las clases homebrew de este navegador (ADR 0020).
+                index: withHomebrew(srd2024Index, homebrewContentFrom(local)),
+              }
+            : { status: "missing" },
         );
       })
       .catch(() => {
@@ -79,7 +88,8 @@ export function LevelUpScreen({ characterId }: { characterId: string }) {
     );
   }
 
-  const check = planLevelUp(state.character, srd2024Index);
+  const { index } = state;
+  const check = planLevelUp(state.character, index);
   return (
     <div className="mx-auto grid w-full max-w-2xl gap-5 px-4 py-6">
       <header className="grid gap-0.5">
@@ -89,7 +99,11 @@ export function LevelUpScreen({ characterId }: { characterId: string }) {
         <p className="text-muted-foreground">{state.character.name}</p>
       </header>
       {check.ok ? (
-        <LevelUpForm character={state.character} plan={check.plan} />
+        <LevelUpForm
+          character={state.character}
+          plan={check.plan}
+          index={index}
+        />
       ) : (
         <p>{check.reason}</p>
       )}
@@ -100,9 +114,11 @@ export function LevelUpScreen({ characterId }: { characterId: string }) {
 function LevelUpForm({
   character,
   plan,
+  index,
 }: {
   character: Character;
   plan: LevelUpPlan;
+  index: ContentIndex;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<LevelUpDraft>(emptyLevelUpDraft);
@@ -111,22 +127,22 @@ function LevelUpForm({
   const [saveError, setSaveError] = useState(false);
 
   const errors = useMemo(
-    () => levelUpErrors(character, plan, draft, srd2024Index),
-    [character, plan, draft],
+    () => levelUpErrors(character, plan, draft, index),
+    [character, plan, draft, index],
   );
   const gain = useMemo(
-    () => hitPointGain(character, plan, draft, srd2024Index),
-    [character, plan, draft],
+    () => hitPointGain(character, plan, draft, index),
+    [character, plan, draft, index],
   );
   const scores = useMemo(
-    () => calculateSheet(character, srd2024Index).abilities,
-    [character],
+    () => calculateSheet(character, index).abilities,
+    [character, index],
   );
-  const cls = srd2024Index.get(plan.classId);
+  const cls = index.get(plan.classId);
   const className = cls ? contentName(cls) : plan.classId;
 
   async function save() {
-    const result = applyLevelUp(character, plan, draft, srd2024Index);
+    const result = applyLevelUp(character, plan, draft, index);
     if (!result.ok) {
       setShowErrors(true);
       return;

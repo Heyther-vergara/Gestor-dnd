@@ -22,6 +22,7 @@ import { type ContentIndex, calculateSheet } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
 import { AccountPanel } from "./account-panel";
+import { ClassResources } from "./class-resources";
 import { HomebrewItemsPanel } from "./homebrew-items-panel";
 import { PlayPanel } from "./play-panel";
 import { SheetView } from "./sheet-view";
@@ -171,6 +172,17 @@ export function PlayableSheet({
         items: inventoryLines(session.character.inventory, contentIndex),
         coins: coinsText(session.character.coins),
       }}
+      resourcePanel={
+        sheet.resources.length > 0 && (
+          <ClassResources
+            resources={sheet.resources}
+            disabled={!loaded}
+            onSpend={(resourceId, amount) =>
+              dispatch({ type: "spend-resource", resourceId, amount })
+            }
+          />
+        )
+      }
       homebrewPanel={
         homebrewItems && (
           <HomebrewItemsPanel

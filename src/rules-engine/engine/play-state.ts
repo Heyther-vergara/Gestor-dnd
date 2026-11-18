@@ -301,6 +301,55 @@ export function longRest(
       // SRD 5.2.1, "Cansancio", "Eliminar niveles de cansancio": tras
       // finalizar un descanso largo, restá 1 nivel.
       exhaustion: Math.max(0, character.playState.exhaustion - 1),
+      // Los recursos de clase se recuperan con descanso largo (ADR 0020).
+      resourcesSpent: {},
+    },
+  };
+}
+
+// Gastar usos de un recurso de clase (ADR 0020), por ejemplo los Puntos de
+// Catalizador para crear un brebaje. No se puede gastar más de lo que queda
+// ni más que el límite por uso de la tabla de la clase.
+export function spendResource(
+  character: Character,
+  contentIndex: ContentIndex,
+  resourceId: string,
+  amount: number,
+): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  if (!Number.isInteger(amount) || amount < 1) {
+    return {
+      ok: false,
+      reason: "La cantidad tiene que ser un número entero desde 1",
+    };
+  }
+  const resource = calculateSheet(character, contentIndex).resources.find(
+    (r) => r.id === resourceId,
+  );
+  if (!resource) {
+    return { ok: false, reason: "El personaje no tiene ese recurso" };
+  }
+  if (resource.perUseLimit !== undefined && amount > resource.perUseLimit) {
+    return {
+      ok: false,
+      reason: `${resource.name}: podés gastar hasta ${resource.perUseLimit} de una vez`,
+    };
+  }
+  if (amount > resource.remaining) {
+    return {
+      ok: false,
+      reason: `${resource.name}: te ${resource.remaining === 1 ? "queda" : "quedan"} ${resource.remaining}`,
+    };
+  }
+  const { resourcesSpent } = character.playState;
+  return {
+    ok: true,
+    playState: {
+      ...character.playState,
+      resourcesSpent: {
+        ...resourcesSpent,
+        [resourceId]: (resourcesSpent[resourceId] ?? 0) + amount,
+      },
     },
   };
 }
