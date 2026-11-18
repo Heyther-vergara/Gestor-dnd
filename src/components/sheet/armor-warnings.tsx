@@ -3,7 +3,7 @@ import type { ArmorPenalties } from "@/rules-engine/engine";
 // ADR 0007: consecuencias de la armadura que no cambian un número de la hoja.
 const messages: Record<keyof ArmorPenalties, string> = {
   untrainedArmor:
-    "Armadura sin entrenamiento: desventaja en pruebas de Fuerza y Destreza, y no podés lanzar conjuros.",
+    "Armadura sin entrenamiento: desventaja en pruebas de Fuerza y Destreza, y no puedes lanzar conjuros.",
   untrainedShield: "Escudo sin entrenamiento: no suma a la CA.",
   insufficientStrength: "Fuerza insuficiente para la armadura: velocidad −3 m.",
 };

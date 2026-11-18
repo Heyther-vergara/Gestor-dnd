@@ -55,7 +55,7 @@ const damageText: Record<DamageOutcome, string> = {
   unharmed: "Los PG temporales absorbieron todo el daño.",
   hurt: "",
   "dropped-to-zero":
-    "Caíste a 0 PG: quedás inconsciente y hacés tiradas de salvación contra muerte.",
+    "Caíste a 0 PG: quedas inconsciente y haces tiradas de salvación contra muerte.",
   "damaged-at-zero":
     "Daño con 0 PG: cuenta como fallo de salvación contra muerte.",
   "instant-death": "Daño considerable: el personaje muere.",
@@ -80,9 +80,9 @@ const defensesText = (defenses: DamageDefense[], type: DamageType) => {
 const deathSaveText: Record<DeathSaveOutcome, string> = {
   success: "Éxito en la salvación contra muerte.",
   failure: "Fallo en la salvación contra muerte.",
-  stabilized: "Tercer éxito: quedás estable con 0 PG.",
+  stabilized: "Tercer éxito: quedas estable con 0 PG.",
   died: "Tercer fallo: el personaje muere.",
-  "regained-hp": "¡20 natural! Recuperás 1 PG y te despertás.",
+  "regained-hp": "¡20 natural! Recuperas 1 PG y te despiertas.",
 };
 
 export function createPlayReducer(contentIndex: ContentIndex) {
@@ -165,8 +165,8 @@ export function createPlayReducer(contentIndex: ContentIndex) {
             tone: "info",
             text:
               kept === "new"
-                ? `Ahora tenés ${playState.tempHp} PG temporales.`
-                : `Los PG temporales no se suman: te quedás con los ${playState.tempHp} que ya tenías.`,
+                ? `Ahora tienes ${playState.tempHp} PG temporales.`
+                : `Los PG temporales no se suman: te quedas con los ${playState.tempHp} que ya tenías.`,
           }),
         );
       case "spend-hit-die":
@@ -233,9 +233,9 @@ export function createPlayReducer(contentIndex: ContentIndex) {
             };
           }
           if (playState.exhaustion === 0) {
-            return { tone: "info", text: "Ya no tenés cansancio." };
+            return { tone: "info", text: "Ya no tienes cansancio." };
           }
-          // Las penalizaciones las calcula el motor; acá solo se cuentan.
+          // Las penalizaciones las calcula el motor; aquí solo se cuentan.
           const { exhaustion } = calculateSheet(
             { ...character, playState },
             contentIndex,

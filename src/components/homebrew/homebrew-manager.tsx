@@ -55,7 +55,7 @@ export function HomebrewManager() {
     } catch {
       next = { status: "unavailable" };
     }
-    // El efecto corre después del render: acá sí se puede cambiar el estado.
+    // El efecto corre después del render: aquí sí se puede cambiar el estado.
     queueMicrotask(() => setState(next));
   }, []);
 
@@ -139,7 +139,7 @@ export function HomebrewManager() {
         </h2>
         {library.items.length === 0 ? (
           <p className="text-muted-foreground">
-            Todavía no hay objetos. Creá el primero con el formulario.
+            Todavía no hay objetos. Crea el primero con el formulario.
           </p>
         ) : (
           <ul className="grid gap-2">
@@ -160,7 +160,7 @@ export function HomebrewManager() {
           </ul>
         )}
         <p className="text-sm text-muted-foreground">
-          Para usar un objeto, abrí la hoja de un personaje y tocá “Dar” en
+          Para usar un objeto, abre la hoja de un personaje y toca “Dar” en
           “Objetos homebrew”. Se guardan solo en este navegador.
         </p>
       </section>
@@ -226,7 +226,7 @@ function HomebrewItemRow({
           </p>
           {failed && (
             <p className="text-sm text-destructive" role="alert">
-              No se pudo borrar. Probá de nuevo.
+              No se pudo borrar. Prueba de nuevo.
             </p>
           )}
           <div className="flex flex-wrap gap-2">

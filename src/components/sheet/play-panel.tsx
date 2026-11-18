@@ -215,7 +215,7 @@ export function PlayPanel({
         Descanso largo
       </Button>
 
-      {/* SRD 5.2.1, "Cansancio": se suma de a un nivel; con 6, morís. */}
+      {/* SRD 5.2.1, "Cansancio": se suma de un nivel en uno; con 6, mueres. */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-[0.7rem] font-semibold tracking-wider text-muted-foreground uppercase">
           Cansancio: nivel{" "}

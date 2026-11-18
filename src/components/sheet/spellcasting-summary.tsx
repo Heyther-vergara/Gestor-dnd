@@ -6,7 +6,7 @@ import type { SpellcastingStats } from "@/rules-engine/engine";
 // SRD 5.2.1, tabla "Rasgos de mago", "Espacios de conjuro por cada nivel de
 // conjuro". Contar los espacios gastados queda para la fase 5 (partida).
 // Los trucos, los preparados y el libro son las listas del personaje (ADR
-// 0021); se cambian con el panel de la hoja, no acá.
+// 0021); se cambian con el panel de la hoja, no aquí.
 export function SpellcastingSummary({
   spellcasting,
 }: {

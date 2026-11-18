@@ -145,7 +145,7 @@ describe("levelUpErrors", () => {
         { ...emptyLevelUpDraft(), ...firstSpells(plan) },
         index,
       ),
-    ).toEqual({ subclass: "Elegí una subclase." });
+    ).toEqual({ subclass: "Elige una subclase." });
   });
 
   it("asks for the improvement at level 4", () => {
@@ -158,7 +158,7 @@ describe("levelUpErrors", () => {
         { ...emptyLevelUpDraft(), ...firstSpells(plan) },
         index,
       ),
-    ).toEqual({ improvement: "Elegí qué característica sube." });
+    ).toEqual({ improvement: "Elige qué característica sube." });
   });
 
   // SRD 5.2.1, "Mejora de característica": no puede pasar de 20.
@@ -245,8 +245,8 @@ describe("applyLevelUp", () => {
     ).toEqual({
       ok: false,
       errors: {
-        subclass: "Elegí una subclase.",
-        spells: "Elegí 2 conjuros nuevos para el libro (llevás 0).",
+        subclass: "Elige una subclase.",
+        spells: "Elige 2 conjuros nuevos para el libro (llevas 0).",
       },
     });
   });

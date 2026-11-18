@@ -22,7 +22,7 @@ export function useHomebrewIndex(): ContentIndex {
     } catch {
       return; // Sin almacenamiento: solo SRD.
     }
-    // El efecto corre después del render: acá sí se puede cambiar el estado.
+    // El efecto corre después del render: aquí sí se puede cambiar el estado.
     queueMicrotask(() => setHomebrew(content));
   }, []);
   return useMemo(() => withHomebrew(srd2024Index, homebrew), [homebrew]);

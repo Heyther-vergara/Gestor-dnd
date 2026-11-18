@@ -313,7 +313,7 @@ const criminal = content({
 });
 
 // SRD 5.2.1, dote "Alerta", "Competencia en iniciativa": cuando tires
-// iniciativa, podés sumar tu bonificador por competencia.
+// iniciativa, puedes sumar tu bonificador por competencia.
 const alert = content({
   id: "alert",
   packageId: "srd-2024",
@@ -498,7 +498,7 @@ describe("calculateSheet: ability scores", () => {
     expect(sheet.issues).toEqual([]);
   });
 
-  // SRD 5.2.1, "Crear un personaje", trasfondo: aumentá una de sus tres
+  // SRD 5.2.1, "Crear un personaje", trasfondo: aumenta una de sus tres
   // características en 2 y otra en 1, o las tres en 1.
   it("applies the background +2/+1", () => {
     const sheet = calculateSheet(
@@ -763,8 +763,8 @@ describe("calculateSheet: armor training", () => {
   });
 
   // SRD 5.2.1, "Entrenamiento con armaduras", "Armaduras ligeras, medias o
-  // pesadas": sin entrenamiento tenés desventaja en las pruebas con d20 de
-  // Fuerza o Destreza y no podés lanzar conjuros. La CA se aplica igual.
+  // pesadas": sin entrenamiento tienes desventaja en las pruebas con d20 de
+  // Fuerza o Destreza y no puedes lanzar conjuros. La CA se aplica igual.
   describe("armor without training", () => {
     const sheet = calculateSheet(wizardWith(equipped("chain-mail")), index);
 
@@ -785,8 +785,8 @@ describe("calculateSheet: armor training", () => {
     });
   });
 
-  // SRD 5.2.1, "Entrenamiento con armaduras", "Escudos": solo obtenés el
-  // bonificador a la CA si tenés entrenamiento con escudos.
+  // SRD 5.2.1, "Entrenamiento con armaduras", "Escudos": solo obtienes el
+  // bonificador a la CA si tienes entrenamiento con escudos.
   it("ignores the shield's AC bonus without shield training", () => {
     const sheet = calculateSheet(wizardWith(equipped("shield")), index);
     expect(sheet.ac).toBe(12);
@@ -925,7 +925,7 @@ describe("calculateSheet: proficiency bonus", () => {
 
 describe("calculateSheet: saving throws", () => {
   // SRD 5.2.1, "Creación de personajes", "Rellena los números": en las
-  // salvaciones en las que sos competente, modificador + bonificador por
+  // salvaciones en las que eres competente, modificador + bonificador por
   // competencia; en las demás, solo el modificador.
   it("adds the proficiency bonus to the class saving throws", () => {
     // Guerrero nivel 3 (+2): Fue 15 (+2) y Con 13 (+1) competentes.
@@ -993,7 +993,7 @@ describe("calculateSheet: skills", () => {
   };
 
   // SRD 5.2.1, "Creación de personajes", "Rellena los números": en las
-  // habilidades en las que sos competente, modificador de la característica
+  // habilidades en las que eres competente, modificador de la característica
   // asociada + bonificador por competencia; en las demás, solo el modificador.
   it("uses only the ability modifier without proficiency", () => {
     const sheet = calculateSheet(makeCharacter(), index);
@@ -1144,7 +1144,7 @@ describe("calculateSheet: skills", () => {
       expect(sheet.issues).toEqual([]);
     });
 
-    // SRD 5.2.1, glosario, "Pericia": la ganás en una habilidad en la que
+    // SRD 5.2.1, glosario, "Pericia": la ganas en una habilidad en la que
     // tengas competencia.
     it("is ignored in a skill without proficiency", () => {
       const sheet = calculateSheet(scholar(["nature"]), index);
@@ -1173,7 +1173,7 @@ describe("calculateSheet: initiative", () => {
     expect(calculateSheet(makeCharacter(), index).initiative).toBe(2);
   });
 
-  // SRD 5.2.1, dote "Alerta": sumás tu bonificador por competencia a la
+  // SRD 5.2.1, dote "Alerta": sumas tu bonificador por competencia a la
   // iniciativa. Se calcula, así que sube solo con el nivel.
   it("adds the proficiency bonus with Alert", () => {
     const level3 = calculateSheet(
@@ -1255,7 +1255,7 @@ describe("calculateSheet: hit points", () => {
     expect(sheet.hitPoints.max).toBe(12 + 16 + 3);
   });
 
-  // SRD 5.2.1, "Multiclase", "Puntos de golpe y dados de golpe": solo obtenés
+  // SRD 5.2.1, "Multiclase", "Puntos de golpe y dados de golpe": solo obtienes
   // los PG del nivel 1 de una clase cuando tu nivel total es 1, así que la
   // clase inicial (la primera) es la que da el dado entero.
   it("only gives level 1 HP for the starting class", () => {

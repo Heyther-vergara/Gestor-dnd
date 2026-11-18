@@ -125,7 +125,7 @@ const expandTarget = (target: BonusTarget): NumericTarget[] =>
 export function homebrewItemErrors(draft: HomebrewItemDraft): string[] {
   const errors: string[] = [];
   const name = draft.name.trim();
-  if (name === "") errors.push("Poné un nombre.");
+  if (name === "") errors.push("Pon un nombre.");
   if (name.length > MAX_ITEM_NAME_LENGTH) {
     errors.push(`El nombre puede tener hasta ${MAX_ITEM_NAME_LENGTH} letras.`);
   }
@@ -149,7 +149,7 @@ export function homebrewItemErrors(draft: HomebrewItemDraft): string[] {
   // se sumarían sin que se note en el formulario: mejor pedir uno solo.
   const targets = draft.bonuses.flatMap((b) => expandTarget(b.target));
   if (new Set(targets).size !== targets.length) {
-    errors.push("Hay dos bonificadores a la misma cosa: dejá uno solo.");
+    errors.push("Hay dos bonificadores a la misma cosa: deja uno solo.");
   }
   if (new Set(draft.resistances).size !== draft.resistances.length) {
     errors.push("Hay una resistencia repetida.");
@@ -196,7 +196,7 @@ export function buildHomebrewItem(
     description: draft.description.trim(),
     effects: homebrewItemEffects(draft),
     data: {
-      // "magic": no es armadura ni escudo, así que no cambia si "llevás
+      // "magic": no es armadura ni escudo, así que no cambia si "llevas
       // armadura" y sus efectos se suman siempre que esté equipado.
       category: "magic",
       requiresAttunement: draft.requiresAttunement,

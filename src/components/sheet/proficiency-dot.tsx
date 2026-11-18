@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-// Marca de competencia: círculo dorado lleno si sos competente, vacío si no.
+// Marca de competencia: círculo dorado lleno si eres competente, vacío si no.
 // Pericia (doble competencia) se marca con un anillo extra.
 export function ProficiencyDot({
   level,

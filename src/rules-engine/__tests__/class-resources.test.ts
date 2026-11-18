@@ -186,7 +186,7 @@ describe("spendResource", () => {
     const result = spendResource(makeTinkerer(2), index, "gear-points", 3);
     expect(result).toEqual({
       ok: false,
-      reason: "Puntos de engranaje: podés gastar hasta 2 de una vez",
+      reason: "Puntos de engranaje: puedes gastar hasta 2 de una vez",
     });
   });
 

@@ -54,7 +54,7 @@ const skillsChoiceSchema = z.strictObject({
 // SRD 5.2.1 "Crear un personaje": +2 a una y +1 a otra distinta, o +1 a las tres.
 // Que sean las tres del trasfondo y que no pasen de 20 lo comprueba el motor, que conoce el contenido.
 // SRD 5.2.1, glosario, "Pericia": duplica el bonificador por competencia en una
-// habilidad en la que ya sos competente. Siempre se elige (mago "Erudito",
+// habilidad en la que ya eres competente. Siempre se elige (mago "Erudito",
 // pícaro), así que va como elección y no como efecto. Que seas competente en
 // la habilidad lo comprueba el motor.
 const expertiseChoiceSchema = z.strictObject({
@@ -133,7 +133,7 @@ const playStateSchema = z.strictObject({
   tempHp: z.int().min(0).default(0),
   hitDiceSpent: z.partialRecord(hitDieSchema, z.int().min(0)).default({}),
   // Salvaciones contra muerte con 0 PG. Tres de un tipo terminan la cuenta:
-  // con tres éxitos quedás estable y con tres fallos morís (ADR 0010).
+  // con tres éxitos quedas estable y con tres fallos mueres (ADR 0010).
   deathSaves: z
     .strictObject({
       successes: z.int().min(0).max(3),
@@ -142,14 +142,14 @@ const playStateSchema = z.strictObject({
     .default({ successes: 0, failures: 0 }),
   // Estable con 0 PG: no hace salvaciones contra muerte.
   stable: z.boolean().default(false),
-  // Se guarda porque la muerte no se deduce de los PG: con 0 PG podés estar
+  // Se guarda porque la muerte no se deduce de los PG: con 0 PG puedes estar
   // agonizando, estable o muerto.
   dead: z.boolean().default(false),
   // Cuánto se redujeron los PG máximos (por ejemplo, por daño necrótico que
   // "absorbe la energía vital"). Es estado, no un valor derivado: lo causa un
   // efecto de la partida y se quita con un descanso largo (ADR 0012).
   maxHpReduction: z.int().min(0).default(0),
-  // SRD 5.2.1, glosario, "Cansancio [estado]": es acumulativo, de a un nivel.
+  // SRD 5.2.1, glosario, "Cansancio [estado]": es acumulativo, de un nivel en uno.
   // Con nivel 6 el personaje muere, así que no hay nivel 7 (ADR 0012).
   exhaustion: z.int().min(0).max(6).default(0),
   // Usos gastados de cada recurso de clase, por id ({ "catalyst-points": 3 }).

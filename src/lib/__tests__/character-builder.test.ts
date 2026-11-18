@@ -163,7 +163,7 @@ describe("draftErrors", () => {
   // SRD 5.2.1, "Humano": tamaño mediano o pequeño, a elección.
   it("asks for a size only when the species offers more than one", () => {
     const human = { ...fighterDraft(), size: null };
-    expect(draftErrors(human, srd2024Index).species).toBe("Elegí un tamaño.");
+    expect(draftErrors(human, srd2024Index).species).toBe("Elige un tamaño.");
 
     const dwarf = { ...fighterDraft(), speciesId: "dwarf", size: null };
     expect(draftErrors(dwarf, srd2024Index).species).toBeUndefined();
@@ -172,7 +172,7 @@ describe("draftErrors", () => {
   // SRD 5.2.1, "Guerrero": competencias con habilidades, elige 2.
   it("requires exactly the number of class skills, from the class list", () => {
     const one = { ...fighterDraft(), classSkills: ["perception" as const] };
-    expect(draftErrors(one, srd2024Index).class).toBe("Elegí 2 habilidades.");
+    expect(draftErrors(one, srd2024Index).class).toBe("Elige 2 habilidades.");
 
     const arcana = {
       ...fighterDraft(),
@@ -336,7 +336,7 @@ describe("starting equipment", () => {
       classEquipment: emptyEquipmentChoice(),
     };
     expect(draftErrors(noClass, srd2024Index).equipment).toBe(
-      "Elegí el equipo de la clase.",
+      "Elige el equipo de la clase.",
     );
 
     const noBackground = {
@@ -344,7 +344,7 @@ describe("starting equipment", () => {
       backgroundEquipment: emptyEquipmentChoice(),
     };
     expect(draftErrors(noBackground, srd2024Index).equipment).toBe(
-      "Elegí el equipo del trasfondo.",
+      "Elige el equipo del trasfondo.",
     );
 
     // El guerrero tiene A, B y C: no hay D.
@@ -363,7 +363,7 @@ describe("starting equipment", () => {
       backgroundEquipment: { option: 0, picks: [null, null, null, null, pick] },
     });
     expect(draftErrors(soldierA(null), srd2024Index).equipment).toBe(
-      "Elegí qué objeto querés en el equipo del trasfondo.",
+      "Elige qué objeto quieres en el equipo del trasfondo.",
     );
     expect(
       draftErrors(soldierA("chain-mail"), srd2024Index).equipment,
@@ -497,11 +497,11 @@ describe("wizard spells in the creator (ADR 0021)", () => {
     expect(draftErrors(draft, srd2024Index).spells).toBeUndefined();
     expect(
       draftErrors({ ...draft, cantripIds: ["light"] }, srd2024Index).spells,
-    ).toBe("Elegí 3 trucos (llevás 1).");
+    ).toBe("Elige 3 trucos (llevas 1).");
     expect(
       draftErrors({ ...draft, spellbookIds: SPELLBOOK.slice(1) }, srd2024Index)
         .spells,
-    ).toBe("Elegí 6 conjuros para el libro (llevás 5).");
+    ).toBe("Elige 6 conjuros para el libro (llevas 5).");
     // Un conjuro de nivel 2 no se puede aprender sin espacios de nivel 2.
     expect(
       draftErrors(

@@ -210,13 +210,13 @@ export function AccountPanel({
   return (
     <form className="grid gap-2" onSubmit={handleCode} noValidate>
       <label htmlFor={codeId} className="text-sm">
-        Escribí el código que te llegó a{" "}
+        Escribe el código que te llegó a{" "}
         <span className="font-medium">{step.email}</span>.
       </label>
       <p className="text-sm text-muted-foreground">
         {step.mode === "link"
           ? "Esta hoja queda guardada en tu cuenta."
-          : "Ya tenés una cuenta con ese email: vas a ver la hoja guardada en ella."}
+          : "Ya tienes una cuenta con ese email: vas a ver la hoja guardada en ella."}
       </p>
       <div className="flex gap-2">
         <input

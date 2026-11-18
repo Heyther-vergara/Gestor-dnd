@@ -83,7 +83,7 @@ const withCurrentHp = (
   current: number,
 ): PlayState => ({ ...playState, damageTaken: max - current });
 
-// SRD 5.2.1, "Inmunidad": no recibís daño de ese tipo. "Resistencia y
+// SRD 5.2.1, "Inmunidad": no recibes daño de ese tipo. "Resistencia y
 // vulnerabilidad": con resistencia, la mitad (redondeando hacia abajo); con
 // vulnerabilidad, el doble. "Orden de aplicación": primero los ajustes
 // (bonificadores, penalizadores; ya vienen en `amount`, porque los suma el
@@ -152,10 +152,10 @@ export function applyDamage(
   const leftover = remaining - hpLost;
   const newCurrent = current - hpLost;
 
-  // SRD 5.2.1, "Daño considerable": si llegás a 0 y el daño que sobra es
-  // mayor o igual a tus PG máximos, morís. "Daño con 0 puntos de golpe":
+  // SRD 5.2.1, "Daño considerable": si llegas a 0 y el daño que sobra es
+  // mayor o igual a tus PG máximos, mueres. "Daño con 0 puntos de golpe":
   // con 0 PG, recibir daño cuenta como un fallo de salvación contra muerte
-  // (dos si es crítico), y si es mayor o igual a tus PG máximos, morís.
+  // (dos si es crítico), y si es mayor o igual a tus PG máximos, mueres.
   let playState: PlayState = {
     ...withCurrentHp(character.playState, max, newCurrent),
     tempHp: temp - tempHpLost,
@@ -221,8 +221,8 @@ export function gainTempHp(
   const invalid = invalidAmount(amount);
   if (invalid) return { ok: false, reason: invalid };
 
-  // SRD 5.2.1, "Puntos de golpe temporales": no se suman. Si ya tenés y
-  // recibís más, elegís con cuáles te quedás. Se conserva el mayor, que es
+  // SRD 5.2.1, "Puntos de golpe temporales": no se suman. Si ya tienes y
+  // recibes más, eliges con cuáles te quedas. Se conserva el mayor, que es
   // lo que conviene salvo rasgos muy específicos (ADR 0009).
   const { tempHp } = character.playState;
   const kept = amount > tempHp ? "new" : "current";
@@ -234,13 +234,13 @@ export function gainTempHp(
 }
 
 // SRD 5.2.1, "Descanso corto" y "Descanso largo": para empezar un descanso
-// tenés que tener al menos 1 punto de golpe.
-const CANNOT_REST = "Para descansar necesitás al menos 1 punto de golpe";
+// tienes que tener al menos 1 punto de golpe.
+const CANNOT_REST = "Para descansar necesitas al menos 1 punto de golpe";
 
 // SRD 5.2.1, "Descanso corto", "Gastar dados de puntos de golpe": por cada
-// dado que gastás, lo tirás y sumás tu modificador por Constitución;
-// recuperás ese total, con un mínimo de 1. Decidís si gastás otro después de
-// cada tirada, por eso se gasta de a uno.
+// dado que gastas, lo tiras y sumas tu modificador por Constitución;
+// recuperas ese total, con un mínimo de 1. Decides si gastas otro después de
+// cada tirada, por eso se gasta de uno en uno.
 export function spendHitDie(
   character: Character,
   contentIndex: ContentIndex,
@@ -277,10 +277,10 @@ export function spendHitDie(
   };
 }
 
-// SRD 5.2.1, "Descanso largo": recuperás todos los PG perdidos y todos los
+// SRD 5.2.1, "Descanso largo": recuperas todos los PG perdidos y todos los
 // dados de golpe gastados, y "si tus puntos de golpe máximos se habían
 // reducido, vuelven a la normalidad". "Puntos de golpe temporales": duran
-// hasta que finalizás un descanso largo.
+// hasta que finalizas un descanso largo.
 export function longRest(
   character: Character,
   contentIndex: ContentIndex,
@@ -332,7 +332,7 @@ export function spendResource(
   if (resource.perUseLimit !== undefined && amount > resource.perUseLimit) {
     return {
       ok: false,
-      reason: `${resource.name}: podés gastar hasta ${resource.perUseLimit} de una vez`,
+      reason: `${resource.name}: puedes gastar hasta ${resource.perUseLimit} de una vez`,
     };
   }
   if (amount > resource.remaining) {
@@ -355,7 +355,7 @@ export function spendResource(
 }
 
 // SRD 5.2.1, glosario, "Cansancio [estado]", "Niveles de cansancio": es
-// acumulativo; cada vez que lo recibís, sumás 1 nivel. "Morirás si tu nivel
+// acumulativo; cada vez que lo recibes, sumas 1 nivel. "Morirás si tu nivel
 // de cansancio es 6". Qué lo causa (viajar de más, hambre, conjuros) se
 // decide en la mesa.
 const EXHAUSTION_DEATH_LEVEL = 6;
@@ -460,7 +460,7 @@ function checkDying(
 }
 
 // SRD 5.2.1, "Tiradas de salvación contra muerte": al empezar tu turno con
-// 0 PG tirás 1d20. El jugador tira en la mesa y carga el resultado.
+// 0 PG tiras 1d20. El jugador tira en la mesa y carga el resultado.
 export function rollDeathSave(
   character: Character,
   contentIndex: ContentIndex,
@@ -477,7 +477,7 @@ export function rollDeathSave(
   }
 
   const { playState } = character;
-  // "Sacar 1 o 20": con un 20 recuperás 1 PG, y al recuperar PG las cuentas
+  // "Sacar 1 o 20": con un 20 recuperas 1 PG, y al recuperar PG las cuentas
   // vuelven a cero.
   if (roll === 20) {
     return {

@@ -30,7 +30,7 @@ export function CharacterList() {
     try {
       local = window.localStorage;
     } catch {
-      // El efecto corre después del render: acá sí se puede cambiar el estado.
+      // El efecto corre después del render: aquí sí se puede cambiar el estado.
       queueMicrotask(() => setState({ status: "unavailable" }));
       return;
     }
@@ -98,7 +98,7 @@ export function CharacterList() {
 
       {state.status === "loaded" && state.characters.length === 0 && (
         <p className="text-muted-foreground">
-          Todavía no tenés personajes. Creá el primero.
+          Todavía no tienes personajes. Crea el primero.
         </p>
       )}
 

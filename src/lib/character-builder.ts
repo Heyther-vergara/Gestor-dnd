@@ -223,22 +223,22 @@ export function draftErrors(
   const errors: DraftErrors = {};
 
   const name = draft.name.trim();
-  if (name === "") errors.name = "Escribí un nombre.";
+  if (name === "") errors.name = "Escribe un nombre.";
   else if (name.length > MAX_NAME_LENGTH)
     errors.name = `El nombre puede tener hasta ${MAX_NAME_LENGTH} caracteres.`;
 
   // SRD 5.2.1, "Elige una especie": la especie define el tamaño. Si ofrece
   // más de uno (el humano puede ser mediano o pequeño), se elige.
   const species = contentOfType(index, draft.speciesId, "species");
-  if (!species) errors.species = "Elegí una especie.";
+  if (!species) errors.species = "Elige una especie.";
   else if (species.data.size.length > 1) {
     if (draft.size === null || !species.data.size.includes(draft.size))
-      errors.species = "Elegí un tamaño.";
+      errors.species = "Elige un tamaño.";
   }
 
   // SRD 5.2.1, cada clase: "Competencias con habilidades: elige N".
   const cls = contentOfType(index, draft.classId, "class");
-  if (!cls) errors.class = "Elegí una clase.";
+  if (!cls) errors.class = "Elige una clase.";
   else {
     const { count, options } = cls.data.skillChoices;
     const unique = new Set(draft.classSkills);
@@ -248,18 +248,18 @@ export function draftErrors(
     )
       errors.class = "Hay habilidades que esta clase no ofrece.";
     else if (draft.classSkills.length !== count)
-      errors.class = `Elegí ${count} habilidades.`;
+      errors.class = `Elige ${count} habilidades.`;
   }
 
   // SRD 5.2.1, "Ajusta las puntuaciones de característica".
   const background = contentOfType(index, draft.backgroundId, "background");
-  if (!background) errors.background = "Elegí un trasfondo.";
+  if (!background) errors.background = "Elige un trasfondo.";
   else {
     const plan = draft.abilityBonus;
     const offered = background.data.abilityOptions;
     if (plan.mode === "two-one") {
       if (plan.plusTwo === null || plan.plusOne === null)
-        errors.background = "Elegí qué característica sube 2 y cuál sube 1.";
+        errors.background = "Elige qué característica sube 2 y cuál sube 1.";
       else if (plan.plusTwo === plan.plusOne)
         errors.background = "El +2 y el +1 van en características distintas.";
       else if (
@@ -272,7 +272,7 @@ export function draftErrors(
   }
 
   if (!isStandardArrayAssignment(draft.baseAbilityScores))
-    errors.abilities = "Usá cada número del conjunto estándar una sola vez.";
+    errors.abilities = "Usa cada número del conjunto estándar una sola vez.";
 
   // SRD 5.2.1, mago, "Trucos": "conoces tres trucos de mago"; "Libro de
   // conjuros": "empieza con seis conjuros de mago de nivel 1".
@@ -316,7 +316,7 @@ export function draftErrors(
 }
 
 // Los objetos de la opción elegida, con la elección hecha en las entradas
-// de "elegí uno". null si falta elegir algo o la elección no es válida.
+// de "elige uno". null si falta elegir algo o la elección no es válida.
 function resolveEquipmentOption(
   options: readonly StartingEquipmentOption[],
   choice: EquipmentChoice,
@@ -342,9 +342,9 @@ function equipmentChoiceError(
   // Contenido sin equipo inicial (homebrew): no hay nada que elegir.
   if (options.length === 0) return undefined;
   if (choice.option === null || !options[choice.option])
-    return `Elegí el equipo ${source}.`;
+    return `Elige el equipo ${source}.`;
   if (!resolveEquipmentOption(options, choice))
-    return `Elegí qué objeto querés en el equipo ${source}.`;
+    return `Elige qué objeto quieres en el equipo ${source}.`;
   return undefined;
 }
 

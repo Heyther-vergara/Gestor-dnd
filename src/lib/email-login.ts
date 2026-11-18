@@ -38,10 +38,10 @@ export class EmailLoginError extends Error {
 
 export const emailLoginErrorText: Record<EmailLoginErrorKind, string> = {
   "invalid-email": "Ese email no parece válido.",
-  "invalid-code": "El código no es correcto o ya venció. Pedí uno nuevo.",
+  "invalid-code": "El código no es correcto o ya venció. Pide uno nuevo.",
   "rate-limit":
-    "Se mandaron demasiados emails seguidos. Esperá unos minutos y probá de nuevo.",
-  unknown: "Algo falló. Revisá la conexión y probá de nuevo.",
+    "Se mandaron demasiados emails seguidos. Espera unos minutos y prueba de nuevo.",
+  unknown: "Algo falló. Revisa la conexión y prueba de nuevo.",
 };
 
 // Paso 1: manda el código por email y dice qué camino se tomó, para usarlo

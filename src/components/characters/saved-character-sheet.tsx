@@ -88,7 +88,7 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
   }
 
   // PlayableSheet vuelve a leer lo guardado (con el daño, los dados gastados,
-  // etc.). Lo que recibe acá es el "estado inicial": el mismo personaje sin
+  // etc.). Lo que recibe aquí es el "estado inicial": el mismo personaje sin
   // nada de la partida, para "Volver al estado inicial".
   // Subir de nivel solo aparece si se puede (una clase y nivel menor a 5).
   const canLevelUp = planLevelUp(state.character, contentIndex).ok;

@@ -73,7 +73,7 @@ export function CharacterListItem({ character, subtitle, onDelete }: Props) {
           </p>
           {state === "failed" && (
             <p className="text-sm text-destructive" role="alert">
-              No se pudo borrar. Revisá la conexión y probá de nuevo.
+              No se pudo borrar. Revisa la conexión y prueba de nuevo.
             </p>
           )}
           <div className="flex flex-wrap gap-2">

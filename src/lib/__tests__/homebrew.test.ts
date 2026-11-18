@@ -41,11 +41,11 @@ const sheetWith = (items: HomebrewItem[], character = sampleCharacter) =>
 describe("homebrew item draft", () => {
   it("needs a name", () => {
     expect(homebrewItemErrors(emptyHomebrewItemDraft)).toContain(
-      "Poné un nombre.",
+      "Pon un nombre.",
     );
     expect(
       homebrewItemErrors({ ...emptyHomebrewItemDraft, name: "   " }),
-    ).toContain("Poné un nombre.");
+    ).toContain("Pon un nombre.");
   });
 
   it("rejects a zero, decimal or huge bonus", () => {
