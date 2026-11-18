@@ -32,6 +32,20 @@ export {
   type NumericEffect,
   resolveEffectValue,
 } from "./effects";
+import {
+  compareSpells,
+  type SpellContent,
+  type SpellLimits,
+  spellLimits,
+} from "./spells";
+
+export {
+  classSpellList,
+  compareSpells,
+  type SpellContent,
+  type SpellLimits,
+  spellLimits,
+} from "./spells";
 
 // Todo el contenido disponible, buscable por id.
 export type ContentIndex = ReadonlyMap<string, Content>;
@@ -134,6 +148,15 @@ export type SpellcastingStats = {
   // Con multiclase, el SRD suma los niveles en una tabla común; eso queda
   // pendiente (ADR 0016) y acá va la tabla de cada clase por separado.
   slots: number[];
+  // Lo que permite el nivel de la clase (ADR 0021): nivel de conjuro más
+  // alto, trucos, preparados y tamaño del libro.
+  limits: SpellLimits;
+  // Los conjuros elegidos que son válidos, ordenados por nivel y nombre. Los
+  // que no lo son (otra lista, nivel sin espacios…) se avisan en `issues`.
+  cantrips: SpellContent[];
+  // null si la clase no usa libro de conjuros.
+  spellbook: SpellContent[] | null;
+  prepared: SpellContent[];
 };
 
 export type ClassResourceStats = {
@@ -299,13 +322,14 @@ export function calculateSheet(
     cls: Extract<Content, { type: "class" }>;
     level: number;
     starting: boolean;
+    entry: Character["classes"][number];
   }[] = [];
   const features: SheetFeature[] = [];
   for (const [position, entry] of character.classes.entries()) {
     const { classId, level } = entry;
     const cls = find(classId, "class");
     if (!cls) continue;
-    ownedClasses.push({ cls, level, starting: position === 0 });
+    ownedClasses.push({ cls, level, starting: position === 0, entry });
     collected.push(...cls.effects);
     // Solo los rasgos que ya se alcanzaron con el nivel de esa clase.
     const reached = cls.data.features.filter((f) => f.level <= level);
@@ -727,13 +751,103 @@ export function calculateSheet(
     modifiers,
   );
 
+  // --- Conjuros elegidos (ADR 0021) ---
+  // Una lista sin repetidos, de la lista de la clase y de los paquetes
+  // activos. `problem` agrega las reglas de cada lista.
+  const validSpells = (
+    ids: readonly string[],
+    classId: string,
+    problem: (spell: SpellContent) => string | undefined,
+  ): SpellContent[] => {
+    const seen = new Set<string>();
+    const valid: SpellContent[] = [];
+    for (const id of ids) {
+      if (seen.has(id)) {
+        issues.push(`El conjuro "${id}" está repetido`);
+        continue;
+      }
+      seen.add(id);
+      const spell = find(id, "spell");
+      if (!spell) continue;
+      // SRD 5.2.1, "Listas de conjuros": cada clase elige de su lista.
+      if (!spell.data.classIds.includes(classId)) {
+        issues.push(`"${id}" no está en la lista de conjuros de "${classId}"`);
+        continue;
+      }
+      const reason = problem(spell);
+      if (reason) {
+        issues.push(reason);
+        continue;
+      }
+      valid.push(spell);
+    }
+    return valid.sort(compareSpells);
+  };
+
+  const chosenSpells = (
+    entry: Character["classes"][number],
+    classId: string,
+    limits: SpellLimits,
+  ): Pick<SpellcastingStats, "cantrips" | "spellbook" | "prepared"> => {
+    // Un conjuro de nivel 1+ solo se aprende o prepara si hay espacios de
+    // su nivel (SRD 5.2.1, mago, "Libro de conjuros" y "Conjuros
+    // preparados de nivel 1+").
+    const levelProblem = (spell: SpellContent) =>
+      spell.data.level === 0
+        ? `"${spell.id}" es un truco`
+        : spell.data.level > limits.maxSpellLevel
+          ? `"${spell.id}" es de nivel ${spell.data.level} y no hay espacios de ese nivel`
+          : undefined;
+
+    const cantrips = validSpells(entry.cantripIds ?? [], classId, (spell) =>
+      spell.data.level === 0 ? undefined : `"${spell.id}" no es un truco`,
+    );
+    if (cantrips.length > limits.cantrips) {
+      issues.push(
+        `Hay ${cantrips.length} trucos de "${classId}" y el nivel permite ${limits.cantrips}`,
+      );
+    }
+
+    let spellbook: SpellContent[] | null = null;
+    if (limits.spellbook === null) {
+      if ((entry.spellbookIds ?? []).length > 0)
+        issues.push(`La clase "${classId}" no usa libro de conjuros`);
+    } else {
+      spellbook = validSpells(entry.spellbookIds ?? [], classId, levelProblem);
+      if (spellbook.length > limits.spellbook) {
+        issues.push(
+          `El libro tiene ${spellbook.length} conjuros y el nivel permite ${limits.spellbook}`,
+        );
+      }
+    }
+
+    // Con libro, se prepara de lo que está en el libro.
+    const inBook = spellbook && new Set(spellbook.map((s) => s.id));
+    const prepared = validSpells(
+      entry.preparedSpellIds ?? [],
+      classId,
+      (spell) =>
+        levelProblem(spell) ??
+        (inBook && !inBook.has(spell.id)
+          ? `"${spell.id}" está preparado pero no está en el libro`
+          : undefined),
+    );
+    if (prepared.length > limits.prepared) {
+      issues.push(
+        `Hay ${prepared.length} conjuros preparados y el nivel permite ${limits.prepared}`,
+      );
+    }
+    return { cantrips, spellbook, prepared };
+  };
+
   // --- Lanzamiento de conjuros ---
   // SRD 5.2.1, "Rellena los números": CD = 8 + aptitud mágica + competencia;
   // ataque = aptitud mágica + competencia. "Multiclase": cada conjuro usa la
   // aptitud de su clase, así que va una entrada por clase.
   const spellcasting: SpellcastingStats[] = ownedClasses.flatMap(
-    ({ cls, level }) => {
-      if (!cls.data.spellcasting) return [];
+    ({ cls, level, entry }) => {
+      const limits = spellLimits(cls, level);
+      if (!cls.data.spellcasting || !limits) return [];
       const { ability, slotsByLevel } = cls.data.spellcasting;
       const base = modifiers[ability] + proficiencyBonus;
       return [
@@ -759,6 +873,8 @@ export function calculateSheet(
           // SRD 5.2.1, tabla de la clase, "Espacios de conjuro por cada nivel
           // de conjuro". La fila 0 es el nivel 1 de la clase.
           slots: [...(slotsByLevel[level - 1] ?? [])],
+          limits,
+          ...chosenSpells(entry, cls.id, limits),
         },
       ];
     },

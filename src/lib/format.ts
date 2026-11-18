@@ -1,6 +1,6 @@
 // Textos de la hoja: nombres en español y formato de números.
 
-import type { ContentIndex } from "@/rules-engine/engine";
+import type { ContentIndex, SpellContent } from "@/rules-engine/engine";
 import type {
   Ability,
   Character,
@@ -215,3 +215,46 @@ export function coinsText(coins: Coins): string {
     .map(([key, abbreviation]) => `${coins[key]} ${abbreviation}`)
     .join(", ");
 }
+
+// SRD 5.2.1 (español), "Escuelas de magia".
+export const spellSchoolNames: Record<SpellContent["data"]["school"], string> =
+  {
+    abjuration: "Abjuración",
+    conjuration: "Conjuración",
+    divination: "Adivinación",
+    enchantment: "Encantamiento",
+    evocation: "Evocación",
+    illusion: "Ilusión",
+    necromancy: "Nigromancia",
+    transmutation: "Transmutación",
+  };
+
+// "Truco" o "Nivel 2".
+export const spellLevelText = (level: number): string =>
+  level === 0 ? "Truco" : `Nivel ${level}`;
+
+// "Nivel 1 · Evocación · Concentración · Ritual": la línea bajo el nombre.
+export function spellSummary(spell: SpellContent): string {
+  const { level, school, concentration, ritual } = spell.data;
+  return [
+    spellLevelText(level),
+    spellSchoolNames[school],
+    ...(concentration ? ["Concentración"] : []),
+    ...(ritual ? ["Ritual"] : []),
+  ].join(" · ");
+}
+
+// Componentes en letras (V, S, M) como en el SRD, con el material si hay.
+export function spellComponentsText(spell: SpellContent): string {
+  const { verbal, somatic, material } = spell.data.components;
+  const letters = [
+    ...(verbal ? ["V"] : []),
+    ...(somatic ? ["S"] : []),
+    ...(material ? [`M (${material})`] : []),
+  ];
+  return letters.join(", ") || "—";
+}
+
+// El texto importado marca algunos títulos con **negrita** de Markdown; la
+// hoja lo muestra como texto plano.
+export const plainText = (text: string): string => text.replaceAll("**", "");

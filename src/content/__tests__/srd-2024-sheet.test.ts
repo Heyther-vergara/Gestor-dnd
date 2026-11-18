@@ -74,7 +74,7 @@ describe("SRD 2024 sample character: Thora, dwarf wizard 1", () => {
 
   // SRD 5.2.1, "Lanzamiento de conjuros": CD 8 + Int (17 → +3) + competencia (+2).
   it("has spell save DC 13 and spell attack +5", () => {
-    expect(sheet.spellcasting).toEqual([
+    expect(sheet.spellcasting).toMatchObject([
       {
         classId: "wizard",
         ability: "int",

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Fieldset, Option } from "@/components/characters/choice-fields";
+import { SpellChoiceList } from "@/components/spells/spell-choice-list";
 import { Button } from "@/components/ui/button";
 import { toSavedCharacter, writeSavedCharacter } from "@/lib/character-storage";
 import { loadAndSync } from "@/lib/character-sync";
@@ -178,6 +179,13 @@ function LevelUpForm({
 
   const setImprovement = (improvement: ImprovementPlan) =>
     setDraft((d) => ({ ...d, improvement }));
+  const toggleSpell = (kind: "cantripIds" | "spellbookIds", id: string) =>
+    setDraft((d) => ({
+      ...d,
+      [kind]: d[kind].includes(id)
+        ? d[kind].filter((x) => x !== id)
+        : [...d[kind], id],
+    }));
 
   return (
     <form
@@ -251,6 +259,48 @@ function LevelUpForm({
           scores={scores}
           error={showErrors ? errors.improvement : undefined}
         />
+      )}
+
+      {plan.spells && (
+        // SRD 5.2.1, mago, "Libro de conjuros": dos conjuros por nivel, de
+        // niveles con espacios (ADR 0021).
+        <section className="grid gap-4">
+          <h2 className="font-heading text-lg font-bold text-primary">
+            Conjuros nuevos
+          </h2>
+          {plan.spells.cantrips.count > 0 && (
+            <SpellChoiceList
+              legend={`Trucos (elegí ${plan.spells.cantrips.count})`}
+              name="new-cantrips"
+              spells={plan.spells.cantrips.options}
+              selected={draft.cantripIds}
+              max={plan.spells.cantrips.count}
+              onToggle={(id) => toggleSpell("cantripIds", id)}
+            />
+          )}
+          {plan.spells.spellbook.count > 0 && (
+            <SpellChoiceList
+              legend={`Para el libro (elegí ${plan.spells.spellbook.count})`}
+              hint={
+                plan.spells.maxSpellLevel === 1
+                  ? "Tienen que ser de nivel 1."
+                  : `Pueden ser de nivel 1 a ${plan.spells.maxSpellLevel}.`
+              }
+              name="new-spellbook"
+              spells={plan.spells.spellbook.options}
+              selected={draft.spellbookIds}
+              max={plan.spells.spellbook.count}
+              onToggle={(id) => toggleSpell("spellbookIds", id)}
+            />
+          )}
+          <p className="text-sm text-muted-foreground">
+            En el nivel {plan.level} podés tener {plan.spells.prepared} conjuros
+            preparados: los elegís en la hoja.
+          </p>
+          {showErrors && errors.spells && (
+            <p className="text-sm text-destructive">{errors.spells}</p>
+          )}
+        </section>
       )}
 
       <p

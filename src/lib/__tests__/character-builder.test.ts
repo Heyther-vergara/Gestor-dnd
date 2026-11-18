@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCharacter,
   builderOptions,
+  builderSteps,
+  creatorSpellOptions,
   type CharacterDraft,
   draftErrors,
   emptyDraft,
@@ -31,6 +33,34 @@ function fighterDraft(): CharacterDraft {
     baseAbilityScores: { str: 15, dex: 14, con: 13, int: 8, wis: 10, cha: 12 },
     classEquipment: { option: 2, picks: [] },
     backgroundEquipment: { option: 1, picks: [] },
+  };
+}
+
+// Lo recomendado por el SRD 5.2.1 para un mago de nivel 1 ("Trucos" y
+// "Libro de conjuros").
+const CANTRIPS = ["light", "mage-hand", "ray-of-frost"];
+const SPELLBOOK = [
+  "detect-magic",
+  "feather-fall",
+  "mage-armor",
+  "magic-missile",
+  "sleep",
+  "thunderwave",
+];
+
+// Mago humano erudito completo, con los trucos y el libro recomendados.
+function wizardDraft(): CharacterDraft {
+  return {
+    ...fighterDraft(),
+    name: "Ilse",
+    classId: "wizard",
+    classSkills: ["arcana", "investigation"],
+    backgroundId: "sage",
+    abilityBonus: { mode: "two-one", plusTwo: "int", plusOne: "con" },
+    baseAbilityScores: { str: 8, dex: 12, con: 13, int: 15, wis: 14, cha: 10 },
+    classEquipment: { option: 1, picks: [] },
+    cantripIds: CANTRIPS,
+    spellbookIds: SPELLBOOK,
   };
 }
 
@@ -277,6 +307,8 @@ describe("buildCharacter", () => {
       baseAbilityScores: suggestedAbilityScores("wizard") ?? {
         ...emptyDraft().baseAbilityScores,
       },
+      cantripIds: CANTRIPS,
+      spellbookIds: SPELLBOOK,
     };
     const result = buildCharacter(draft, srd2024Index, "new-2");
     if (!result.ok) throw new Error("expected a character");
@@ -433,5 +465,75 @@ describe("starting equipment", () => {
               "item",
             );
     }
+  });
+});
+
+describe("wizard spells in the creator (ADR 0021)", () => {
+  it("only shows the spells step for a class that casts spells", () => {
+    expect(builderSteps(fighterDraft(), srd2024Index)).not.toContain("spells");
+    expect(builderSteps(wizardDraft(), srd2024Index)).toEqual([
+      "name",
+      "species",
+      "class",
+      "background",
+      "abilities",
+      "spells",
+      "equipment",
+    ]);
+  });
+
+  // SRD 5.2.1, mago: tres trucos y seis conjuros de nivel 1 en el libro.
+  it("offers the wizard cantrips and level 1 spells", () => {
+    const options = creatorSpellOptions(wizardDraft(), srd2024Index);
+    expect(options?.limits).toMatchObject({ cantrips: 3, spellbook: 6 });
+    expect(options?.cantrips.every((s) => s.data.level === 0)).toBe(true);
+    expect(options?.spellbook?.every((s) => s.data.level === 1)).toBe(true);
+    expect(options?.cantrips).toHaveLength(15);
+    expect(options?.spellbook).toHaveLength(30);
+  });
+
+  it("requires exactly three cantrips and six spells for the book", () => {
+    const draft = wizardDraft();
+    expect(draftErrors(draft, srd2024Index).spells).toBeUndefined();
+    expect(
+      draftErrors({ ...draft, cantripIds: ["light"] }, srd2024Index).spells,
+    ).toBe("Elegí 3 trucos (llevás 1).");
+    expect(
+      draftErrors({ ...draft, spellbookIds: SPELLBOOK.slice(1) }, srd2024Index)
+        .spells,
+    ).toBe("Elegí 6 conjuros para el libro (llevás 5).");
+    // Un conjuro de nivel 2 no se puede aprender sin espacios de nivel 2.
+    expect(
+      draftErrors(
+        { ...draft, spellbookIds: [...SPELLBOOK.slice(1), "misty-step"] },
+        srd2024Index,
+      ).spells,
+    ).toBe("Hay conjuros para el libro que no se pueden elegir.");
+  });
+
+  it("saves the cantrips and the book, with nothing prepared yet", () => {
+    const result = buildCharacter(wizardDraft(), srd2024Index, "ilse");
+    if (!result.ok) throw new Error("expected a character");
+    expect(result.character.classes).toEqual([
+      {
+        classId: "wizard",
+        level: 1,
+        cantripIds: CANTRIPS,
+        spellbookIds: SPELLBOOK,
+      },
+    ]);
+    expect(calculateSheet(result.character, srd2024Index).issues).toEqual([]);
+  });
+
+  it("does not save spell lists for a fighter", () => {
+    const result = buildCharacter(
+      { ...fighterDraft(), cantripIds: ["light"] },
+      srd2024Index,
+      "aldara",
+    );
+    if (!result.ok) throw new Error("expected a character");
+    expect(result.character.classes).toEqual([
+      { classId: "fighter", level: 1 },
+    ]);
   });
 });

@@ -39,6 +39,19 @@ const levelFeatureSchema = traitSchema.extend({
 // 0 es nivel 1). Va en los datos para que una clase homebrew traiga su tabla.
 const spellSlotTableSchema = z.array(z.array(z.int().min(0)).max(9)).max(20);
 
+// Una columna de la tabla de clase con un número por nivel de clase (la
+// posición 0 es el nivel 1): "Trucos" y "Conjuros preparados" en la tabla
+// "Rasgos de mago" del SRD 5.2.1. Vacía = la clase no tiene esa columna.
+const levelColumnSchema = z.array(z.int().min(0)).max(20);
+
+// SRD 5.2.1, mago, "Libro de conjuros": empieza con seis conjuros de nivel 1
+// y suma dos cada vez que subís de nivel (ADR 0021). Solo las clases que
+// preparan desde un libro lo tienen.
+const spellbookRuleSchema = z.strictObject({
+  initial: z.int().min(0),
+  perLevel: z.int().min(0),
+});
+
 // SRD 5.2.1, "Elige el equipo inicial": la clase y el trasfondo ofrecen cada
 // uno varias opciones ("Elige A o B") y el jugador se queda con una. Cada
 // opción es una lista de objetos más monedas de oro (ADR 0017).
@@ -111,6 +124,12 @@ const classDataSchema = z.strictObject({
       ability: abilitySchema,
       preparation: z.enum(["prepared", "known"]),
       slotsByLevel: spellSlotTableSchema.default([]),
+      // Cuántos trucos conocés y cuántos conjuros de nivel 1+ podés tener
+      // preparados en cada nivel de la clase (ADR 0021).
+      cantripsByLevel: levelColumnSchema.default([]),
+      preparedByLevel: levelColumnSchema.default([]),
+      // Sin libro, los conjuros se preparan de la lista entera de la clase.
+      spellbook: spellbookRuleSchema.optional(),
     })
     .optional(),
   features: z.array(levelFeatureSchema),

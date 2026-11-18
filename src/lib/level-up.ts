@@ -8,7 +8,11 @@
 // golpe y los PG (valor fijo de la tabla "Puntos de golpe establecidos por
 // clase") y se anotan los rasgos nuevos.
 
-import { calculateSheet, type ContentIndex } from "@/rules-engine/engine";
+import {
+  calculateSheet,
+  type ContentIndex,
+  type SpellContent,
+} from "@/rules-engine/engine";
 import {
   type Ability,
   type Character,
@@ -16,6 +20,8 @@ import {
   type Choice,
   type Content,
 } from "@/rules-engine/schemas";
+
+import { classSpellOptions, spellPickError } from "./spells";
 
 // El MVP llega hasta el nivel 5: el contenido importado no tiene rasgos más
 // allá (MAX_LEVEL en scripts/import-srd-2024.mts).
@@ -37,12 +43,29 @@ export type ImprovementPlan =
 export type LevelUpDraft = {
   subclassId: string | null;
   improvement: ImprovementPlan;
+  // Conjuros nuevos (ADR 0021): se suman a los que ya tiene la clase.
+  cantripIds: string[];
+  spellbookIds: string[];
 };
 
 export const emptyLevelUpDraft = (): LevelUpDraft => ({
   subclassId: null,
   improvement: { mode: "plus-two", ability: null },
+  cantripIds: [],
+  spellbookIds: [],
 });
+
+// Cuántos conjuros nuevos hay que elegir y entre cuáles.
+export type SpellPick = { count: number; options: SpellContent[] };
+
+export type LevelUpSpells = {
+  cantrips: SpellPick;
+  spellbook: SpellPick;
+  // El nivel de conjuro más alto con espacios en el nivel nuevo.
+  maxSpellLevel: number;
+  // Cuántos conjuros se pueden preparar en el nivel nuevo (se eligen en la hoja).
+  prepared: number;
+};
 
 export type LevelUpPlan = {
   classId: string;
@@ -53,6 +76,9 @@ export type LevelUpPlan = {
   // Subclases para elegir si el nivel da subclase; vacío si no.
   subclassOptions: SubclassContent[];
   needsImprovement: boolean;
+  // Trucos y conjuros del libro para elegir; null si la clase no tiene
+  // nada que elegir en este nivel.
+  spells: LevelUpSpells | null;
 };
 
 export type LevelUpCheck =
@@ -103,7 +129,58 @@ export function planLevelUp(
       needsImprovement: features.some(
         (f) => f.grants === "ability-score-improvement",
       ),
+      spells: levelUpSpells(character, entry, level, index),
     },
+  };
+}
+
+// SRD 5.2.1, mago: "Trucos" (la columna sube de 3 a 4 en el nivel 4) y
+// "Libro de conjuros": "cada vez que ganes un nivel de mago después del 1,
+// añade dos conjuros de mago [...] de un nivel para el que tengas espacios".
+// Se pide lo que falta para llegar al máximo del nivel nuevo: normalmente es
+// la diferencia con el nivel anterior, y un mago guardado antes de que
+// existieran los conjuros completa su lista.
+function levelUpSpells(
+  character: Character,
+  entry: Character["classes"][number],
+  level: number,
+  index: ContentIndex,
+): LevelUpSpells | null {
+  const options = classSpellOptions(
+    {
+      ...character,
+      classes: character.classes.map((c) =>
+        c.classId === entry.classId ? { ...c, level } : c,
+      ),
+    },
+    entry.classId,
+    index,
+  );
+  if (!options) return null;
+  const known = new Set([
+    ...(entry.cantripIds ?? []),
+    ...(entry.spellbookIds ?? []),
+  ]);
+  const pick = (max: number, list: SpellContent[], current: number) => ({
+    count: Math.max(0, max - current),
+    options: list.filter((s) => !known.has(s.id)),
+  });
+  const cantrips = pick(
+    options.limits.cantrips,
+    options.cantrips,
+    entry.cantripIds?.length ?? 0,
+  );
+  const spellbook = pick(
+    options.limits.spellbook ?? 0,
+    options.spellbook ?? [],
+    entry.spellbookIds?.length ?? 0,
+  );
+  if (cantrips.count === 0 && spellbook.count === 0) return null;
+  return {
+    cantrips,
+    spellbook,
+    maxSpellLevel: options.limits.maxSpellLevel,
+    prepared: options.limits.prepared,
   };
 }
 
@@ -120,7 +197,11 @@ export function improvementBonuses(
   return { [plan.first]: 1, [plan.second]: 1 };
 }
 
-export type LevelUpErrors = { subclass?: string; improvement?: string };
+export type LevelUpErrors = {
+  subclass?: string;
+  improvement?: string;
+  spells?: string;
+};
 
 // Un mensaje por elección con el primer problema. Vacío = listo.
 export function levelUpErrors(
@@ -157,6 +238,24 @@ export function levelUpErrors(
     }
   }
 
+  if (plan.spells) {
+    const { cantrips, spellbook } = plan.spells;
+    const spellError =
+      spellPickError(
+        draft.cantripIds,
+        cantrips.options,
+        cantrips.count,
+        "trucos nuevos",
+      ) ??
+      spellPickError(
+        draft.spellbookIds,
+        spellbook.options,
+        spellbook.count,
+        "conjuros nuevos para el libro",
+      );
+    if (spellError) errors.spells = spellError;
+  }
+
   return errors;
 }
 
@@ -164,7 +263,7 @@ export type LevelUpResult =
   { ok: true; character: Character } | { ok: false; errors: LevelUpErrors };
 
 // El personaje con un nivel más. Solo cambia elecciones (nivel, subclase,
-// mejora): los PG, la competencia y los espacios los recalcula el motor.
+// mejora, conjuros): los PG, la competencia y los espacios los recalcula el motor.
 export function applyLevelUp(
   character: Character,
   plan: LevelUpPlan,
@@ -216,6 +315,15 @@ function leveled(
           level: plan.level,
           ...(offersSubclass &&
             draft.subclassId !== null && { subclassId: draft.subclassId }),
+          ...(plan.spells?.cantrips.count && {
+            cantripIds: [...(entry.cantripIds ?? []), ...draft.cantripIds],
+          }),
+          ...(plan.spells?.spellbook.count && {
+            spellbookIds: [
+              ...(entry.spellbookIds ?? []),
+              ...draft.spellbookIds,
+            ],
+          }),
         }
       : entry,
   );

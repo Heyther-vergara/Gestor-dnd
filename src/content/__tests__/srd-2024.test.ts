@@ -73,7 +73,16 @@ describe("SRD 2024 package", () => {
     expect(classes).toHaveLength(2);
     expect(species).toHaveLength(3);
     expect(backgrounds).toHaveLength(3);
-    expect(spells).toHaveLength(20);
+  });
+
+  // ADR 0021: la lista de conjuros de mago entera hasta el nivel 3, el más
+  // alto con espacios para un mago de nivel 5.
+  it("includes every wizard spell up to level 3", () => {
+    expect(spells).toHaveLength(110);
+    for (const spell of spells) {
+      expect(spell.data.classIds, spell.id).toContain("wizard");
+      expect(spell.data.level, spell.id).toBeLessThanOrEqual(3);
+    }
   });
 
   // SRD 5.2.1: "Subclase de guerrero: Campeón" y "Subclase de mago: Evocador".
@@ -111,6 +120,18 @@ describe("SRD 2024 package", () => {
     expect(
       wizard.type === "class" && wizard.data.spellcasting?.slotsByLevel,
     ).toEqual([[2], [3], [4, 2], [4, 3], [4, 3, 2]]);
+  });
+
+  // SRD 5.2.1, tabla "Rasgos de mago", niveles 1 a 5: "Trucos" 3 3 3 4 4 y
+  // "Conjuros preparados" 4 5 6 7 9. "Libro de conjuros": seis conjuros de
+  // nivel 1 y dos más por cada nivel de mago después del 1 (ADR 0021).
+  it("has the wizard cantrips, prepared spells and spellbook", () => {
+    const wizard = contentSchema.parse(classes.find((c) => c.id === "wizard"));
+    expect(wizard.type === "class" && wizard.data.spellcasting).toMatchObject({
+      cantripsByLevel: [3, 3, 3, 4, 4],
+      preparedByLevel: [4, 5, 6, 7, 9],
+      spellbook: { initial: 6, perLevel: 2 },
+    });
   });
 
   // SRD 5.2.1, enano, "Resistencia enana": resistencia al daño de veneno.
