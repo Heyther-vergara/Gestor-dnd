@@ -24,6 +24,7 @@ import { VitalsRow } from "./vitals-row";
 // calculados: los guarda el personaje). `homebrewPanel` es para darle o
 // sacarle objetos homebrew (ADR 0019). `resourcePanel` es para gastar los
 // recursos de clase (ADR 0020); sin él, solo se muestran los números.
+// `spellPanel` es para preparar y cambiar conjuros (ADR 0021).
 export function SheetView({
   name,
   subtitle,
@@ -32,6 +33,7 @@ export function SheetView({
   equipment,
   homebrewPanel,
   resourcePanel,
+  spellPanel,
 }: {
   name: string;
   subtitle: string;
@@ -40,6 +42,7 @@ export function SheetView({
   equipment?: { items: ReturnType<typeof inventoryLines>; coins: string };
   homebrewPanel?: ReactNode;
   resourcePanel?: ReactNode;
+  spellPanel?: ReactNode;
 }) {
   return (
     <article className="mx-auto grid w-full max-w-2xl gap-5 px-4 py-6">
@@ -133,6 +136,7 @@ export function SheetView({
       {sheet.spellcasting.length > 0 && (
         <SheetSection title="Conjuros">
           <SpellcastingSummary spellcasting={sheet.spellcasting} />
+          {spellPanel}
         </SheetSection>
       )}
 

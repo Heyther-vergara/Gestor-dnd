@@ -9,6 +9,7 @@ import type { ContentIndex } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
 import { giveItem, type HomebrewItem, takeItem } from "./homebrew";
+import { type SpellListKind, toggleSpell } from "./spells";
 import {
   createPlayReducer,
   type PlayAction,
@@ -48,7 +49,15 @@ export type SavedSheetAction =
   // Dar o sacar un objeto homebrew (ADR 0019). Cambia el inventario, que se
   // guarda como cualquier otro cambio del personaje.
   | { type: "give-item"; item: HomebrewItem }
-  | { type: "take-item"; itemId: string };
+  | { type: "take-item"; itemId: string }
+  // Marcar o desmarcar un conjuro en una lista de la clase (ADR 0021):
+  // preparar, cambiar un truco o anotar un conjuro en el libro.
+  | {
+      type: "toggle-spell";
+      classId: string;
+      kind: SpellListKind;
+      spellId: string;
+    };
 
 export function initialSavedSheetState(character: Character): SavedSheetState {
   return { session: { character, message: null }, saveStatus: "loading" };
@@ -92,6 +101,19 @@ export function createSavedSheetReducer(contentIndex: ContentIndex) {
           action.type === "give-item"
             ? giveItem(character, action.item)
             : takeItem(character, action.itemId);
+        return next === character
+          ? state
+          : { ...state, session: { character: next, message: null } };
+      }
+      case "toggle-spell": {
+        const { character } = state.session;
+        const next = toggleSpell(
+          character,
+          action.classId,
+          action.kind,
+          action.spellId,
+          contentIndex,
+        );
         return next === character
           ? state
           : { ...state, session: { character: next, message: null } };

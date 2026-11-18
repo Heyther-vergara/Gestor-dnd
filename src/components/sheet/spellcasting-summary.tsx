@@ -1,9 +1,12 @@
+import { SpellList } from "@/components/spells/spell-details";
 import { abilityNames, formatModifier } from "@/lib/format";
 import type { SpellcastingStats } from "@/rules-engine/engine";
 
-// CD, ataque y espacios de conjuro de cada clase que lanza conjuros.
+// CD, ataque, espacios y conjuros de cada clase que lanza conjuros.
 // SRD 5.2.1, tabla "Rasgos de mago", "Espacios de conjuro por cada nivel de
 // conjuro". Contar los espacios gastados queda para la fase 5 (partida).
+// Los trucos, los preparados y el libro son las listas del personaje (ADR
+// 0021); se cambian con el panel de la hoja, no acá.
 export function SpellcastingSummary({
   spellcasting,
 }: {
@@ -46,6 +49,30 @@ export function SpellcastingSummary({
                 </div>
               ))}
             </dl>
+          )}
+          {stats.limits.cantrips > 0 && (
+            <SpellList
+              title="Trucos"
+              spells={stats.cantrips}
+              max={stats.limits.cantrips}
+              empty="Todavía no elegiste trucos."
+            />
+          )}
+          {stats.limits.prepared > 0 && (
+            <SpellList
+              title="Conjuros preparados"
+              spells={stats.prepared}
+              max={stats.limits.prepared}
+              empty="Todavía no preparaste conjuros."
+            />
+          )}
+          {stats.spellbook && (
+            <SpellList
+              title="Libro de conjuros"
+              spells={stats.spellbook}
+              max={stats.limits.spellbook ?? undefined}
+              empty="El libro está vacío."
+            />
           )}
         </div>
       ))}

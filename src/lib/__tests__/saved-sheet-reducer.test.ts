@@ -124,4 +124,37 @@ describe("saved sheet reducer", () => {
       taken,
     );
   });
+
+  // ADR 0021: preparar un conjuro cambia el personaje y se guarda.
+  it("prepares a spell, keeping the same state if it is not allowed", () => {
+    const wizard = {
+      ...sampleCharacter,
+      classes: [
+        {
+          classId: "wizard",
+          level: 1,
+          spellbookIds: ["sleep", "shield"],
+          preparedSpellIds: [],
+        },
+      ],
+    };
+    const loaded = reducer(initialSavedSheetState(wizard), {
+      type: "storage-loaded",
+      character: null,
+      where: "local",
+    });
+    const toggle = (spellId: string) =>
+      ({
+        type: "toggle-spell",
+        classId: "wizard",
+        kind: "preparedSpellIds",
+        spellId,
+      }) as const;
+    const prepared = reducer(loaded, toggle("sleep"));
+    expect(prepared.session.character.classes[0]?.preparedSpellIds).toEqual([
+      "sleep",
+    ]);
+    // "Fireball" no está en el libro.
+    expect(reducer(prepared, toggle("fireball"))).toBe(prepared);
+  });
 });

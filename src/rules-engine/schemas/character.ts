@@ -28,6 +28,14 @@ const classLevelSchema = z.strictObject({
   // Se elige en el nivel que marca el rasgo con `grants: "subclass"` (nivel 3
   // en el SRD). Que exista y sea de esta clase lo comprueba el motor.
   subclassId: slugSchema.optional(),
+  // Conjuros de esta clase (ADR 0021). Son listas actuales y no un historial:
+  // los trucos y los preparados se pueden cambiar al terminar un descanso
+  // largo, y el libro solo crece. Cuántos y de qué nivel lo comprueba el
+  // motor, que conoce la tabla de la clase. Opcionales: una clase sin
+  // conjuros (o un personaje guardado antes) no los tiene.
+  cantripIds: z.array(slugSchema).optional(),
+  spellbookIds: z.array(slugSchema).optional(),
+  preparedSpellIds: z.array(slugSchema).optional(),
 });
 
 // --- Elecciones del jugador, cada una asociada al contenido que la ofrece ---

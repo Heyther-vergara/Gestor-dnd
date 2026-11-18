@@ -44,6 +44,9 @@
         "simple",
         "martial"
       ],
+      "toolProficiencies": [],
+      "resources": [],
+      "saveDcs": [],
       "features": [
         {
           "level": 1,
@@ -224,6 +227,9 @@
       "weaponProficiencies": [
         "simple"
       ],
+      "toolProficiencies": [],
+      "resources": [],
+      "saveDcs": [],
       "spellcasting": {
         "ability": "int",
         "preparation": "prepared",
@@ -247,7 +253,25 @@
             3,
             2
           ]
-        ]
+        ],
+        "cantripsByLevel": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "preparedByLevel": [
+          4,
+          5,
+          6,
+          7,
+          9
+        ],
+        "spellbook": {
+          "initial": 6,
+          "perLevel": 2
+        }
       },
       "features": [
         {

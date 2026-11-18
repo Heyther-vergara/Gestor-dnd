@@ -5,10 +5,16 @@
 // personaje. La pantalla solo muestra lo que dice este módulo, así las reglas
 // de creación se testean sin navegador.
 //
-// Reglas: SRD 5.2.1, "Creación de personajes", pasos 1 a 3, y "Elige el
-// equipo inicial" (ADR 0017).
+// Reglas: SRD 5.2.1, "Creación de personajes", pasos 1 a 3, "Elige el
+// equipo inicial" (ADR 0017) y los conjuros de nivel 1 de la clase (ADR 0021).
 
 import type { ContentIndex } from "@/rules-engine/engine";
+
+import {
+  type ClassSpellOptions,
+  classSpellOptions,
+  spellPickError,
+} from "./spells";
 import {
   type Ability,
   type Character,
@@ -78,6 +84,10 @@ export type CharacterDraft = {
   baseAbilityScores: Record<Ability, number | null>;
   classEquipment: EquipmentChoice;
   backgroundEquipment: EquipmentChoice;
+  // Trucos y conjuros del libro (ADR 0021). Los preparados se eligen en la
+  // hoja, porque cambian con cada descanso largo.
+  cantripIds: string[];
+  spellbookIds: string[];
 };
 
 export const emptyDraft = (): CharacterDraft => ({
@@ -98,6 +108,8 @@ export const emptyDraft = (): CharacterDraft => ({
   },
   classEquipment: emptyEquipmentChoice(),
   backgroundEquipment: emptyEquipmentChoice(),
+  cantripIds: [],
+  spellbookIds: [],
 });
 
 // Los pasos del formulario, en orden. Cada error pertenece a un paso, así la
@@ -108,6 +120,7 @@ export const BUILDER_STEPS = [
   "class",
   "background",
   "abilities",
+  "spells",
   "equipment",
 ] as const;
 export type BuilderStep = (typeof BUILDER_STEPS)[number];
@@ -123,6 +136,38 @@ function contentOfType<T extends Content["type"]>(
   if (id === null) return undefined;
   const content = index.get(id);
   return content?.type === type ? (content as ContentOf<T>) : undefined;
+}
+
+// Los conjuros que la clase elegida deja elegir en el nivel 1. null si la
+// clase no lanza conjuros o no tiene trucos ni libro: entonces el paso
+// "Conjuros" no se muestra.
+export function creatorSpellOptions(
+  draft: Pick<CharacterDraft, "classId">,
+  index: ContentIndex,
+): ClassSpellOptions | null {
+  const cls = contentOfType(index, draft.classId, "class");
+  if (!cls) return null;
+  const options = classSpellOptions(
+    {
+      classes: [{ classId: cls.id, level: 1 }],
+      activePackageIds: [...new Set(["srd-2024", cls.packageId])],
+    },
+    cls.id,
+    index,
+  );
+  if (!options) return null;
+  const { cantrips, spellbook } = options.limits;
+  return cantrips > 0 || (spellbook ?? 0) > 0 ? options : null;
+}
+
+// Los pasos que tiene el formulario con la clase elegida: sin conjuros, se
+// saltea el paso "Conjuros".
+export function builderSteps(
+  draft: Pick<CharacterDraft, "classId">,
+  index: ContentIndex,
+): BuilderStep[] {
+  const withSpells = creatorSpellOptions(draft, index) !== null;
+  return BUILDER_STEPS.filter((s) => s !== "spells" || withSpells);
 }
 
 // Las opciones de cada paso, en el orden del paquete.
@@ -228,6 +273,27 @@ export function draftErrors(
 
   if (!isStandardArrayAssignment(draft.baseAbilityScores))
     errors.abilities = "Usá cada número del conjunto estándar una sola vez.";
+
+  // SRD 5.2.1, mago, "Trucos": "conoces tres trucos de mago"; "Libro de
+  // conjuros": "empieza con seis conjuros de mago de nivel 1".
+  const spells = creatorSpellOptions(draft, index);
+  if (spells) {
+    const spellError =
+      spellPickError(
+        draft.cantripIds,
+        spells.cantrips,
+        spells.limits.cantrips,
+        "trucos",
+      ) ??
+      (spells.spellbook &&
+        spellPickError(
+          draft.spellbookIds,
+          spells.spellbook,
+          spells.limits.spellbook ?? 0,
+          "conjuros para el libro",
+        ));
+    if (spellError) errors.spells = spellError;
+  }
 
   // SRD 5.2.1, "Elige el equipo inicial": una opción de la clase y una del
   // trasfondo. Sin clase o trasfondo el error ya está en su paso.
@@ -356,6 +422,7 @@ export function buildCharacter(
     ? abilityBonuses(draft.abilityBonus, background)
     : null;
   const equipment = startingEquipment(draft, index);
+  const spells = creatorSpellOptions(draft, index);
   if (
     Object.keys(errors).length > 0 ||
     !species ||
@@ -397,7 +464,16 @@ export function buildCharacter(
         background.packageId,
       ]),
     ],
-    classes: [{ classId: cls.id, level: 1 }],
+    classes: [
+      {
+        classId: cls.id,
+        level: 1,
+        ...(spells && {
+          cantripIds: draft.cantripIds,
+          ...(spells.spellbook && { spellbookIds: draft.spellbookIds }),
+        }),
+      },
+    ],
     speciesId: species.id,
     backgroundId: background.id,
     baseAbilityScores: draft.baseAbilityScores,

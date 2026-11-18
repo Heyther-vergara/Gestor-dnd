@@ -31,30 +31,17 @@ const CLASS_IDS = ["fighter", "wizard"];
 const SUBCLASS_IDS = ["champion", "evoker"];
 const SPECIES_IDS = ["dwarf", "human", "halfling"];
 const BACKGROUND_IDS = ["acolyte", "sage", "soldier"];
-const SPELL_IDS = [
-  // Trucos
-  "fire-bolt",
-  "light",
-  "mage-hand",
-  "minor-illusion",
-  "prestidigitation",
-  "ray-of-frost",
-  "shocking-grasp",
-  // Nivel 1
-  "burning-hands",
-  "charm-person",
-  "chromatic-orb",
-  "comprehend-languages",
-  "detect-magic",
-  "feather-fall",
-  "find-familiar",
-  "identify",
-  "mage-armor",
-  "magic-missile",
-  "shield",
-  "sleep",
-  "thunderwave",
-];
+// Conjuros: todos los de la lista de las clases importadas cuyo nivel tenga
+// espacios hasta MAX_LEVEL (el mago de nivel 5 llega a conjuros de nivel 3).
+// Así el mago puede elegir trucos y llenar su libro con la lista completa del
+// SRD 5.2.1 (ADR 0021), no con un subconjunto.
+
+// SRD 5.2.1, mago, "Libro de conjuros": "empieza con seis conjuros de mago de
+// nivel 1" y "cada vez que ganes un nivel de mago después del 1, añade dos
+// conjuros de mago". 5e-bits no lo trae como dato, solo en el texto.
+const SPELLBOOK_RULES: Record<string, { initial: number; perLevel: number }> = {
+  wizard: { initial: 6, perLevel: 2 },
+};
 
 // --- Correcciones y efectos escritos a mano (5e-bits no modela efectos) ---
 
@@ -247,7 +234,8 @@ type SourceSubclass = {
   description: string;
   features: { name: string; level: number; description: string }[];
 };
-// Una fila de la tabla de cada clase. Solo usamos los espacios de conjuro.
+// Una fila de la tabla de cada clase. Usamos los espacios de conjuro, los
+// trucos ("cantrips_known") y los conjuros preparados ("prepared_spells").
 type SourceLevel = {
   level: number;
   class: Ref;
@@ -386,13 +374,17 @@ function convertClass(
   levels: SourceLevel[],
 ): Content {
   // La tabla de la clase (sin las filas de subclase), del nivel 1 al MAX_LEVEL.
-  const slotsByLevel = levels
+  const classRows = levels
     .filter(
       (l) =>
         l.class.index === source.index && !l.subclass && l.level <= MAX_LEVEL,
     )
-    .sort((a, b) => a.level - b.level)
-    .map(spellSlotsOf);
+    .sort((a, b) => a.level - b.level);
+  const slotsByLevel = classRows.map(spellSlotsOf);
+  const column = (key: string) =>
+    classRows.map((row) => row.spellcasting?.[key] ?? 0);
+  const cantripsByLevel = column("cantrips_known");
+  const preparedByLevel = column("prepared_spells");
 
   const primary = source.primary_ability.ability_scores ?? [];
   const primaryOptions =
@@ -440,6 +432,9 @@ function convertClass(
             ability: toAbility(source.spellcasting.spellcasting_ability),
             preparation: "prepared", // en 2024 todas las clases preparan conjuros
             slotsByLevel,
+            cantripsByLevel,
+            preparedByLevel,
+            spellbook: SPELLBOOK_RULES[source.index],
           }
         : undefined,
       features: features
@@ -770,7 +765,25 @@ async function main() {
   );
   await writeJson("backgrounds.json", pickedBackgrounds.map(convertBackground));
   await writeJson("feats.json", pick(feats, featIds).map(convertFeat));
-  await writeJson("spells.json", pick(spells, SPELL_IDS).map(convertSpell));
+  // El nivel de conjuro más alto con espacios en el MAX_LEVEL de cada clase.
+  const maxSpellLevel = Math.max(
+    ...levels
+      .filter(
+        (l) =>
+          CLASS_IDS.includes(l.class.index) &&
+          !l.subclass &&
+          l.level === MAX_LEVEL,
+      )
+      .map((l) => spellSlotsOf(l).length),
+  );
+  const classSpells = spells
+    .filter(
+      (s) =>
+        s.level <= maxSpellLevel &&
+        s.classes.some((c) => CLASS_IDS.includes(c.index)),
+    )
+    .sort((a, b) => a.level - b.level || a.index.localeCompare(b.index));
+  await writeJson("spells.json", classSpells.map(convertSpell));
   const items = equipment.flatMap((e) => convertEquipment(e) ?? []);
   // Que el equipo inicial no nombre un objeto que no existe en 5e-bits.
   for (const id of GEAR_IDS) {

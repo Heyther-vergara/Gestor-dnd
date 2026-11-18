@@ -10,17 +10,20 @@ import {
   useHomebrewIndex,
 } from "@/components/homebrew/content-index";
 import { AbilityGrid } from "@/components/sheet/ability-grid";
+import { SpellChoiceList } from "@/components/spells/spell-choice-list";
 import { EquipmentList } from "@/components/sheet/equipment-list";
+import { SpellcastingSummary } from "@/components/sheet/spellcasting-summary";
 import { VitalsRow } from "@/components/sheet/vitals-row";
 import { Button } from "@/components/ui/button";
 import {
   ABILITIES,
   type AbilityBonusPlan,
-  BUILDER_STEPS,
   type BuilderStep,
   buildCharacter,
   builderOptions,
+  builderSteps,
   type CharacterDraft,
+  creatorSpellOptions,
   draftErrors,
   emptyDraft,
   emptyEquipmentChoice,
@@ -52,9 +55,9 @@ import type {
   StartingEquipmentOption,
 } from "@/rules-engine/schemas";
 
-// Los pasos del formulario más el resumen final.
+// Los pasos del formulario más el resumen final. Cuáles hay depende de la
+// clase: sin conjuros no hay paso "Conjuros" (ADR 0021).
 type Step = BuilderStep | "summary";
-const STEPS: readonly Step[] = [...BUILDER_STEPS, "summary"];
 
 const stepTitles: Record<Step, string> = {
   name: "Nombre",
@@ -62,6 +65,7 @@ const stepTitles: Record<Step, string> = {
   class: "Clase",
   background: "Trasfondo",
   abilities: "Características",
+  spells: "Conjuros",
   equipment: "Equipo",
   summary: "Resumen",
 };
@@ -99,7 +103,11 @@ function CreatorSteps() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
-  const step = STEPS[stepIndex] ?? "summary";
+  const steps: Step[] = useMemo(
+    () => [...builderSteps(draft, index), "summary"],
+    [draft, index],
+  );
+  const step = steps[stepIndex] ?? "summary";
   const errors = useMemo(() => draftErrors(draft, index), [draft, index]);
   const stepError = step === "summary" ? undefined : errors[step];
 
@@ -112,7 +120,7 @@ function CreatorSteps() {
       return;
     }
     setShowError(false);
-    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   }
 
   function goBack() {
@@ -125,7 +133,7 @@ function CreatorSteps() {
     if (!result.ok) {
       // No debería pasar (cada paso se valida al avanzar), pero si pasa se
       // vuelve al primer paso con problemas.
-      const first = BUILDER_STEPS.findIndex((s) => result.errors[s]);
+      const first = steps.findIndex((s) => s !== "summary" && result.errors[s]);
       setStepIndex(Math.max(first, 0));
       setShowError(true);
       return;
@@ -163,7 +171,7 @@ function CreatorSteps() {
   return (
     <div className="grid gap-5">
       <ol className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-        {STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <li
             key={s}
             aria-current={i === stepIndex ? "step" : undefined}
@@ -191,6 +199,7 @@ function CreatorSteps() {
         {step === "abilities" && (
           <AbilitiesStep draft={draft} update={update} />
         )}
+        {step === "spells" && <SpellsStep draft={draft} update={update} />}
         {step === "equipment" && (
           <EquipmentStep draft={draft} update={update} />
         )}
@@ -331,6 +340,8 @@ function ClassStep({ draft, update }: StepProps) {
                 classId: c.id,
                 classSkills: [],
                 classEquipment: emptyEquipmentChoice(),
+                cantripIds: [],
+                spellbookIds: [],
               })
             }
             title={contentName(c)}
@@ -573,6 +584,48 @@ function ScoreSelect({
   );
 }
 
+// SRD 5.2.1, mago, "Lanzamiento de conjuros": tres trucos y seis conjuros de
+// nivel 1 para el libro (ADR 0021). Los preparados se eligen en la hoja.
+function SpellsStep({ draft, update }: StepProps) {
+  const index = useContentIndex();
+  const options = creatorSpellOptions(draft, index);
+  if (!options) return null;
+  const { limits } = options;
+  const toggle = (list: string[], id: string) =>
+    list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+
+  return (
+    <>
+      {limits.cantrips > 0 && (
+        <SpellChoiceList
+          legend={`Trucos (elegí ${limits.cantrips})`}
+          hint="Los trucos se lanzan sin gastar espacios de conjuro."
+          name="cantrips"
+          spells={options.cantrips}
+          selected={draft.cantripIds}
+          max={limits.cantrips}
+          onToggle={(id) =>
+            update({ cantripIds: toggle(draft.cantripIds, id) })
+          }
+        />
+      )}
+      {options.spellbook && limits.spellbook !== null && (
+        <SpellChoiceList
+          legend={`Libro de conjuros (elegí ${limits.spellbook})`}
+          hint="De estos vas a preparar los que uses cada día; eso se hace en la hoja."
+          name="spellbook"
+          spells={options.spellbook}
+          selected={draft.spellbookIds}
+          max={limits.spellbook}
+          onToggle={(id) =>
+            update({ spellbookIds: toggle(draft.spellbookIds, id) })
+          }
+        />
+      )}
+    </>
+  );
+}
+
 // SRD 5.2.1, "Elige el equipo inicial": una opción de la clase y una del
 // trasfondo (ADR 0017).
 function EquipmentStep({ draft, update }: StepProps) {
@@ -745,9 +798,14 @@ function SummaryStep({ draft }: { draft: CharacterDraft }) {
         items={inventoryLines(result.character.inventory, index)}
         coins={coinsText(result.character.coins)}
       />
+      {sheet.spellcasting.length > 0 && (
+        <SpellcastingSummary spellcasting={sheet.spellcasting} />
+      )}
       <p className="text-sm text-muted-foreground">
-        Todavía no se eligen la dote del trasfondo ni los conjuros: los podés
-        anotar aparte por ahora.
+        Todavía no se elige la dote del trasfondo: la podés anotar aparte por
+        ahora.
+        {sheet.spellcasting.some((s) => s.limits.prepared > 0) &&
+          " Los conjuros preparados se eligen en la hoja, después de crear el personaje."}
       </p>
     </section>
   );

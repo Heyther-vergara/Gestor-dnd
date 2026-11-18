@@ -1586,7 +1586,7 @@ describe("calculateSheet: spellcasting", () => {
       }),
       index,
     );
-    expect(sheet.spellcasting).toEqual([
+    expect(sheet.spellcasting).toMatchObject([
       {
         classId: "wizard",
         ability: "int",
@@ -1612,7 +1612,7 @@ describe("calculateSheet: spellcasting", () => {
       index,
     );
     // Nivel total 5 → competencia +3.
-    expect(sheet.spellcasting).toEqual([
+    expect(sheet.spellcasting).toMatchObject([
       {
         classId: "wizard",
         ability: "int",

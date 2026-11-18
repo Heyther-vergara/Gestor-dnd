@@ -18,6 +18,37 @@ import {
   characterSchema,
 } from "@/rules-engine/schemas";
 
+// Los conjuros de nivel 1 del mago, en el orden de la lista.
+const LEVEL_1_SPELLS = [...index.values()]
+  .filter((c) => c.type === "spell" && c.data.level === 1)
+  .map((c) => c.id)
+  .sort();
+
+// La clase mago con lo que le corresponde al nivel (ADR 0021): 3 trucos (4
+// desde el nivel 4) y un libro con 6 conjuros más 2 por nivel después del 1.
+const wizardClass = (level: number, subclassId?: string) => ({
+  classId: "wizard",
+  level,
+  ...(subclassId && { subclassId }),
+  cantripIds: ["light", "mage-hand", "ray-of-frost", "fire-bolt"].slice(
+    0,
+    level >= 4 ? 4 : 3,
+  ),
+  spellbookIds: LEVEL_1_SPELLS.slice(0, 6 + 2 * (level - 1)),
+});
+
+// Elige los primeros conjuros que ofrece el plan.
+const firstSpells = (plan: LevelUpPlan) => ({
+  cantripIds:
+    plan.spells?.cantrips.options
+      .slice(0, plan.spells.cantrips.count)
+      .map((s) => s.id) ?? [],
+  spellbookIds:
+    plan.spells?.spellbook.options
+      .slice(0, plan.spells.spellbook.count)
+      .map((s) => s.id) ?? [],
+});
+
 // Mago humano erudito: Int 15 + 2 = 17, Con 13 + 1 = 14 (+2).
 const wizardAt = (
   level: number,
@@ -28,7 +59,7 @@ const wizardAt = (
     name: "Ilse",
     edition: "2024",
     activePackageIds: ["srd-2024"],
-    classes: [{ classId: "wizard", level }],
+    classes: [wizardClass(level)],
     speciesId: "human",
     backgroundId: "sage",
     baseAbilityScores: { str: 8, dex: 12, con: 13, int: 15, wis: 14, cha: 10 },
@@ -79,10 +110,7 @@ describe("planLevelUp", () => {
 
   it("does not level up a multiclass character", () => {
     const multiclass = wizardAt(2, {
-      classes: [
-        { classId: "wizard", level: 2 },
-        { classId: "fighter", level: 1 },
-      ],
+      classes: [wizardClass(2), { classId: "fighter", level: 1 }],
     });
     expect(planLevelUp(multiclass, index).ok).toBe(false);
   });
@@ -109,15 +137,27 @@ describe("improvementBonuses", () => {
 describe("levelUpErrors", () => {
   it("asks for a subclass at level 3", () => {
     const character = wizardAt(2);
+    const plan = planFor(character);
     expect(
-      levelUpErrors(character, planFor(character), emptyLevelUpDraft(), index),
+      levelUpErrors(
+        character,
+        plan,
+        { ...emptyLevelUpDraft(), ...firstSpells(plan) },
+        index,
+      ),
     ).toEqual({ subclass: "Elegí una subclase." });
   });
 
   it("asks for the improvement at level 4", () => {
     const character = wizardAt(3);
+    const plan = planFor(character);
     expect(
-      levelUpErrors(character, planFor(character), emptyLevelUpDraft(), index),
+      levelUpErrors(
+        character,
+        plan,
+        { ...emptyLevelUpDraft(), ...firstSpells(plan) },
+        index,
+      ),
     ).toEqual({ improvement: "Elegí qué característica sube." });
   });
 
@@ -133,12 +173,14 @@ describe("levelUpErrors", () => {
         cha: 10,
       },
     });
+    const plan = planFor(character);
     const draft: LevelUpDraft = {
-      subclassId: null,
+      ...emptyLevelUpDraft(),
+      ...firstSpells(plan),
       improvement: { mode: "plus-two", ability: "int" },
     };
     // Int 17 + 2 del trasfondo = 19; +2 llegaría a 21.
-    expect(levelUpErrors(character, planFor(character), draft, index)).toEqual({
+    expect(levelUpErrors(character, plan, draft, index)).toEqual({
       improvement: "Ninguna característica puede pasar de 20.",
     });
   });
@@ -149,40 +191,42 @@ describe("applyLevelUp", () => {
     const character = wizardAt(1, {
       playState: { damageTaken: 3, hitDiceSpent: { d6: 1 } },
     });
+    const plan = planFor(character);
     const result = applyLevelUp(
       character,
-      planFor(character),
-      emptyLevelUpDraft(),
+      plan,
+      { ...emptyLevelUpDraft(), ...firstSpells(plan) },
       index,
     );
-    expect(result.ok && result.character.classes).toEqual([
-      { classId: "wizard", level: 2 },
-    ]);
+    expect(result.ok && result.character.classes).toEqual([wizardClass(2)]);
     expect(result.ok && result.character.playState.damageTaken).toBe(3);
   });
 
   it("saves the chosen subclass", () => {
     const character = wizardAt(2);
+    const plan = planFor(character);
     const result = applyLevelUp(
       character,
-      planFor(character),
-      { ...emptyLevelUpDraft(), subclassId: "evoker" },
+      plan,
+      { ...emptyLevelUpDraft(), ...firstSpells(plan), subclassId: "evoker" },
       index,
     );
-    expect(result.ok && result.character.classes).toEqual([
+    expect(result.ok && result.character.classes).toMatchObject([
       { classId: "wizard", level: 3, subclassId: "evoker" },
     ]);
   });
 
   it("saves the improvement as a choice the engine applies", () => {
     const character = wizardAt(3, {
-      classes: [{ classId: "wizard", level: 3, subclassId: "evoker" }],
+      classes: [wizardClass(3, "evoker")],
     });
+    const plan = planFor(character);
     const result = applyLevelUp(
       character,
-      planFor(character),
+      plan,
       {
-        subclassId: null,
+        ...emptyLevelUpDraft(),
+        ...firstSpells(plan),
         improvement: { mode: "plus-two", ability: "int" },
       },
       index,
@@ -198,7 +242,13 @@ describe("applyLevelUp", () => {
     const character = wizardAt(2);
     expect(
       applyLevelUp(character, planFor(character), emptyLevelUpDraft(), index),
-    ).toEqual({ ok: false, errors: { subclass: "Elegí una subclase." } });
+    ).toEqual({
+      ok: false,
+      errors: {
+        subclass: "Elegí una subclase.",
+        spells: "Elegí 2 conjuros nuevos para el libro (llevás 0).",
+      },
+    });
   });
 });
 
@@ -215,14 +265,111 @@ describe("hitPointGain", () => {
   // 16 (+3) suma 1 PG en cada uno de los 4 niveles, además de los 4 + 3.
   it("includes a Constitution improvement", () => {
     const character = wizardAt(3, {
-      classes: [{ classId: "wizard", level: 3, subclassId: "evoker" }],
+      classes: [wizardClass(3, "evoker")],
     });
     const draft: LevelUpDraft = {
-      subclassId: null,
+      ...emptyLevelUpDraft(),
       improvement: { mode: "plus-two", ability: "con" },
     };
     expect(hitPointGain(character, planFor(character), draft, index)).toBe(
       4 + 3 + 3,
     );
+  });
+});
+
+// SRD 5.2.1, mago, "Libro de conjuros": "cada vez que ganes un nivel de mago
+// después del 1, añade dos conjuros de mago [...] de un nivel para el que
+// tengas espacios de conjuro". Tabla "Rasgos de mago": 4 trucos en el nivel 4.
+describe("level up: wizard spells (ADR 0021)", () => {
+  it("asks for two spells for the book at level 2", () => {
+    const { spells } = planFor(wizardAt(1));
+    expect(spells?.cantrips.count).toBe(0);
+    expect(spells?.spellbook.count).toBe(2);
+    expect(spells?.maxSpellLevel).toBe(1);
+    // Solo de nivel 1 y que todavía no estén en el libro.
+    expect(spells?.spellbook.options.every((s) => s.data.level === 1)).toBe(
+      true,
+    );
+    expect(spells?.spellbook.options).toHaveLength(30 - 6);
+  });
+
+  it("offers level 2 spells at level 3", () => {
+    const { spells } = planFor(wizardAt(2));
+    expect(spells?.maxSpellLevel).toBe(2);
+    expect(spells?.spellbook.options.some((s) => s.id === "misty-step")).toBe(
+      true,
+    );
+    expect(spells?.spellbook.options.some((s) => s.id === "fireball")).toBe(
+      false,
+    );
+  });
+
+  it("asks for one more cantrip at level 4 and level 3 spells at 5", () => {
+    expect(planFor(wizardAt(3)).spells).toMatchObject({
+      cantrips: { count: 1 },
+      spellbook: { count: 2 },
+      prepared: 7,
+    });
+    const atFive = planFor(wizardAt(4)).spells;
+    expect(atFive?.cantrips.count).toBe(0);
+    expect(atFive?.spellbook.options.some((s) => s.id === "fireball")).toBe(
+      true,
+    );
+  });
+
+  it("adds the new spells to the class lists", () => {
+    const character = wizardAt(3, { classes: [wizardClass(3, "evoker")] });
+    const plan = planFor(character);
+    const result = applyLevelUp(
+      character,
+      plan,
+      {
+        ...emptyLevelUpDraft(),
+        improvement: { mode: "plus-two", ability: "int" },
+        cantripIds: ["fire-bolt"],
+        spellbookIds: ["misty-step", "shield"],
+      },
+      index,
+    );
+    if (!result.ok) throw new Error("debería subir");
+    const [entry] = result.character.classes;
+    expect(entry?.cantripIds).toEqual([
+      "light",
+      "mage-hand",
+      "ray-of-frost",
+      "fire-bolt",
+    ]);
+    expect(entry?.spellbookIds?.slice(-2)).toEqual(["misty-step", "shield"]);
+    expect(calculateSheet(result.character, index).issues).toEqual([]);
+  });
+
+  it("rejects a spell already in the book", () => {
+    const character = wizardAt(1);
+    const plan = planFor(character);
+    const draft = {
+      ...emptyLevelUpDraft(),
+      spellbookIds: [LEVEL_1_SPELLS[0] ?? "", "shield"],
+    };
+    expect(levelUpErrors(character, plan, draft, index).spells).toBe(
+      "Hay conjuros nuevos para el libro que no se pueden elegir.",
+    );
+  });
+
+  // Un mago creado antes de que existieran los conjuros completa sus listas
+  // al subir de nivel.
+  it("fills the lists of a wizard saved before spells existed", () => {
+    const character = wizardAt(1, {
+      classes: [{ classId: "wizard", level: 1 }],
+    });
+    const { spells } = planFor(character);
+    expect(spells?.cantrips.count).toBe(3);
+    expect(spells?.spellbook.count).toBe(8);
+  });
+
+  it("asks for no spells when leveling a fighter", () => {
+    const fighter = wizardAt(1, {
+      classes: [{ classId: "fighter", level: 1 }],
+    });
+    expect(planFor(fighter).spells).toBeNull();
   });
 });

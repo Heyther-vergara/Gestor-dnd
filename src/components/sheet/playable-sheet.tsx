@@ -25,6 +25,7 @@ import { AccountPanel } from "./account-panel";
 import { ClassResources } from "./class-resources";
 import { HomebrewItemsPanel } from "./homebrew-items-panel";
 import { PlayPanel } from "./play-panel";
+import { SpellPanel } from "./spell-panel";
 import { SheetView } from "./sheet-view";
 
 type Cloud = {
@@ -179,6 +180,18 @@ export function PlayableSheet({
             disabled={!loaded}
             onSpend={(resourceId, amount) =>
               dispatch({ type: "spend-resource", resourceId, amount })
+            }
+          />
+        )
+      }
+      spellPanel={
+        sheet.spellcasting.length > 0 && (
+          <SpellPanel
+            character={session.character}
+            index={contentIndex}
+            disabled={!loaded}
+            onToggle={(classId, kind, spellId) =>
+              dispatch({ type: "toggle-spell", classId, kind, spellId })
             }
           />
         )
