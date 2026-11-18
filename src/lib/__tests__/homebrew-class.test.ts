@@ -74,7 +74,7 @@ describe("parseClassFile", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors).toContain(
-      'El id "wizard" ya lo usa "Wizard". Cambialo.',
+      'El id "wizard" ya lo usa "Wizard". Cámbialo.',
     );
   });
 

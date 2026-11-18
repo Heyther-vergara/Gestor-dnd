@@ -23,7 +23,7 @@ import {
 } from "./character-storage";
 
 // Lo mínimo que necesitamos de la nube. `load` devuelve lo guardado sin
-// validar (`unknown`): viene de afuera y se valida con Zod acá.
+// validar (`unknown`): viene de afuera y se valida con Zod aquí.
 export type RemoteCharacterStore = {
   load(characterId: string): Promise<unknown | null>;
   // Todos los personajes del usuario, sin validar.

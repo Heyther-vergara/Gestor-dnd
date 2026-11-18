@@ -109,7 +109,7 @@ export type ComputedSheet = {
   // La interfaz las muestra como avisos (ADR 0007).
   armorPenalties: ArmorPenalties;
   // SRD 5.2.1, glosario, "Cansancio [estado]". Las penalizaciones ya están
-  // restadas de los números de la hoja; acá van para mostrarlas.
+  // restadas de los números de la hoja; aquí van para mostrarlas.
   exhaustion: {
     level: number;
     // A las pruebas con d20: salvaciones, habilidades, iniciativa y ataques.
@@ -141,12 +141,12 @@ export type SpellcastingStats = {
   ability: Ability;
   saveDc: number;
   attackBonus: number;
-  // false si llevás una armadura sin entrenamiento.
+  // false si llevas una armadura sin entrenamiento.
   canCast: boolean;
   // Espacios por nivel de conjuro según la tabla de la clase: [4, 3, 2] son
   // 4 de nivel 1, 3 de nivel 2 y 2 de nivel 3. Vacío si la tabla no llega.
   // Con multiclase, el SRD suma los niveles en una tabla común; eso queda
-  // pendiente (ADR 0016) y acá va la tabla de cada clase por separado.
+  // pendiente (ADR 0016) y aquí va la tabla de cada clase por separado.
   slots: number[];
   // Lo que permite el nivel de la clase (ADR 0021): nivel de conjuro más
   // alto, trucos, preparados y tamaño del libro.
@@ -193,7 +193,7 @@ export type SheetFeature = {
 
 export type ArmorPenalties = {
   // SRD 5.2.1, "Entrenamiento con armaduras": desventaja en las pruebas con
-  // d20 de Fuerza o Destreza y no podés lanzar conjuros.
+  // d20 de Fuerza o Destreza y no puedes lanzar conjuros.
   untrainedArmor: boolean;
   // SRD 5.2.1, "Escudos": el escudo no suma a la CA.
   untrainedShield: boolean;
@@ -264,7 +264,7 @@ export function calculateSheet(
     return found as Extract<Content, { type: T }>;
   };
 
-  // --- Objetos equipados: aportan efectos y deciden si "llevás armadura" ---
+  // --- Objetos equipados: aportan efectos y deciden si "llevas armadura" ---
   const equippedItems = character.inventory.flatMap((entry) => {
     if (!entry.equipped) return [];
     const item = find(entry.itemId, "item");
@@ -410,7 +410,7 @@ export function calculateSheet(
       item.data.armor !== undefined &&
       !armorTraining.has(item.data.armor.armorCategory),
   );
-  // SRD 5.2.1, "Escudos": solo obtenés el bonificador a la CA si tenés
+  // SRD 5.2.1, "Escudos": solo obtienes el bonificador a la CA si tienes
   // entrenamiento con escudos. Sin él se ignoran los efectos del escudo.
   const untrainedShield = holdingShield && !armorTraining.has("shield");
   if (!untrainedShield) {
@@ -516,7 +516,7 @@ export function calculateSheet(
   );
 
   // --- Cansancio ---
-  // SRD 5.2.1, "Pruebas con d20 afectadas": cuando hacés una prueba con d20,
+  // SRD 5.2.1, "Pruebas con d20 afectadas": cuando haces una prueba con d20,
   // el resultado se reduce en 2 × tu nivel de cansancio. "Prueba con d20":
   // son las pruebas de característica, las tiradas de ataque y las de
   // salvación. Se resta después de los efectos, porque es sobre la tirada.
@@ -585,7 +585,7 @@ export function calculateSheet(
     for (const skill of choice.skills) proficientSkills.add(skill);
   }
 
-  // SRD 5.2.1, glosario, "Pericia": solo en habilidades en las que ya sos
+  // SRD 5.2.1, glosario, "Pericia": solo en habilidades en las que ya eres
   // competente, y no se acumula.
   const expertSkills = new Set<Skill>();
   for (const choice of character.choices) {
@@ -868,7 +868,7 @@ export function calculateSheet(
               modifiers,
             ) - d20Penalty,
           // SRD 5.2.1, "Entrenamiento con armaduras": sin entrenamiento con la
-          // armadura que llevás, no podés lanzar conjuros.
+          // armadura que llevas, no puedes lanzar conjuros.
           canCast: !untrainedArmor,
           // SRD 5.2.1, tabla de la clase, "Espacios de conjuro por cada nivel
           // de conjuro". La fila 0 es el nivel 1 de la clase.

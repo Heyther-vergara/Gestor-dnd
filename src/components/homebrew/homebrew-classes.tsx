@@ -63,7 +63,7 @@ export function HomebrewClasses({
     setMessage(
       replacing
         ? `Se actualizó ${cls.name}.`
-        : `Se importó ${cls.name}. Ya podés elegirla al crear un personaje.`,
+        : `Se importó ${cls.name}. Ya puedes elegirla al crear un personaje.`,
     );
   }
 
@@ -77,7 +77,7 @@ export function HomebrewClasses({
       </h2>
       <p className="text-sm text-muted-foreground">
         Una clase se importa desde un archivo JSON con el formato del gestor. Si
-        importás de nuevo una clase con el mismo id, se actualiza.
+        importas de nuevo una clase con el mismo id, se actualiza.
       </p>
       <div className="grid gap-1">
         <label htmlFor={inputId} className="text-sm font-medium">
@@ -176,7 +176,7 @@ function ClassRow({
           </p>
           {failed && (
             <p className="text-sm text-destructive" role="alert">
-              No se pudo borrar. Probá de nuevo.
+              No se pudo borrar. Prueba de nuevo.
             </p>
           )}
           <div className="flex flex-wrap gap-2">

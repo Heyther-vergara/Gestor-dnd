@@ -181,7 +181,7 @@ describe("applyDamage", () => {
   // SRD 5.2.1, "Daño considerable": con 12 PG máximos, 6 actuales y 18 de
   // daño, sobran 12, que es igual al máximo: el personaje muere.
   it("kills instantly when leftover damage reaches max hit points", () => {
-    // Acá el máximo es 28: con 6 PG actuales hacen falta 6 + 28 = 34.
+    // Aquí el máximo es 28: con 6 PG actuales hacen falta 6 + 28 = 34.
     const atSix = makeCharacter({ damageTaken: MAX_HP - 6 });
     expect(expectOk(applyDamage(atSix, index, 34)).outcome).toBe(
       "instant-death",
@@ -192,7 +192,7 @@ describe("applyDamage", () => {
   });
 
   // SRD 5.2.1, "Daño con 0 puntos de golpe": cuenta como un fallo de
-  // salvación contra muerte; si es mayor o igual al máximo, morís.
+  // salvación contra muerte; si es mayor o igual al máximo, mueres.
   it("reports damage at 0 hit points", () => {
     const down = makeCharacter({ damageTaken: MAX_HP });
     expect(expectOk(applyDamage(down, index, 5)).outcome).toBe(
@@ -255,7 +255,7 @@ describe("applyDamage with a damage type", () => {
     });
   });
 
-  // SRD 5.2.1, "Inmunidad": no recibís daño de ese tipo.
+  // SRD 5.2.1, "Inmunidad": no recibes daño de ese tipo.
   it("ignores damage with immunity", () => {
     const result = expectOk(
       applyDamage(warded(), index, 12, { damageType: "necrotic" }),
@@ -360,8 +360,8 @@ describe("gainTempHp", () => {
 });
 
 describe("spendHitDie (short rest)", () => {
-  // SRD 5.2.1, "Descanso corto": tirás el dado, sumás el modificador por
-  // Constitución y recuperás el total, con un mínimo de 1.
+  // SRD 5.2.1, "Descanso corto": tiras el dado, sumas el modificador por
+  // Constitución y recuperas el total, con un mínimo de 1.
   it("heals roll + Con modifier and marks the die as spent", () => {
     const result = expectOk(
       spendHitDie(makeCharacter({ damageTaken: 20 }), index, "d10", 7),
@@ -421,20 +421,20 @@ describe("spendHitDie (short rest)", () => {
     expect(spendHitDie(hurt, index, "d10", 11).ok).toBe(false);
   });
 
-  // SRD 5.2.1, "Descanso corto": para comenzarlo necesitás al menos 1 PG.
+  // SRD 5.2.1, "Descanso corto": para comenzarlo necesitas al menos 1 PG.
   it("fails at 0 hit points", () => {
     const down = makeCharacter({ damageTaken: MAX_HP });
     expect(spendHitDie(down, index, "d10", 5)).toEqual({
       ok: false,
-      reason: "Para descansar necesitás al menos 1 punto de golpe",
+      reason: "Para descansar necesitas al menos 1 punto de golpe",
     });
   });
 });
 
 describe("longRest", () => {
-  // SRD 5.2.1, "Descanso largo": recuperás todos los PG perdidos y todos los
+  // SRD 5.2.1, "Descanso largo": recuperas todos los PG perdidos y todos los
   // dados de golpe gastados. "Puntos de golpe temporales": duran hasta que
-  // finalizás un descanso largo.
+  // finalizas un descanso largo.
   it("restores hit points and hit dice and clears temporary hit points", () => {
     const tired = makeCharacter({
       damageTaken: 20,
@@ -477,7 +477,7 @@ describe("longRest", () => {
     });
   });
 
-  // SRD 5.2.1, "Descanso largo": para comenzarlo necesitás al menos 1 PG.
+  // SRD 5.2.1, "Descanso largo": para comenzarlo necesitas al menos 1 PG.
   it("fails at 0 hit points", () => {
     expect(longRest(makeCharacter({ damageTaken: MAX_HP }), index).ok).toBe(
       false,
@@ -489,7 +489,7 @@ describe("longRest", () => {
 
 describe("reduceMaxHp", () => {
   // SRD 5.2.1, "Curación": tus PG no pueden superar tus PG máximos. Si
-  // estabas al máximo, bajás con él.
+  // estabas al máximo, bajas con él.
   it("lowers max hit points and caps current hit points", () => {
     const character = makeCharacter();
     const result = expectOk(reduceMaxHp(character, index, 5));
@@ -562,7 +562,7 @@ describe("restoreMaxHp", () => {
 
 describe("gainExhaustion", () => {
   // SRD 5.2.1, "Cansancio", "Niveles de cansancio": es acumulativo; cada vez
-  // que lo recibís sumás 1 nivel.
+  // que lo recibes sumas 1 nivel.
   it("adds one level", () => {
     const result = expectOk(gainExhaustion(makeCharacter({ exhaustion: 1 })));
     expect(result).toMatchObject({ outcome: "exhausted" });

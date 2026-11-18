@@ -117,7 +117,7 @@ export function parseClassFile(
       (other.id === clsData.id ||
         (other.type === "subclass" && other.data.classId === clsData.id));
     if (other !== undefined && !sameClass) {
-      errors.push(`El id "${id}" ya lo usa "${other.name}". Cambialo.`);
+      errors.push(`El id "${id}" ya lo usa "${other.name}". Cámbialo.`);
     }
   }
 

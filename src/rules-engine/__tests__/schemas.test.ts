@@ -54,7 +54,7 @@ describe("effectSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  // SRD 5.2.1, monje "Movimiento sin armadura": +3 m si no llevás armadura ni escudo.
+  // SRD 5.2.1, monje "Movimiento sin armadura": +3 m si no llevas armadura ni escudo.
   it("accepts an optional condition", () => {
     const result = effectSchema.safeParse({
       target: "speed",

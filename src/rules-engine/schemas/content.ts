@@ -45,7 +45,7 @@ const spellSlotTableSchema = z.array(z.array(z.int().min(0)).max(9)).max(20);
 const levelColumnSchema = z.array(z.int().min(0)).max(20);
 
 // SRD 5.2.1, mago, "Libro de conjuros": empieza con seis conjuros de nivel 1
-// y suma dos cada vez que subís de nivel (ADR 0021). Solo las clases que
+// y suma dos cada vez que subes de nivel (ADR 0021). Solo las clases que
 // preparan desde un libro lo tienen.
 const spellbookRuleSchema = z.strictObject({
   initial: z.int().min(0),
@@ -124,7 +124,7 @@ const classDataSchema = z.strictObject({
       ability: abilitySchema,
       preparation: z.enum(["prepared", "known"]),
       slotsByLevel: spellSlotTableSchema.default([]),
-      // Cuántos trucos conocés y cuántos conjuros de nivel 1+ podés tener
+      // Cuántos trucos conoces y cuántos conjuros de nivel 1+ puedes tener
       // preparados en cada nivel de la clase (ADR 0021).
       cantripsByLevel: levelColumnSchema.default([]),
       preparedByLevel: levelColumnSchema.default([]),
@@ -242,8 +242,8 @@ const itemDataSchema = z.strictObject({
     })
     .optional(),
   requiresAttunement: z.boolean().default(false),
-  // La CA de la armadura NO va acá: va en `effects` como { target: "ac", op: "base" }
-  // (ADR 0003). Acá queda solo lo que no es CA.
+  // La CA de la armadura NO va aquí: va en `effects` como { target: "ac", op: "base" }
+  // (ADR 0003). Aquí queda solo lo que no es CA.
   armor: z
     .strictObject({
       armorCategory: z.enum(["light", "medium", "heavy"]),

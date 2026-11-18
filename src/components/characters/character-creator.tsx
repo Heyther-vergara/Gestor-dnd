@@ -212,7 +212,7 @@ function CreatorSteps() {
         >
           {showError && stepError}
           {saveError &&
-            "No se pudo guardar el personaje. Probá de nuevo en un rato."}
+            "No se pudo guardar el personaje. Prueba de nuevo en un rato."}
         </p>
 
         <div className="flex justify-between gap-2">
@@ -270,7 +270,7 @@ function SpeciesStep({ draft, update }: StepProps) {
   const species = options.species.find((s) => s.id === draft.speciesId);
   return (
     <>
-      <Fieldset legend="Elegí una especie">
+      <Fieldset legend="Elige una especie">
         {options.species.map((s) => (
           <Option
             key={s.id}
@@ -325,7 +325,7 @@ function ClassStep({ draft, update }: StepProps) {
 
   return (
     <>
-      <Fieldset legend="Elegí una clase">
+      <Fieldset legend="Elige una clase">
         {options.classes.map((c) => (
           <Option
             key={c.id}
@@ -351,7 +351,7 @@ function ClassStep({ draft, update }: StepProps) {
       </Fieldset>
       {cls && (
         <Fieldset
-          legend={`Habilidades (elegí ${count})`}
+          legend={`Habilidades (elige ${count})`}
           hint={`${draft.classSkills.length} de ${count} elegidas.`}
         >
           <div className="grid grid-cols-2 gap-2">
@@ -386,7 +386,7 @@ function BackgroundStep({ draft, update }: StepProps) {
 
   return (
     <>
-      <Fieldset legend="Elegí un trasfondo">
+      <Fieldset legend="Elige un trasfondo">
         {options.backgrounds.map((b) => (
           <Option
             key={b.id}
@@ -412,7 +412,7 @@ function BackgroundStep({ draft, update }: StepProps) {
       {background && (
         <Fieldset
           legend="Aumentos de característica"
-          hint="Subí una en 2 y otra en 1, o las tres en 1."
+          hint="Sube una en 2 y otra en 1, o las tres en 1."
         >
           <div className="grid grid-cols-2 gap-2">
             <Option
@@ -490,7 +490,7 @@ function AbilitySelect({
         }}
       >
         <option value="" disabled>
-          Elegí…
+          Elige…
         </option>
         {choices.map((a) => (
           <option key={a} value={a}>
@@ -520,7 +520,7 @@ function AbilitiesStep({ draft, update }: StepProps) {
   return (
     <Fieldset
       legend="Características"
-      hint="Repartí el conjunto estándar: 15, 14, 13, 12, 10 y 8, cada número una vez. Los aumentos del trasfondo se suman después."
+      hint="Reparte el conjunto estándar: 15, 14, 13, 12, 10 y 8, cada número una vez. Los aumentos del trasfondo se suman después."
     >
       {suggested && (
         <Button
@@ -598,7 +598,7 @@ function SpellsStep({ draft, update }: StepProps) {
     <>
       {limits.cantrips > 0 && (
         <SpellChoiceList
-          legend={`Trucos (elegí ${limits.cantrips})`}
+          legend={`Trucos (elige ${limits.cantrips})`}
           hint="Los trucos se lanzan sin gastar espacios de conjuro."
           name="cantrips"
           spells={options.cantrips}
@@ -611,7 +611,7 @@ function SpellsStep({ draft, update }: StepProps) {
       )}
       {options.spellbook && limits.spellbook !== null && (
         <SpellChoiceList
-          legend={`Libro de conjuros (elegí ${limits.spellbook})`}
+          legend={`Libro de conjuros (elige ${limits.spellbook})`}
           hint="De estos vas a preparar los que uses cada día; eso se hace en la hoja."
           name="spellbook"
           spells={options.spellbook}
@@ -693,7 +693,7 @@ function EquipmentOptions({
           type="radio"
           name={name}
           checked={choice.option === i}
-          // Las elecciones de "elegí uno" son de cada opción.
+          // Las elecciones de "elige uno" son de cada opción.
           onChange={() =>
             choice.option !== i && onChange({ option: i, picks: [] })
           }
@@ -705,7 +705,7 @@ function EquipmentOptions({
         entry.itemIds.length > 1 ? (
           <ItemSelect
             key={i}
-            label="Elegí uno"
+            label="Elige uno"
             value={choice.picks[i] ?? null}
             itemIds={entry.itemIds}
             onChange={(itemId) => {
@@ -748,7 +748,7 @@ function ItemSelect({
         }}
       >
         <option value="" disabled>
-          Elegí…
+          Elige…
         </option>
         {itemIds.map((itemId) => (
           <option key={itemId} value={itemId}>
@@ -791,7 +791,7 @@ function SummaryStep({ draft }: { draft: CharacterDraft }) {
           {overlap.map((s) => skillNames[s]).join(" y ")} ya{" "}
           {overlap.length === 1 ? "la da" : "las da"} el trasfondo: elegir{" "}
           {overlap.length === 1 ? "esa habilidad" : "esas habilidades"} en la
-          clase no suma nada. Podés volver al paso Clase y cambiar.
+          clase no suma nada. Puedes volver al paso Clase y cambiar.
         </p>
       )}
       <EquipmentList
@@ -802,7 +802,7 @@ function SummaryStep({ draft }: { draft: CharacterDraft }) {
         <SpellcastingSummary spellcasting={sheet.spellcasting} />
       )}
       <p className="text-sm text-muted-foreground">
-        Todavía no se elige la dote del trasfondo: la podés anotar aparte por
+        Todavía no se elige la dote del trasfondo: la puedes anotar aparte por
         ahora.
         {sheet.spellcasting.some((s) => s.limits.prepared > 0) &&
           " Los conjuros preparados se eligen en la hoja, después de crear el personaje."}

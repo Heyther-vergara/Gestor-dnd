@@ -129,7 +129,7 @@ export function toggleSpell(
   });
 }
 
-// Error de una elección de "elegí N conjuros" del creador o de subir de
+// Error de una elección de "elige N conjuros" del creador o de subir de
 // nivel: los ids tienen que estar entre las opciones, sin repetir, y ser
 // exactamente `count`. undefined = está bien.
 export function spellPickError(
@@ -142,6 +142,6 @@ export function spellPickError(
   if (new Set(ids).size !== ids.length || ids.some((id) => !offered.has(id)))
     return `Hay ${noun} que no se pueden elegir.`;
   if (ids.length !== count)
-    return `Elegí ${count} ${noun} (llevás ${ids.length}).`;
+    return `Elige ${count} ${noun} (llevas ${ids.length}).`;
   return undefined;
 }

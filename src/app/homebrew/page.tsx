@@ -23,8 +23,8 @@ export default function HomebrewPage() {
           Homebrew
         </h1>
         <p className="text-muted-foreground">
-          Inventá objetos propios y dáselos a tus personajes: la hoja aplica sus
-          efectos sola. También podés importar clases desde un archivo.
+          Inventa objetos propios y dáselos a tus personajes: la hoja aplica sus
+          efectos sola. También puedes importar clases desde un archivo.
         </p>
       </header>
       <HomebrewManager />

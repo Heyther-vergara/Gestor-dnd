@@ -6,7 +6,7 @@ import { srd2024Index } from "@/lib/srd-2024";
 import { calculateSheet } from "@/rules-engine/engine";
 
 // El reducer solo traduce botones a acciones del motor; las reglas se testean
-// en rules-engine. Acá se comprueba que el estado y el mensaje cuadren.
+// en rules-engine. Aquí se comprueba que el estado y el mensaje cuadren.
 const reducer = createPlayReducer(srd2024Index);
 const start: PlaySession = { character: sampleCharacter, message: null };
 const currentHp = (session: PlaySession) =>

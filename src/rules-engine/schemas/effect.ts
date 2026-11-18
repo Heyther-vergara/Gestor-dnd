@@ -10,7 +10,7 @@ import {
 // --- Vocabulario cerrado de `target` (ADR 0003) ---
 // Antes era texto libre: un typo como "acc" pasaba la validación y el motor lo
 // ignoraba sin avisar. Ahora solo valen estas rutas; agregar una nueva es
-// sumarla acá y enseñarle al motor a calcularla.
+// sumarla aquí y enseñarle al motor a calcularla.
 
 // Valores numéricos que calcula el motor.
 export const numericTargetSchema = z.union([
@@ -35,7 +35,7 @@ export const grantTargetSchema = z.union([
   z.templateLiteral(["proficiency.save.", abilitySchema]),
   z.templateLiteral(["proficiency.armor.", armorTrainingSchema]),
   z.templateLiteral(["proficiency.weapon.", z.enum(["simple", "martial"])]),
-  // SRD 5.2.1, dote "Alerta": sumás tu bonificador por competencia a la
+  // SRD 5.2.1, dote "Alerta": sumas tu bonificador por competencia a la
   // iniciativa. Va como concesión y no como número fijo para que suba con el nivel.
   z.literal("proficiency.initiative"),
   // SRD 5.2.1, "Resistencia y vulnerabilidad" e "Inmunidad", por tipo de

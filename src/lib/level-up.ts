@@ -215,7 +215,7 @@ export function levelUpErrors(
   if (plan.subclassOptions.length > 0) {
     const ids = plan.subclassOptions.map((s) => s.id);
     if (draft.subclassId === null || !ids.includes(draft.subclassId))
-      errors.subclass = "Elegí una subclase.";
+      errors.subclass = "Elige una subclase.";
   }
 
   if (plan.needsImprovement) {
@@ -223,8 +223,8 @@ export function levelUpErrors(
     if (bonuses === null) {
       errors.improvement =
         draft.improvement.mode === "one-one"
-          ? "Elegí dos características distintas."
-          : "Elegí qué característica sube.";
+          ? "Elige dos características distintas."
+          : "Elige qué característica sube.";
     } else {
       // SRD 5.2.1: no se puede pasar de 20. Una característica que ya está
       // en 20 no puede subir, y +2 sobre 19 desperdiciaría un punto.

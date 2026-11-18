@@ -9,7 +9,7 @@ import type { ContentIndex } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
 // Cambiar los conjuros desde la hoja (ADR 0021). Las reglas (cuántos, de qué
-// nivel, del libro) están en `lib/spells`: acá solo se muestran las listas
+// nivel, del libro) están en `lib/spells`: aquí solo se muestran las listas
 // y cada marca se manda como acción. No se controla que sea después de un
 // descanso largo: como el resto de la hoja, confía en el jugador.
 export function SpellPanel({
@@ -71,8 +71,8 @@ function ClassSpellPanel({
       {title && <h3 className="font-medium">{title}</h3>}
       {toPrepare > 0 && options.prepared.length > 0 && (
         <p className="rounded-sm border border-gold/40 bg-gold/10 p-3 text-sm">
-          Podés preparar {toPrepare}{" "}
-          {toPrepare === 1 ? "conjuro más" : "conjuros más"}: elegilos en
+          Puedes preparar {toPrepare}{" "}
+          {toPrepare === 1 ? "conjuro más" : "conjuros más"}: elígelos en
           &quot;Preparar conjuros&quot;.
         </p>
       )}
@@ -105,11 +105,11 @@ function ClassSpellPanel({
         <details className={sectionClass}>
           <summary className={summaryClass}>Cambiar trucos</summary>
           <div className="mt-3">
-            {/* SRD 5.2.1, mago, "Trucos": al terminar un descanso largo podés
+            {/* SRD 5.2.1, mago, "Trucos": al terminar un descanso largo puedes
                 cambiar uno por otro. */}
             <SpellChoiceList
               legend="Trucos"
-              hint="Al terminar un descanso largo podés cambiar uno: desmarcá uno y marcá otro."
+              hint="Al terminar un descanso largo puedes cambiar uno: desmarca uno y marca otro."
               name={`cantrips-${entry.classId}`}
               spells={options.cantrips}
               selected={cantripIds}
@@ -127,7 +127,7 @@ function ClassSpellPanel({
           <div className="mt-3">
             <SpellChoiceList
               legend="Libro de conjuros"
-              hint="Los conjuros nuevos se eligen al subir de nivel. Usá esto para completar o corregir el libro."
+              hint="Los conjuros nuevos se eligen al subir de nivel. Usa esto para completar o corregir el libro."
               name={`spellbook-${entry.classId}`}
               spells={options.spellbook}
               selected={spellbookIds}

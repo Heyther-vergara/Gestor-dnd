@@ -1,5 +1,5 @@
 // El login real para `email-login`: Supabase Auth con código por email
-// (ADR 0014). Acá se traducen los errores de Supabase a los de la app.
+// (ADR 0014). Aquí se traducen los errores de Supabase a los de la app.
 
 import {
   isAuthApiError,

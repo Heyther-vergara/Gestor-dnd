@@ -229,7 +229,7 @@ function LevelUpForm({
       )}
 
       {plan.subclassOptions.length > 0 && (
-        <Fieldset legend="Elegí una subclase">
+        <Fieldset legend="Elige una subclase">
           {plan.subclassOptions.map((subclass) => (
             <Option
               key={subclass.id}
@@ -270,7 +270,7 @@ function LevelUpForm({
           </h2>
           {plan.spells.cantrips.count > 0 && (
             <SpellChoiceList
-              legend={`Trucos (elegí ${plan.spells.cantrips.count})`}
+              legend={`Trucos (elige ${plan.spells.cantrips.count})`}
               name="new-cantrips"
               spells={plan.spells.cantrips.options}
               selected={draft.cantripIds}
@@ -280,7 +280,7 @@ function LevelUpForm({
           )}
           {plan.spells.spellbook.count > 0 && (
             <SpellChoiceList
-              legend={`Para el libro (elegí ${plan.spells.spellbook.count})`}
+              legend={`Para el libro (elige ${plan.spells.spellbook.count})`}
               hint={
                 plan.spells.maxSpellLevel === 1
                   ? "Tienen que ser de nivel 1."
@@ -294,8 +294,8 @@ function LevelUpForm({
             />
           )}
           <p className="text-sm text-muted-foreground">
-            En el nivel {plan.level} podés tener {plan.spells.prepared} conjuros
-            preparados: los elegís en la hoja.
+            En el nivel {plan.level} puedes tener {plan.spells.prepared}{" "}
+            conjuros preparados: los eliges en la hoja.
           </p>
           {showErrors && errors.spells && (
             <p className="text-sm text-destructive">{errors.spells}</p>
@@ -309,7 +309,7 @@ function LevelUpForm({
         aria-live="assertive"
       >
         {saveError &&
-          "No se pudo guardar el personaje. Probá de nuevo en un rato."}
+          "No se pudo guardar el personaje. Prueba de nuevo en un rato."}
       </p>
 
       <div className="flex justify-between gap-2">
@@ -340,7 +340,7 @@ function ImprovementFields({
   return (
     <Fieldset
       legend="Mejora de característica"
-      hint="Subí una característica en 2 o dos en 1. Ninguna puede pasar de 20."
+      hint="Sube una característica en 2 o dos en 1. Ninguna puede pasar de 20."
     >
       <div className="grid grid-cols-2 gap-2">
         <Option
