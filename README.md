@@ -34,7 +34,7 @@ pnpm dev                     # http://localhost:3000
 
 ## Licencia del contenido
 
-Este proyecto usa material del System Reference Document 5.1 y 5.2.1 de Wizards of the Coast LLC, disponible bajo licencia [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode). La atribución completa estará en la página de créditos de la app.
+Este proyecto usa material del System Reference Document 5.1 y 5.2.1 de Wizards of the Coast LLC, disponible bajo licencia [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode). La atribución completa está en la página de créditos de la app (`/credits`).
 
 Los datos del SRD 2024 se convierten desde [5e-bits/5e-database](https://github.com/5e-bits/5e-database) (licencia MIT). Ver `docs/decisions/0002-srd-2024-source.md`.
 

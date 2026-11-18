@@ -9,6 +9,7 @@ import {
 } from "@/lib/character-storage";
 import {
   createRemoteSaver,
+  deleteCharacter,
   listCharacters,
   loadAndSync,
   type RemoteCharacterStore,
@@ -266,5 +267,53 @@ describe("listCharacters", () => {
 
     expect(where).toBe("local");
     expect(characters.map((c) => c.character.id)).toEqual([id]);
+  });
+});
+
+describe("deleteCharacter", () => {
+  it("removes the character from the cloud and the browser", async () => {
+    const local = memoryStorage();
+    const cloud = memoryCloud();
+    saveCharacter(local, hurt(1), earlier);
+    cloud.rows.set(id, toSavedCharacter(hurt(1), earlier));
+
+    expect(await deleteCharacter(local, cloud.store, id)).toBe(true);
+
+    expect(local.data.has(characterStorageKey(id))).toBe(false);
+    expect(cloud.rows.has(id)).toBe(false);
+    expect((await listCharacters(local, cloud.store)).characters).toEqual([]);
+  });
+
+  it("removes it from the browser when there is no cloud", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(1));
+
+    expect(await deleteCharacter(local, null, id)).toBe(true);
+    expect(local.data.size).toBe(0);
+  });
+
+  // Si se borrara del navegador igual, volvería a aparecer desde la nube.
+  it("keeps both copies when the cloud is offline", async () => {
+    const local = memoryStorage();
+    saveCharacter(local, hurt(1));
+
+    expect(
+      await deleteCharacter(local, memoryCloud({ fail: true }).store, id),
+    ).toBe(false);
+    expect(local.data.has(characterStorageKey(id))).toBe(true);
+  });
+
+  it("leaves other characters untouched", async () => {
+    const local = memoryStorage();
+    const cloud = memoryCloud();
+    const other = { ...hurt(2), id: "otro" };
+    saveCharacter(local, hurt(1));
+    saveCharacter(local, other);
+    cloud.rows.set("otro", toSavedCharacter(other));
+
+    await deleteCharacter(local, cloud.store, id);
+
+    expect(local.data.has(characterStorageKey("otro"))).toBe(true);
+    expect(cloud.rows.has("otro")).toBe(true);
   });
 });

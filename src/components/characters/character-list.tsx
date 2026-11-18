@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CharacterListItem } from "@/components/characters/character-list-item";
 import { Button } from "@/components/ui/button";
 import type { SavedCharacter } from "@/lib/character-storage";
-import { listCharacters } from "@/lib/character-sync";
+import { deleteCharacter, listCharacters } from "@/lib/character-sync";
 import { characterSubtitle } from "@/lib/format";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
@@ -43,6 +44,33 @@ export function CharacterList() {
     };
   }, []);
 
+  // Borra en la nube y en el navegador; si sale bien, saca la fila de la lista.
+  async function handleDelete(characterId: string): Promise<boolean> {
+    let ok: boolean;
+    try {
+      ok = await deleteCharacter(
+        window.localStorage,
+        getCharacterStore(),
+        characterId,
+      );
+    } catch {
+      ok = false;
+    }
+    if (ok) {
+      setState((current) =>
+        current.status === "loaded"
+          ? {
+              ...current,
+              characters: current.characters.filter(
+                (saved) => saved.character.id !== characterId,
+              ),
+            }
+          : current,
+      );
+    }
+    return ok;
+  }
+
   return (
     <div className="grid gap-4">
       <Button asChild className="justify-self-start">
@@ -70,19 +98,12 @@ export function CharacterList() {
       {state.status === "loaded" && state.characters.length > 0 && (
         <ul className="grid gap-2">
           {state.characters.map(({ character }) => (
-            <li key={character.id}>
-              <Link
-                href={`/characters/${character.id}`}
-                className="grid gap-0.5 rounded-lg border border-border bg-card p-3 transition-colors outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <span className="font-heading text-lg font-bold">
-                  {character.name}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {characterSubtitle(character, srd2024Index)}
-                </span>
-              </Link>
-            </li>
+            <CharacterListItem
+              key={character.id}
+              character={character}
+              subtitle={characterSubtitle(character, srd2024Index)}
+              onDelete={handleDelete}
+            />
           ))}
         </ul>
       )}

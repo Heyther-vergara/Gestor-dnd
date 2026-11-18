@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Alegreya_Sans, Alegreya_SC, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -34,7 +35,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${alegreyaSans.variable} ${alegreyaSC.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        {/* La atribución del SRD (CC-BY-4.0) tiene que poder encontrarse desde
+            cualquier página: por eso el enlace va en el pie de todas (ADR 0018). */}
+        <footer className="mt-auto px-4 py-4 text-center text-sm text-muted-foreground">
+          Compatible con 5E ·{" "}
+          <Link href="/credits" className="underline underline-offset-4">
+            Créditos y licencias
+          </Link>
+        </footer>
+      </body>
     </html>
   );
 }
