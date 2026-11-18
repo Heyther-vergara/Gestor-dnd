@@ -10,6 +10,7 @@
 import type { Character } from "@/rules-engine/schemas";
 
 import {
+  clearCharacter,
   type EnumerableStorage,
   type KeyValueStorage,
   listLocalCharacters,
@@ -116,6 +117,27 @@ export async function listCharacters(
     (a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt),
   );
   return { characters, where };
+}
+
+// Borra un personaje de los dos lugares (ADR 0018).
+// Primero la nube y después el navegador: si la nube falla (sin conexión),
+// no se toca nada. Al revés, el personaje desaparecería del navegador pero
+// volvería a aparecer en la lista desde la nube, y parecería que no se borró.
+// Devuelve false si no se pudo borrar.
+export async function deleteCharacter(
+  local: KeyValueStorage,
+  remote: RemoteCharacterStore | null,
+  characterId: string,
+): Promise<boolean> {
+  if (remote) {
+    try {
+      await remote.remove(characterId);
+    } catch {
+      return false;
+    }
+  }
+  clearCharacter(local, characterId);
+  return true;
 }
 
 // La copia con la fecha de guardado más reciente. Si hay empate gana la nube.
