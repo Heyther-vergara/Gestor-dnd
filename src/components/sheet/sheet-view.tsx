@@ -20,19 +20,22 @@ import { VitalsRow } from "./vitals-row";
 // La hoja completa. Recibe la hoja ya calculada: este componente no conoce
 // reglas, solo las muestra. `playPanel` son los controles de partida, si los hay.
 // `equipment` es el inventario y las monedas ya en texto (no son valores
-// calculados: los guarda el personaje).
+// calculados: los guarda el personaje). `homebrewPanel` es para darle o
+// sacarle objetos homebrew (ADR 0019).
 export function SheetView({
   name,
   subtitle,
   sheet,
   playPanel,
   equipment,
+  homebrewPanel,
 }: {
   name: string;
   subtitle: string;
   sheet: ComputedSheet;
   playPanel?: ReactNode;
   equipment?: { items: ReturnType<typeof inventoryLines>; coins: string };
+  homebrewPanel?: ReactNode;
 }) {
   return (
     <article className="mx-auto grid w-full max-w-2xl gap-5 px-4 py-6">
@@ -95,6 +98,10 @@ export function SheetView({
         <SheetSection title="Equipo">
           <EquipmentList items={equipment.items} coins={equipment.coins} />
         </SheetSection>
+      )}
+
+      {homebrewPanel && (
+        <SheetSection title="Objetos homebrew">{homebrewPanel}</SheetSection>
       )}
 
       {sheet.features.length > 0 && (

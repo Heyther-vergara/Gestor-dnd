@@ -10,7 +10,7 @@ export default function Home() {
       </h1>
       <p className="max-w-md text-muted-foreground">
         Hojas de personaje compatibles con 5e (SRD 5.1 y 5.2.1), con contenido
-        homebrew. En construcción.
+        homebrew.
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         <Button asChild>

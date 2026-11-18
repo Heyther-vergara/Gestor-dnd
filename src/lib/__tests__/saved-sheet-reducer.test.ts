@@ -6,6 +6,7 @@ import {
   initialSavedSheetState,
 } from "@/lib/saved-sheet-reducer";
 import { srd2024Index } from "@/lib/srd-2024";
+import { buildHomebrewItem, emptyHomebrewItemDraft } from "@/lib/homebrew";
 
 const reducer = createSavedSheetReducer(srd2024Index);
 const start = initialSavedSheetState(sampleCharacter);
@@ -90,5 +91,37 @@ describe("saved sheet reducer", () => {
     const next = reducer(hurt, { type: "reload", character: sampleCharacter });
     expect(next.saveStatus).toBe("loading");
     expect(next.session.character).toBe(sampleCharacter);
+  });
+
+  it("gives and takes a homebrew item, keeping the same state if nothing changes", () => {
+    const built = buildHomebrewItem(
+      {
+        ...emptyHomebrewItemDraft,
+        name: "Anillo",
+        bonuses: [{ target: "ac", value: 1 }],
+      },
+      "homebrew-test",
+      "anillo-test",
+    );
+    if (!built.ok) throw new Error("item");
+    const loaded = reducer(start, {
+      type: "storage-loaded",
+      character: null,
+      where: "local",
+    });
+    const given = reducer(loaded, { type: "give-item", item: built.item });
+    expect(given.session.character.inventory.at(-1)?.itemId).toBe(
+      "anillo-test",
+    );
+    expect(given.saveStatus).toBe("local");
+    expect(reducer(given, { type: "give-item", item: built.item })).toBe(given);
+
+    const taken = reducer(given, { type: "take-item", itemId: "anillo-test" });
+    expect(taken.session.character.inventory).toEqual(
+      sampleCharacter.inventory,
+    );
+    expect(reducer(taken, { type: "take-item", itemId: "anillo-test" })).toBe(
+      taken,
+    );
   });
 });

@@ -73,9 +73,14 @@ export function CharacterList() {
 
   return (
     <div className="grid gap-4">
-      <Button asChild className="justify-self-start">
-        <Link href="/characters/new">Crear personaje</Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild>
+          <Link href="/characters/new">Crear personaje</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/homebrew">Objetos homebrew</Link>
+        </Button>
+      </div>
 
       {state.status === "loading" && (
         <p className="text-muted-foreground" role="status">

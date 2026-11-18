@@ -15,18 +15,16 @@ import {
   type SaveStatus,
 } from "@/lib/saved-sheet-reducer";
 import { coinsText, inventoryLines } from "@/lib/format";
+import type { HomebrewItem } from "@/lib/homebrew";
 import { srd2024Index } from "@/lib/srd-2024";
 import { getCharacterStore } from "@/lib/supabase/character-store";
-import { calculateSheet } from "@/rules-engine/engine";
+import { type ContentIndex, calculateSheet } from "@/rules-engine/engine";
 import type { Character } from "@/rules-engine/schemas";
 
 import { AccountPanel } from "./account-panel";
+import { HomebrewItemsPanel } from "./homebrew-items-panel";
 import { PlayPanel } from "./play-panel";
 import { SheetView } from "./sheet-view";
-
-// Se crea una sola vez: el reducer necesita el contenido para que el motor
-// calcule los PG máximos y los dados de golpe.
-const savedSheetReducer = createSavedSheetReducer(srd2024Index);
 
 type Cloud = {
   store: RemoteCharacterStore;
@@ -39,18 +37,32 @@ type Cloud = {
 //
 // `resetMode` dice qué hace "Volver al estado inicial":
 // - "clear" (hoja de ejemplo): borra lo guardado; el personaje vive en el código.
-// - "keep" (personajes creados, ADR 0015): guarda `initialCharacter`, que
-//   es el personaje con el estado de partida en cero. Borrar lo guardado
-//   borraría el personaje entero.
+// - "keep" (personajes creados, ADR 0015): pone en cero el estado de partida
+//   y deja el resto del personaje (por ejemplo, los objetos homebrew que se
+//   le dieron, ADR 0019). Borrar lo guardado borraría el personaje entero.
+//
+// `contentIndex` es el contenido que usa el motor: el SRD y, en los
+// personajes creados, también el homebrew del navegador. `homebrewItems`,
+// si viene, muestra el panel para darle esos objetos al personaje.
 export function PlayableSheet({
   initialCharacter,
   subtitle,
   resetMode = "clear",
+  contentIndex = srd2024Index,
+  homebrewItems,
 }: {
   initialCharacter: Character;
   subtitle: string;
   resetMode?: "clear" | "keep";
+  contentIndex?: ContentIndex;
+  homebrewItems?: readonly HomebrewItem[];
 }) {
+  // El reducer necesita el contenido para que el motor calcule los PG
+  // máximos y los dados de golpe. Se rearma solo si cambia el contenido.
+  const savedSheetReducer = useMemo(
+    () => createSavedSheetReducer(contentIndex),
+    [contentIndex],
+  );
   const [{ session, saveStatus }, dispatch] = useReducer(
     savedSheetReducer,
     initialCharacter,
@@ -146,8 +158,8 @@ export function PlayableSheet({
   }
 
   const sheet = useMemo(
-    () => calculateSheet(session.character, srd2024Index),
-    [session.character],
+    () => calculateSheet(session.character, contentIndex),
+    [session.character, contentIndex],
   );
 
   return (
@@ -156,9 +168,20 @@ export function PlayableSheet({
       subtitle={subtitle}
       sheet={sheet}
       equipment={{
-        items: inventoryLines(session.character.inventory, srd2024Index),
+        items: inventoryLines(session.character.inventory, contentIndex),
         coins: coinsText(session.character.coins),
       }}
+      homebrewPanel={
+        homebrewItems && (
+          <HomebrewItemsPanel
+            items={homebrewItems}
+            inventory={session.character.inventory}
+            disabled={!loaded}
+            onGive={(item) => dispatch({ type: "give-item", item })}
+            onTake={(itemId) => dispatch({ type: "take-item", itemId })}
+          />
+        )
+      }
       playPanel={
         <div className="grid gap-2">
           <PlayPanel
@@ -181,7 +204,16 @@ export function PlayableSheet({
               variant="link"
               size="sm"
               onClick={() =>
-                dispatch({ type: "reset", character: initialCharacter })
+                dispatch({
+                  type: "reset",
+                  character:
+                    resetMode === "keep"
+                      ? {
+                          ...session.character,
+                          playState: initialCharacter.playState,
+                        }
+                      : initialCharacter,
+                })
               }
             >
               Volver al estado inicial
