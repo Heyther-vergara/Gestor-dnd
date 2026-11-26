@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Alegreya_Sans, Alegreya_SC, Geist_Mono } from "next/font/google";
+import { ArcaneMargins } from "@/components/arcane-margins";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { themeScript } from "@/lib/theme";
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col">
+        <ArcaneMargins />
         {children}
         {/* La atribución del SRD (CC-BY-4.0) tiene que poder encontrarse desde
             cualquier página: por eso el enlace va en el pie de todas (ADR 0018). */}

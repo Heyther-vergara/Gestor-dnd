@@ -137,3 +137,11 @@
     @apply font-sans;
   }
 }
+
+/* Giro del círculo de los márgenes (ADR 0031). Se usa con motion-safe:, así
+   que con "reducir movimiento" no se anima. */
+@keyframes arcane-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
