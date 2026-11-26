@@ -40,6 +40,7 @@ export function SheetView({
   resourcePanel,
   spellPanel,
   spellSlots,
+  quickHp,
 }: {
   name: string;
   subtitle: string;
@@ -49,6 +50,8 @@ export function SheetView({
   homebrewPanel?: ReactNode;
   resourcePanel?: ReactNode;
   spellPanel?: ReactNode;
+  // Daño y curación rápidos en la cabecera fija (ADR 0029).
+  quickHp?: ReactNode;
   spellSlots?: {
     disabled: boolean;
     onChange: (classId: string, level: number, change: SpellSlotChange) => void;
@@ -64,6 +67,7 @@ export function SheetView({
         subtitle={subtitle}
         hitPoints={sheet.hitPoints}
         ac={sheet.ac}
+        quickHp={quickHp}
       />
 
       {/* Lo que el motor no pudo aplicar (ADR 0027): va primero, antes de
