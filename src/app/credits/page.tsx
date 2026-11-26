@@ -63,8 +63,9 @@ export default function CreditsPage() {
         </p>
         <p className="text-sm text-muted-foreground">
           El contenido del SRD se adaptó a un formato de datos propio para que
-          la app pueda calcular la hoja. Esta app es compatible con la 5E y no
-          es un producto oficial.
+          la app pueda calcular la hoja. Los nombres y textos de los conjuros
+          son los de la versión en español del SRD 5.2.1. Esta app es compatible
+          con la 5E y no es un producto oficial.
         </p>
       </section>
 

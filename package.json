@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "content:import": "node scripts/import-srd-2024.mts"
+    "content:import": "node scripts/import-srd-2024.mts",
+    "content:spells-es": "node scripts/translate-spells-es.mts"
   },
   "engines": {
     "node": "24.x"

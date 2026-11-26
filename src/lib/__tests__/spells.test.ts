@@ -45,13 +45,15 @@ const prepared = (character: Character) =>
 describe("classSpellOptions", () => {
   it("prepares only from the spellbook", () => {
     const options = classSpellOptions(ilse(), "wizard", index);
+    // Por nombre en español: Armadura de mago, Caída de pluma, Detectar
+    // magia, Dormir, Ola atronadora, Proyectil mágico.
     expect(options?.prepared.map((s) => s.id)).toEqual([
-      "detect-magic",
-      "feather-fall",
       "mage-armor",
-      "magic-missile",
+      "feather-fall",
+      "detect-magic",
       "sleep",
       "thunderwave",
+      "magic-missile",
     ]);
   });
 

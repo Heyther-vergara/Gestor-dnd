@@ -791,7 +791,9 @@ async function main() {
       throw new Error(`Equipo inicial: no existe el objeto "${id}"`);
   }
   await writeJson("items.json", items);
-  console.log("Listo. Valida con: pnpm test");
+  console.log(
+    "Listo. Pasa los conjuros al español con: pnpm content:spells-es (ADR 0031)",
+  );
 }
 
 await main();

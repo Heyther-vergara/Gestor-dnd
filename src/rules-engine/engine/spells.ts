@@ -52,7 +52,7 @@ export function spellLimits(
 
 // Orden de la hoja y de las listas para elegir: por nivel y después por nombre.
 export const compareSpells = (a: SpellContent, b: SpellContent): number =>
-  a.data.level - b.data.level || a.name.localeCompare(b.name);
+  a.data.level - b.data.level || a.name.localeCompare(b.name, "es");
 
 // SRD 5.2.1, "Listas de conjuros": los conjuros de la lista de la clase, de
 // los paquetes activos, ordenados.

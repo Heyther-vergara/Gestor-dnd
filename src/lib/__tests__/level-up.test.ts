@@ -18,11 +18,12 @@ import {
   characterSchema,
 } from "@/rules-engine/schemas";
 
-// Los conjuros de nivel 1 del mago, en el orden de la lista.
+// Los conjuros de nivel 1 del mago, en el orden de la lista (por nombre en
+// español, ADR 0031).
 const LEVEL_1_SPELLS = [...index.values()]
   .filter((c) => c.type === "spell" && c.data.level === 1)
-  .map((c) => c.id)
-  .sort();
+  .sort((a, b) => a.name.localeCompare(b.name, "es"))
+  .map((c) => c.id);
 
 // La clase mago con lo que le corresponde al nivel (ADR 0021): 3 trucos (4
 // desde el nivel 4) y un libro con 6 conjuros más 2 por nivel después del 1.

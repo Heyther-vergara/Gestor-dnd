@@ -1,8 +1,8 @@
 import { plainText, spellComponentsText, spellSummary } from "@/lib/format";
 import type { SpellContent } from "@/rules-engine/engine";
 
-// Los datos y el texto de un conjuro (ADR 0021). El texto viene del SRD en
-// inglés, como el resto del contenido importado.
+// Los datos y el texto de un conjuro (ADR 0021). Nombre y texto son los del
+// SRD 5.2.1 en español (ADR 0031), con distancias en metros como el libro.
 export function SpellBody({ spell }: { spell: SpellContent }) {
   const { castingTime, range, duration } = spell.data;
   return (
