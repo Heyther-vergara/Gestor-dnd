@@ -16,6 +16,7 @@ import { FeatureList } from "./feature-list";
 import { Foldout } from "./foldout";
 import { HitPoints } from "./hit-points";
 import { SheetHeader } from "./sheet-header";
+import { SheetIssues } from "./sheet-issues";
 import { SheetSection } from "./sheet-section";
 import { SkillList } from "./skill-list";
 import { SpellcastingSummary } from "./spellcasting-summary";
@@ -58,6 +59,10 @@ export function SheetView({
         hitPoints={sheet.hitPoints}
         ac={sheet.ac}
       />
+
+      {/* Lo que el motor no pudo aplicar (ADR 0027): va primero, antes de
+          cualquier número. */}
+      <SheetIssues issues={sheet.issues} />
 
       {/* En el celular todo va en una columna. Desde 1024 px (lg) hay espacio
           para dos: a la izquierda lo de combate, a la derecha lo que se
