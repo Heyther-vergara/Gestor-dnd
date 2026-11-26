@@ -16,7 +16,7 @@ export default async function CharacterPage({
   const { id } = await params;
   return (
     <main className="flex-1">
-      <nav className="mx-auto w-full max-w-2xl px-4 pt-4">
+      <nav className="mx-auto w-full max-w-2xl px-4 pt-4 lg:max-w-6xl">
         <Link
           href="/characters"
           className="text-sm text-muted-foreground underline-offset-4 hover:underline"
