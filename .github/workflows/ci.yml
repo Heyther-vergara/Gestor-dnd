@@ -16,7 +16,7 @@ jobs:
     # Si algo se cuelga, que falle en vez de gastar minutos por horas.
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # No guardar el token en .git/config: ningún paso posterior lo necesita.
           persist-credentials: false
