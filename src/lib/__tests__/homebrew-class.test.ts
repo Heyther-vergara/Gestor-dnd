@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { KeyValueStorage } from "@/lib/character-storage";
 import { withHomebrew } from "@/lib/homebrew";
-import { parseClassFile, removeClass, upsertClass } from "@/lib/homebrew-class";
+import {
+  classFileTooLargeError,
+  isClassFileTooLarge,
+  MAX_CLASS_FILE_BYTES,
+  parseClassFile,
+  removeClass,
+  upsertClass,
+} from "@/lib/homebrew-class";
 import {
   homebrewContentFrom,
   loadHomebrew,
@@ -127,5 +134,25 @@ describe("homebrew classes in the library", () => {
       "tinkerer",
       "clockmaker",
     ]);
+  });
+});
+
+// ADR 0023 (SOC 2 CC6.6 · ISO 27001 A.8.26): tope de tamaño antes de leer.
+describe("class file size limit", () => {
+  it("accepts a real-sized class file (the Alchemist is ~12 KB)", () => {
+    expect(isClassFileTooLarge(12_000)).toBe(false);
+    expect(isClassFileTooLarge(MAX_CLASS_FILE_BYTES)).toBe(false);
+  });
+
+  it("rejects a file over 1 MB", () => {
+    expect(isClassFileTooLarge(MAX_CLASS_FILE_BYTES + 1)).toBe(true);
+  });
+
+  it("rejects oversized text without parsing it", () => {
+    const huge = " ".repeat(MAX_CLASS_FILE_BYTES + 1);
+    expect(parseClassFile(huge, PACKAGE_ID, srd2024Index)).toEqual({
+      ok: false,
+      errors: [classFileTooLargeError],
+    });
   });
 });

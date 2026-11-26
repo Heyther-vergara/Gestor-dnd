@@ -39,6 +39,18 @@ export type ParseClassFileResult =
 // Muestra pocos errores: si el archivo está muy mal, con los primeros alcanza.
 const MAX_ERRORS = 5;
 
+// Tamaño máximo del archivo de clase (ADR 0023). La clase homebrew más grande
+// que tenemos (el Alquimista) pesa unos 12 KB, así que 1 MB sobra. Se mira
+// antes de leer el archivo: uno de cientos de MB congelaría la pestaña al
+// leerlo y validarlo.
+export const MAX_CLASS_FILE_BYTES = 1_000_000;
+
+export const classFileTooLargeError = `El archivo es demasiado grande (máximo ${MAX_CLASS_FILE_BYTES / 1_000_000} MB). Una clase normal pesa unos pocos KB.`;
+
+export function isClassFileTooLarge(bytes: number): boolean {
+  return bytes > MAX_CLASS_FILE_BYTES;
+}
+
 const issuesToText = (prefix: string, error: z.ZodError): string[] =>
   error.issues.map((issue) => {
     const path = issue.path.join(".");
@@ -54,6 +66,11 @@ export function parseClassFile(
   packageId: string,
   existing: ContentIndex,
 ): ParseClassFileResult {
+  // Defensa en profundidad: quien llama ya debería haber mirado `file.size`.
+  // `text.length` cuenta caracteres, no bytes, pero alcanza como tope.
+  if (isClassFileTooLarge(text.length)) {
+    return { ok: false, errors: [classFileTooLargeError] };
+  }
   let json: unknown;
   try {
     json = JSON.parse(text);
