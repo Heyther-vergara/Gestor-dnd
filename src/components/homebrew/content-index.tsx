@@ -13,7 +13,9 @@ import type { Content } from "@/rules-engine/schemas";
 //
 // El homebrew está en localStorage, que no existe en el servidor: el primer
 // render usa solo el SRD y, después de montar, se suma el homebrew.
-export function useHomebrewIndex(): ContentIndex {
+// `reloadKey`: al cambiarlo se vuelve a leer (por ejemplo, después de importar
+// una copia de seguridad, ADR 0026).
+export function useHomebrewIndex(reloadKey = 0): ContentIndex {
   const [homebrew, setHomebrew] = useState<Content[]>([]);
   useEffect(() => {
     let content: Content[];
@@ -24,7 +26,7 @@ export function useHomebrewIndex(): ContentIndex {
     }
     // El efecto corre después del render: aquí sí se puede cambiar el estado.
     queueMicrotask(() => setHomebrew(content));
-  }, []);
+  }, [reloadKey]);
   return useMemo(() => withHomebrew(srd2024Index, homebrew), [homebrew]);
 }
 
