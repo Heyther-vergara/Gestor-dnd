@@ -1,4 +1,4 @@
-// ADR 0025 (SOC 2 PI1.3 · ISO 27001 A.8.26): la hoja avisa cuando el motor no
+// ADR 0027 (SOC 2 PI1.3 · ISO 27001 A.8.26): la hoja avisa cuando el motor no
 // pudo aplicar algo, en vez de mostrar números incorrectos en silencio.
 import { describe, expect, it } from "vitest";
 

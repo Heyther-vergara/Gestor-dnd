@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { hasSheetIssues, summarizeSheetIssues } from "@/lib/sheet-issues";
 
-// Recuadro de avisos arriba de la hoja (ADR 0025). Si el motor no pudo
+// Recuadro de avisos arriba de la hoja (ADR 0027). Si el motor no pudo
 // aplicar algo, se dice aquí, para que nadie confíe en un número que está mal.
 export function SheetIssues({ issues }: { issues: string[] }) {
   const summary = summarizeSheetIssues(issues);

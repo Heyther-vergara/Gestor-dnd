@@ -1,4 +1,4 @@
-// Avisos del motor en lenguaje simple para la hoja (ADR 0025).
+// Avisos del motor en lenguaje simple para la hoja (ADR 0027).
 //
 // `calculateSheet` anota en `issues` todo lo que no pudo aplicar: contenido
 // que no encuentra, elecciones que no valen, límites superados. Antes nadie

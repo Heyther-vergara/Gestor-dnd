@@ -60,7 +60,7 @@ export function SheetView({
         ac={sheet.ac}
       />
 
-      {/* Lo que el motor no pudo aplicar (ADR 0025): va primero, antes de
+      {/* Lo que el motor no pudo aplicar (ADR 0027): va primero, antes de
           cualquier número. */}
       <SheetIssues issues={sheet.issues} />
 
