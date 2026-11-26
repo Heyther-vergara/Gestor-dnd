@@ -34,21 +34,36 @@ export function SpellcastingSummary({
             </span>
           </p>
           {stats.slots.length > 0 && (
-            <dl className="flex flex-wrap gap-2">
-              {stats.slots.map((count, i) => (
-                <div
-                  key={i}
-                  className="grid min-w-16 justify-items-center rounded-lg border border-border bg-card px-3 py-2"
-                >
-                  <dt className="text-xs text-muted-foreground">
-                    Nivel {i + 1}
-                  </dt>
-                  <dd className="font-heading text-xl font-bold tabular-nums">
-                    {count}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <div className="grid gap-1">
+              <h3 className="font-medium">Espacios de conjuro</h3>
+              {/* Un círculo por espacio, para verlos de un vistazo. Todavía
+                  no se marcan como gastados (queda para más adelante). */}
+              <dl className="grid gap-1">
+                {stats.slots.map((count, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <dt className="w-16 text-muted-foreground">
+                      Nivel {i + 1}
+                    </dt>
+                    <dd className="flex items-center gap-1.5">
+                      <span className="sr-only">{count} espacios</span>
+                      {Array.from({ length: count }, (_, slot) => (
+                        <span
+                          key={slot}
+                          aria-hidden="true"
+                          className="size-3.5 rounded-full border-2 border-gold bg-gold/80"
+                        />
+                      ))}
+                      <span
+                        aria-hidden="true"
+                        className="ml-1 text-muted-foreground tabular-nums"
+                      >
+                        {count}
+                      </span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           )}
           {stats.limits.cantrips > 0 && (
             <SpellList
@@ -68,7 +83,7 @@ export function SpellcastingSummary({
           )}
           {stats.spellbook && (
             <SpellList
-              title="Libro de conjuros"
+              title="Todos los conjuros del libro"
               spells={stats.spellbook}
               max={stats.limits.spellbook ?? undefined}
               empty="El libro está vacío."

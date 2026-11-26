@@ -105,7 +105,7 @@ export function SavedCharacterSheet({ characterId }: { characterId: string }) {
         homebrewItems={homebrewItems}
       />
       {canLevelUp && (
-        <div className="mx-auto w-full max-w-2xl px-4 pb-8">
+        <div className="mx-auto w-full max-w-2xl px-4 pb-8 lg:max-w-6xl">
           <Button asChild className="w-full">
             <Link href={`/characters/${state.character.id}/level-up`}>
               Subir a nivel {(state.character.classes[0]?.level ?? 0) + 1}
