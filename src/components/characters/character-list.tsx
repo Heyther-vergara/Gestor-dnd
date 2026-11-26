@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { BackupPanel } from "@/components/characters/backup-panel";
 import { CharacterListItem } from "@/components/characters/character-list-item";
 import { useHomebrewIndex } from "@/components/homebrew/content-index";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,9 @@ type ListState =
 // navegador (localStorage y la sesión de Supabase).
 export function CharacterList() {
   // Para nombrar las clases homebrew en la lista (ADR 0020).
-  const index = useHomebrewIndex();
+  // Sube al importar una copia (ADR 0026): vuelve a leer lo guardado.
+  const [reloadKey, setReloadKey] = useState(0);
+  const index = useHomebrewIndex(reloadKey);
   const [state, setState] = useState<ListState>({ status: "loading" });
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function CharacterList() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   // Borra en la nube y en el navegador; si sale bien, saca la fila de la lista.
   async function handleDelete(characterId: string): Promise<boolean> {
@@ -120,6 +123,13 @@ export function CharacterList() {
           Sin conexión con la nube: se muestran los personajes de este
           navegador.
         </p>
+      )}
+
+      {state.status === "loaded" && (
+        <BackupPanel
+          characters={state.characters}
+          onImported={() => setReloadKey((key) => key + 1)}
+        />
       )}
     </div>
   );
