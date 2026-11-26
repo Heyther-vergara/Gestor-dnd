@@ -148,6 +148,8 @@ export type SpellcastingStats = {
   // Con multiclase, el SRD suma los niveles en una tabla común; eso queda
   // pendiente (ADR 0016) y aquí va la tabla de cada clase por separado.
   slots: number[];
+  // Los que quedan sin gastar, en el mismo orden que `slots` (ADR 0028).
+  slotsRemaining: number[];
   // Lo que permite el nivel de la clase (ADR 0021): nivel de conjuro más
   // alto, trucos, preparados y tamaño del libro.
   limits: SpellLimits;
@@ -873,6 +875,12 @@ export function calculateSheet(
           // SRD 5.2.1, tabla de la clase, "Espacios de conjuro por cada nivel
           // de conjuro". La fila 0 es el nivel 1 de la clase.
           slots: [...(slotsByLevel[level - 1] ?? [])],
+          slotsRemaining: (slotsByLevel[level - 1] ?? []).map((max, i) =>
+            Math.max(
+              0,
+              max - (character.playState.spellSlotsSpent[cls.id]?.[i] ?? 0),
+            ),
+          ),
           limits,
           ...chosenSpells(entry, cls.id, limits),
         },

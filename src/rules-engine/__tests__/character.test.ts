@@ -50,6 +50,7 @@ describe("characterSchema", () => {
       maxHpReduction: 0,
       exhaustion: 0,
       resourcesSpent: {},
+      spellSlotsSpent: {},
     });
   });
 

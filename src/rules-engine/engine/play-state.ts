@@ -303,6 +303,9 @@ export function longRest(
       exhaustion: Math.max(0, character.playState.exhaustion - 1),
       // Los recursos de clase se recuperan con descanso largo (ADR 0020).
       resourcesSpent: {},
+      // SRD 5.2.1, mago, "Espacios de conjuro": recuperas todos los
+      // espacios gastados cuando finalizas un descanso largo (ADR 0028).
+      spellSlotsSpent: {},
     },
   };
 }
@@ -351,6 +354,72 @@ export function spendResource(
         [resourceId]: (resourcesSpent[resourceId] ?? 0) + amount,
       },
     },
+  };
+}
+
+// Gastar un espacio de conjuro de un nivel (ADR 0028). SRD 5.2.1, mago,
+// "Espacios de conjuro": la tabla de la clase dice cuántos tienes de cada
+// nivel. Qué conjuro se lanzó no se guarda: el jugador elige el espacio,
+// también si lanza un conjuro con un espacio de nivel más alto.
+export function spendSpellSlot(
+  character: Character,
+  contentIndex: ContentIndex,
+  classId: string,
+  level: number,
+): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const stats = calculateSheet(character, contentIndex).spellcasting.find(
+    (s) => s.classId === classId,
+  );
+  const max = stats?.slots[level - 1] ?? 0;
+  if (!stats || max === 0) {
+    return { ok: false, reason: `No tienes espacios de nivel ${level}` };
+  }
+  if ((stats.slotsRemaining[level - 1] ?? 0) < 1) {
+    return { ok: false, reason: `No te quedan espacios de nivel ${level}` };
+  }
+  return {
+    ok: true,
+    playState: withSlotsSpent(character.playState, classId, level, +1),
+  };
+}
+
+// Devolver un espacio gastado, para corregir un toque equivocado.
+export function recoverSpellSlot(
+  character: Character,
+  contentIndex: ContentIndex,
+  classId: string,
+  level: number,
+): PlayResult {
+  if (character.playState.dead) return { ok: false, reason: DEAD };
+  const stats = calculateSheet(character, contentIndex).spellcasting.find(
+    (s) => s.classId === classId,
+  );
+  const max = stats?.slots[level - 1] ?? 0;
+  const remaining = stats?.slotsRemaining[level - 1] ?? 0;
+  if (max - remaining < 1) {
+    return { ok: false, reason: `No hay espacios de nivel ${level} gastados` };
+  }
+  return {
+    ok: true,
+    playState: withSlotsSpent(character.playState, classId, level, -1),
+  };
+}
+
+// Suma `delta` a los gastados de un nivel, rellenando con ceros los niveles
+// de abajo ([0, 1] es "ninguno de nivel 1, uno de nivel 2").
+function withSlotsSpent(
+  playState: PlayState,
+  classId: string,
+  level: number,
+  delta: number,
+): PlayState {
+  const spent = [...(playState.spellSlotsSpent[classId] ?? [])];
+  while (spent.length < level) spent.push(0);
+  spent[level - 1] = Math.max(0, (spent[level - 1] ?? 0) + delta);
+  return {
+    ...playState,
+    spellSlotsSpent: { ...playState.spellSlotsSpent, [classId]: spent },
   };
 }
 

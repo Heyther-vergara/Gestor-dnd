@@ -157,6 +157,13 @@ const playStateSchema = z.strictObject({
   // Se guarda lo gastado y no lo que queda, como con los dados de golpe: si
   // el máximo sube con el nivel, lo que queda se recalcula solo (ADR 0020).
   resourcesSpent: z.record(slugSchema, z.int().min(0)).default({}),
+  // Espacios de conjuro gastados por clase y por nivel de conjuro
+  // ({ wizard: [3, 1] } son 3 de nivel 1 y 1 de nivel 2). Por clase porque
+  // la tabla común de multiclase todavía no está (ADR 0016). Se guarda lo
+  // gastado, como con los recursos (ADR 0028).
+  spellSlotsSpent: z
+    .record(slugSchema, z.array(z.int().min(0)).max(9))
+    .default({}),
 });
 
 export const characterSchema = z.strictObject({
@@ -182,6 +189,7 @@ export const characterSchema = z.strictObject({
     maxHpReduction: 0,
     exhaustion: 0,
     resourcesSpent: {},
+    spellSlotsSpent: {},
   }),
 });
 

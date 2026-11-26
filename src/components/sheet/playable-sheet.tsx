@@ -184,6 +184,16 @@ export function PlayableSheet({
           />
         )
       }
+      spellSlots={{
+        disabled: !loaded,
+        onChange: (classId, level, change) =>
+          dispatch({
+            type:
+              change === "spend" ? "spend-spell-slot" : "recover-spell-slot",
+            classId,
+            level,
+          }),
+      }}
       spellPanel={
         sheet.spellcasting.length > 0 && (
           <SpellPanel

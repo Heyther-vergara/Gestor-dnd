@@ -18,6 +18,7 @@ import { HitPoints } from "./hit-points";
 import { SheetHeader } from "./sheet-header";
 import { SheetSection } from "./sheet-section";
 import { SkillList } from "./skill-list";
+import type { SpellSlotChange } from "./spell-slots";
 import { SpellcastingSummary } from "./spellcasting-summary";
 import { VitalsRow } from "./vitals-row";
 
@@ -37,6 +38,7 @@ export function SheetView({
   homebrewPanel,
   resourcePanel,
   spellPanel,
+  spellSlots,
 }: {
   name: string;
   subtitle: string;
@@ -46,6 +48,10 @@ export function SheetView({
   homebrewPanel?: ReactNode;
   resourcePanel?: ReactNode;
   spellPanel?: ReactNode;
+  spellSlots?: {
+    disabled: boolean;
+    onChange: (classId: string, level: number, change: SpellSlotChange) => void;
+  };
 }) {
   const spellSummary = spellcastingLine(sheet.spellcasting);
   const itemCount = equipment?.items.length ?? 0;
@@ -150,7 +156,11 @@ export function SheetView({
 
           {sheet.spellcasting.length > 0 && (
             <Foldout title="Libro de conjuros" summary={spellSummary}>
-              <SpellcastingSummary spellcasting={sheet.spellcasting} />
+              <SpellcastingSummary
+                spellcasting={sheet.spellcasting}
+                slotsDisabled={spellSlots?.disabled}
+                onSlotChange={spellSlots?.onChange}
+              />
               {spellPanel}
             </Foldout>
           )}
@@ -192,7 +202,8 @@ export function SheetView({
   );
 }
 
-// Lo que se ve con el libro cerrado: "CD 13 · Ataque +5 · Espacios 4·2".
+// Lo que se ve con el libro cerrado: "CD 13 · Ataque +5 · Espacios 3/4 2/2"
+// (los que quedan de cada nivel).
 // Con varias clases lanzadoras, una parte por clase separada con " | ".
 function spellcastingLine(spellcasting: ComputedSheet["spellcasting"]) {
   return spellcasting
@@ -202,7 +213,10 @@ function spellcastingLine(spellcasting: ComputedSheet["spellcasting"]) {
         `Ataque ${formatModifier(stats.attackBonus)}`,
       ];
       if (stats.slots.length > 0) {
-        parts.push(`Espacios ${stats.slots.join("·")}`);
+        const left = stats.slots.map(
+          (max, i) => `${stats.slotsRemaining[i] ?? 0}/${max}`,
+        );
+        parts.push(`Espacios ${left.join(" ")}`);
       }
       return parts.join(" · ");
     })
