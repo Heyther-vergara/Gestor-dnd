@@ -85,21 +85,30 @@ export function loadHomebrew(storage: KeyValueStorage): LoadHomebrewResult {
   } catch {
     return { status: "invalid" };
   }
+  const library = parseHomebrewLibrary(json);
+  return library ? { status: "loaded", library } : { status: "invalid" };
+}
+
+// Valida un homebrew guardado que viene de afuera (localStorage o una copia de
+// seguridad, ADR 0026). null si no sirve.
+export function parseHomebrewLibrary(json: unknown): HomebrewLibrary | null {
   const parsed = homebrewLibrarySchema.safeParse(json);
-  if (!parsed.success) return { status: "invalid" };
+  if (!parsed.success) return null;
   return {
-    status: "loaded",
-    library: {
-      package: parsed.data.package,
-      // El refine de arriba ya comprobó que todos son objetos.
-      items: parsed.data.items.flatMap((item) =>
-        item.type === "item" ? [item] : [],
-      ),
-      classes: parsed.data.classes.flatMap((c) =>
-        c.type === "class" || c.type === "subclass" ? [c] : [],
-      ),
-    },
+    package: parsed.data.package,
+    // El refine de arriba ya comprobó que todos son objetos.
+    items: parsed.data.items.flatMap((item) =>
+      item.type === "item" ? [item] : [],
+    ),
+    classes: parsed.data.classes.flatMap((c) =>
+      c.type === "class" || c.type === "subclass" ? [c] : [],
+    ),
   };
+}
+
+// El homebrew tal como se guarda: con su número de versión.
+export function toStoredHomebrew(library: HomebrewLibrary) {
+  return { version: STORAGE_VERSION, ...library };
 }
 
 export function saveHomebrew(
@@ -108,7 +117,7 @@ export function saveHomebrew(
 ): void {
   storage.setItem(
     HOMEBREW_STORAGE_KEY,
-    JSON.stringify({ version: STORAGE_VERSION, ...library }),
+    JSON.stringify(toStoredHomebrew(library)),
   );
 }
 
