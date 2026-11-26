@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
 
       # Usa la versión de pnpm fijada en package.json → "packageManager"
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v5
         with:
