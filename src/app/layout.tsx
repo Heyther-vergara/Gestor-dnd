@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Alegreya_Sans, Alegreya_SC, Geist_Mono } from "next/font/google";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { themeScript } from "@/lib/theme";
+
 import "./globals.css";
 
 // Los nombres de variable coinciden con los que usa globals.css (preset de shadcn).
@@ -34,16 +37,26 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="es"
       className={`${alegreyaSans.variable} ${alegreyaSC.variable} ${geistMono.variable} h-full antialiased`}
+      // El script de abajo agrega la clase .dark antes de que React hidrate:
+      // sin esto, React avisaría que el HTML no coincide (ADR 0030).
+      suppressHydrationWarning
     >
+      <head>
+        {/* Aplica el tema guardado antes de pintar, sin destello. */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col">
         {children}
         {/* La atribución del SRD (CC-BY-4.0) tiene que poder encontrarse desde
             cualquier página: por eso el enlace va en el pie de todas (ADR 0018). */}
-        <footer className="mt-auto px-4 py-4 text-center text-sm text-muted-foreground">
-          Compatible con 5E ·{" "}
-          <Link href="/credits" className="underline underline-offset-4">
-            Créditos y licencias
-          </Link>
+        <footer className="mt-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-4 py-4 text-center text-sm text-muted-foreground">
+          <span>
+            Compatible con 5E ·{" "}
+            <Link href="/credits" className="underline underline-offset-4">
+              Créditos y licencias
+            </Link>
+          </span>
+          <ThemeToggle />
         </footer>
       </body>
     </html>
