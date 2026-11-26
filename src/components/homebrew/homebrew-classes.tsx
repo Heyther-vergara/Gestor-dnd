@@ -5,7 +5,9 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { withHomebrew } from "@/lib/homebrew";
 import {
+  classFileTooLargeError,
   type HomebrewClass,
+  isClassFileTooLarge,
   parseClassFile,
   removeClass,
   upsertClass,
@@ -38,6 +40,11 @@ export function HomebrewClasses({
   async function handleFile(file: File) {
     setMessage(null);
     setErrors([]);
+    // Antes de leerlo: un archivo enorme congelaría la pestaña (ADR 0023).
+    if (isClassFileTooLarge(file.size)) {
+      setErrors([classFileTooLargeError]);
+      return;
+    }
     const text = await file.text();
     // Lo que ya existe, para no repetir ids: el SRD y el homebrew guardado.
     const existing = withHomebrew(srd2024Index, [

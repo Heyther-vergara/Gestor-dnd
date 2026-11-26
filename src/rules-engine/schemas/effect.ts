@@ -6,6 +6,7 @@ import {
   damageTypeSchema,
   skillSchema,
 } from "./common";
+import { LIMITS } from "./limits";
 
 // --- Vocabulario cerrado de `target` (ADR 0003) ---
 // Antes era texto libre: un typo como "acc" pasaba la validación y el motor lo
@@ -70,7 +71,7 @@ const numericEffectSchema = z
   .strictObject({
     target: numericTargetSchema,
     op: z.enum(numericOps),
-    value: z.number(),
+    value: z.number().min(-LIMITS.effectValue).max(LIMITS.effectValue),
     abilities: z.array(abilitySchema).min(1).optional(),
     maxAbilityBonus: z.int().min(0).optional(),
     condition: conditionSchema.optional(),

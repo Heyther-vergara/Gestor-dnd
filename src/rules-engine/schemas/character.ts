@@ -7,6 +7,7 @@ import {
   skillSchema,
   slugSchema,
 } from "./common";
+import { LIMITS, nameSchema } from "./limits";
 
 // Un personaje guarda solo elecciones y estado. Todo lo derivado (CA, PG máximos,
 // bonificadores…) lo calcula calculateSheet() y nunca se almacena.
@@ -159,16 +160,16 @@ const playStateSchema = z.strictObject({
 });
 
 export const characterSchema = z.strictObject({
-  id: z.string().min(1),
-  name: z.string().min(1),
+  id: z.string().min(1).max(LIMITS.id),
+  name: nameSchema,
   edition: editionSchema,
   activePackageIds: z.array(slugSchema).min(1),
   classes: z.array(classLevelSchema).min(1),
   speciesId: slugSchema,
   backgroundId: slugSchema,
   baseAbilityScores: abilityScoresSchema,
-  choices: z.array(choiceSchema).default([]),
-  inventory: z.array(inventoryItemSchema).default([]),
+  choices: z.array(choiceSchema).max(LIMITS.list).default([]),
+  inventory: z.array(inventoryItemSchema).max(LIMITS.list).default([]),
   // Los personajes guardados antes de las monedas (ADR 0017) empiezan en cero.
   coins: coinsSchema.default({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }),
   playState: playStateSchema.default({

@@ -3,4 +3,5 @@ export * from "./character";
 export * from "./common";
 export * from "./content";
 export * from "./effect";
+export * from "./limits";
 export * from "./package";

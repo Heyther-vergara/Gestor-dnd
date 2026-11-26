@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   contentSchema,
   effectSchema,
+  LIMITS,
   packageSchema,
 } from "@/rules-engine/schemas";
 
@@ -585,5 +586,70 @@ describe("contentSchema", () => {
       data: {},
     });
     expect(result.success).toBe(false);
+  });
+});
+
+// ADR 0023 (SOC 2 CC6.6 · ISO 27001 A.8.26): topes de tamaño para datos de
+// afuera. Son holgados: el SRD 5.2.1 queda muy por debajo (visión en la
+// oscuridad 120 es el efecto más grande; ~3.000 caracteres el texto más largo).
+describe("size limits", () => {
+  const feat = {
+    id: "big-feat",
+    packageId: "homebrew-test",
+    type: "feat",
+    name: "Dote",
+    description: "",
+    effects: [],
+    data: { category: "general" },
+  };
+
+  it("accepts the largest SRD effect value (darkvision 120)", () => {
+    expect(
+      effectSchema.safeParse({
+        target: "senses.darkvision",
+        op: "max",
+        value: 120,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an absurd effect value (+5000 AC)", () => {
+    expect(
+      effectSchema.safeParse({ target: "ac", op: "add", value: 5000 }).success,
+    ).toBe(false);
+    expect(
+      effectSchema.safeParse({ target: "ac", op: "add", value: -5000 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a name or description that is too long", () => {
+    expect(contentSchema.safeParse(feat).success).toBe(true);
+    expect(
+      contentSchema.safeParse({ ...feat, name: "x".repeat(LIMITS.name + 1) })
+        .success,
+    ).toBe(false);
+    expect(
+      contentSchema.safeParse({
+        ...feat,
+        description: "x".repeat(LIMITS.text + 1),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects too many effects", () => {
+    const effect = { target: "ac", op: "add", value: 1 };
+    expect(
+      contentSchema.safeParse({
+        ...feat,
+        effects: Array.from({ length: LIMITS.effects + 1 }, () => effect),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an id longer than the database allows", () => {
+    expect(
+      contentSchema.safeParse({ ...feat, id: "a".repeat(LIMITS.id + 1) })
+        .success,
+    ).toBe(false);
   });
 });

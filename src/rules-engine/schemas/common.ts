@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+import { LIMITS } from "./limits";
+
 // Identificador en kebab-case: "fighter", "magic-missile", "srd-2024".
 export const slugSchema = z
   .string()
+  .max(LIMITS.id)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Debe estar en kebab-case");
 
 export const editionSchema = z.enum(["2014", "2024"]);

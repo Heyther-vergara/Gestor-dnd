@@ -8,13 +8,14 @@ import {
   slugSchema,
 } from "./common";
 import { effectSchema } from "./effect";
+import { LIMITS, longTextSchema, nameSchema } from "./limits";
 
-const effectsSchema = z.array(effectSchema).default([]);
+const effectsSchema = z.array(effectSchema).max(LIMITS.effects).default([]);
 
 // Rasgo con nombre: rasgos de especie, rasgos de clase por nivel, etc.
 const traitSchema = z.strictObject({
-  name: z.string().min(1),
-  description: z.string(),
+  name: nameSchema,
+  description: longTextSchema,
   effects: effectsSchema,
 });
 
@@ -83,7 +84,7 @@ const startingEquipmentSchema = z
 // `perUseLimitByLevel` es opcional: cuánto se puede gastar de una vez.
 const classResourceSchema = z.strictObject({
   id: slugSchema,
-  name: z.string().min(1),
+  name: nameSchema,
   maxByLevel: z.array(z.int().min(0)).min(1).max(20),
   perUseLimitByLevel: z.array(z.int().min(1)).min(1).max(20).optional(),
   // Por ahora solo con descanso largo: el corto todavía no está modelado.
@@ -94,7 +95,7 @@ const classResourceSchema = z.strictObject({
 // "CD de Brebaje"). Se calcula como la de conjuros del SRD 5.2.1:
 // 8 + bonificador por competencia + modificador de la característica.
 const classSaveDcSchema = z.strictObject({
-  name: z.string().min(1),
+  name: nameSchema,
   ability: abilitySchema,
 });
 
@@ -113,12 +114,12 @@ const classDataSchema = z.strictObject({
   // SRD 5.2.1, "Convertirse en <clase>", "Como personaje multiclase": una clase
   // que no es la inicial da menos entrenamiento (el guerrero no da pesadas).
   multiclassArmorProficiencies: z.array(armorTrainingSchema).default([]),
-  weaponProficiencies: z.array(z.string()),
+  weaponProficiencies: z.array(z.string().max(LIMITS.name)).max(LIMITS.list),
   // Herramientas, en texto ("Herramientas de alquimista"). Como las armas,
   // todavía no cambian ningún número de la hoja: se muestran.
-  toolProficiencies: z.array(z.string().min(1)).default([]),
-  resources: z.array(classResourceSchema).default([]),
-  saveDcs: z.array(classSaveDcSchema).default([]),
+  toolProficiencies: z.array(nameSchema).max(LIMITS.list).default([]),
+  resources: z.array(classResourceSchema).max(LIMITS.list).default([]),
+  saveDcs: z.array(classSaveDcSchema).max(LIMITS.list).default([]),
   spellcasting: z
     .strictObject({
       ability: abilitySchema,
@@ -132,20 +133,20 @@ const classDataSchema = z.strictObject({
       spellbook: spellbookRuleSchema.optional(),
     })
     .optional(),
-  features: z.array(levelFeatureSchema),
+  features: z.array(levelFeatureSchema).max(LIMITS.list),
   startingEquipment: startingEquipmentSchema,
 });
 
 const subclassDataSchema = z.strictObject({
   classId: slugSchema,
-  features: z.array(levelFeatureSchema),
+  features: z.array(levelFeatureSchema).max(LIMITS.list),
 });
 
 const speciesDataSchema = z.strictObject({
   // Algunas especies 2024 permiten elegir tamaño (p. ej. humano: mediano o pequeño).
   size: z.array(z.enum(["tiny", "small", "medium", "large"])).min(1),
   speed: z.int().min(0),
-  traits: z.array(traitSchema),
+  traits: z.array(traitSchema).max(LIMITS.list),
 });
 
 // Trasfondo 2024: da +2/+1 (o +1/+1/+1) entre tres atributos, una dote de origen y competencias.
@@ -259,8 +260,8 @@ const itemDataSchema = z.strictObject({
 const contentBase = {
   id: slugSchema,
   packageId: slugSchema,
-  name: z.string().min(1),
-  description: z.string(),
+  name: nameSchema,
+  description: longTextSchema,
   effects: effectsSchema,
 };
 
