@@ -1,0 +1,30 @@
+# Dependabot revisa cada semana si hay versiones nuevas y abre un PR por grupo.
+# Así los avisos de seguridad (como los de Next.js del PR #24) llegan solos,
+# y cada actualización pasa por CI antes de mergearse (ADR 0022).
+version: 2
+updates:
+  - package-ecosystem: npm # también lee pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Bogota
+    open-pull-requests-limit: 5
+    groups:
+      # Parches y menores juntos en un solo PR, para no llenar la lista.
+      minor-and-patch:
+        update-types: [minor, patch]
+    # Next.js y eslint-config-next van juntos y se suben a mano tras leer la
+    # guía de migración, así que los mayores de Next quedan fuera.
+    ignore:
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint-config-next
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Bogota

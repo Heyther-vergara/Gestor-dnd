@@ -4,11 +4,22 @@ on:
   push:
   pull_request:
 
+# Mínimo privilegio (ISO 27001 A.8.2): el token de GitHub que reciben los pasos
+# solo puede leer el repo. Si una dependencia comprometida corre durante el
+# install, no puede hacer push, abrir PRs ni tocar releases.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Si algo se cuelga, que falle en vez de gastar minutos por horas.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          # No guardar el token en .git/config: ningún paso posterior lo necesita.
+          persist-credentials: false
 
       # Usa la versión de pnpm fijada en package.json → "packageManager"
       - uses: pnpm/action-setup@v4
@@ -23,3 +34,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm format:check
+      # Compilar como lo hace Vercel: atrapa errores que solo aparecen en el
+      # build (por ejemplo, usar `window` en un Server Component).
+      - run: pnpm build
+      # Gestión de vulnerabilidades (SOC 2 CC7.1 · ISO 27001 A.8.8): falla si
+      # una dependencia de producción tiene un aviso alto o crítico.
+      - run: pnpm audit --prod --audit-level high
