@@ -2,6 +2,14 @@ import { z } from "zod";
 
 import { LIMITS } from "./limits";
 
+// Zod 4 compila los esquemas de objetos con `new Function` para ir más rápido,
+// y para saber si puede, lo prueba una vez. Con la Content-Security-Policy de
+// la app (ADR 0024) `eval` está prohibido: la prueba falla sin romper nada,
+// pero el navegador la reporta como una violación de la CSP en cada página.
+// `jitless` salta la prueba y valida sin compilar; la diferencia de velocidad
+// no se nota con estos datos.
+z.config({ jitless: true });
+
 // Identificador en kebab-case: "fighter", "magic-missile", "srd-2024".
 export const slugSchema = z
   .string()
