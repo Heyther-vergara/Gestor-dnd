@@ -37,3 +37,5 @@ Opciones para entrar:
 El login con email necesita SMTP propio y editar las plantillas de email de Supabase, y todavía no se probó contra el Supabase real. Para mantener la app simple mientras no haya hojas propias que pasar entre dispositivos, **se oculta el botón "Entrar con email"** (`EMAIL_LOGIN_ENABLED = false` en `components/sheet/account-panel.tsx`). La hoja se sigue guardando con el usuario anónimo (ADR 0013).
 
 No se borra el código: para volver a usarlo alcanza con poner la constante en `true`. Cuando haga falta una cuenta, se evaluará también entrar con GitHub o Google (OAuth de Supabase), que no necesitan SMTP.
+
+Actualización 2026-11-26: la cuenta se hizo con Google en vez de email (ADR 0028).

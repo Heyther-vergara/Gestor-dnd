@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { BackupPanel } from "@/components/characters/backup-panel";
 import { CharacterListItem } from "@/components/characters/character-list-item";
+import { GoogleAccountPanel } from "@/components/characters/google-account-panel";
 import { useHomebrewIndex } from "@/components/homebrew/content-index";
 import { Button } from "@/components/ui/button";
 import type { SavedCharacter } from "@/lib/character-storage";
@@ -26,6 +27,7 @@ export function CharacterList() {
   const [reloadKey, setReloadKey] = useState(0);
   const index = useHomebrewIndex(reloadKey);
   const [state, setState] = useState<ListState>({ status: "loading" });
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +89,8 @@ export function CharacterList() {
         </Button>
       </div>
 
+      <GoogleAccountPanel onAccountChanged={reload} />
+
       {state.status === "loading" && (
         <p className="text-muted-foreground" role="status">
           Buscando tus personajes…
@@ -126,10 +130,7 @@ export function CharacterList() {
       )}
 
       {state.status === "loaded" && (
-        <BackupPanel
-          characters={state.characters}
-          onImported={() => setReloadKey((key) => key + 1)}
-        />
+        <BackupPanel characters={state.characters} onImported={reload} />
       )}
     </div>
   );
