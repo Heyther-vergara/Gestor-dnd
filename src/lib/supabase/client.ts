@@ -6,6 +6,8 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { supabaseProjectUrl } from "./project-url";
+
 let client: SupabaseClient | null | undefined;
 
 // Devuelve null si faltan las variables de entorno (por ejemplo, en tests o
@@ -15,7 +17,8 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   // Next.js reemplaza `process.env.NEXT_PUBLIC_…` por su valor al compilar,
   // pero solo si se escribe así, completo (no con `process.env[nombre]`).
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Solo el origen: tolera que se haya pegado la URL de la API REST.
+  const url = supabaseProjectUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   client = url && key ? createClient(url, key) : null;
   return client;
