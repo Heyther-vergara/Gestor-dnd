@@ -10,7 +10,7 @@ const inputClass =
   "h-8 w-full min-w-0 rounded-lg border border-input bg-card px-2 text-base tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 const statusText = {
-  dying: "Inconsciente: al empezar tu turno, tirá 1d20.",
+  dying: "Inconsciente: al empezar tu turno, tira 1d20.",
   stable: "Estable con 0 PG: sigue inconsciente, sin tirar salvaciones.",
   dead: "El personaje está muerto.",
 } as const;
