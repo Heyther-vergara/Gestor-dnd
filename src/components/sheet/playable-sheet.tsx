@@ -25,6 +25,7 @@ import { AccountPanel } from "./account-panel";
 import { ClassResources } from "./class-resources";
 import { HomebrewItemsPanel } from "./homebrew-items-panel";
 import { PlayPanel } from "./play-panel";
+import { QuickHp } from "./quick-hp";
 import { SpellPanel } from "./spell-panel";
 import { SheetView } from "./sheet-view";
 
@@ -184,6 +185,7 @@ export function PlayableSheet({
           />
         )
       }
+      quickHp={<QuickHp message={session.message} dispatch={dispatch} />}
       spellSlots={{
         disabled: !loaded,
         onChange: (classId, level, change) =>

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { ComputedSheet } from "@/rules-engine/engine";
 
 // Cabecera de la hoja: nombre, subtítulo y, a la derecha, los PG y la CA.
@@ -8,11 +10,14 @@ export function SheetHeader({
   subtitle,
   hitPoints,
   ac,
+  quickHp,
 }: {
   name: string;
   subtitle: string;
   hitPoints: ComputedSheet["hitPoints"];
   ac: number;
+  // Botón de daño y curación rápidos (QuickHp), si la hoja se puede editar.
+  quickHp?: ReactNode;
 }) {
   const { current, max, temp } = hitPoints;
   const percent = max > 0 ? Math.round((current / max) * 100) : 0;
@@ -21,8 +26,8 @@ export function SheetHeader({
 
   return (
     <header className="sticky top-0 z-10 -mx-4 border-b border-border bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/85">
-      <div className="flex items-center gap-3">
-        <div className="grid min-w-0 flex-1">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-3">
+        <div className="grid min-w-0">
           <h1 className="truncate font-heading text-2xl leading-tight font-bold tracking-wide sm:text-3xl">
             {name}
           </h1>
@@ -56,6 +61,7 @@ export function SheetHeader({
             {ac}
           </span>
         </div>
+        {quickHp}
       </div>
     </header>
   );
