@@ -2,15 +2,25 @@ import { SpellList } from "@/components/spells/spell-details";
 import { abilityNames, formatModifier } from "@/lib/format";
 import type { SpellcastingStats } from "@/rules-engine/engine";
 
+import { type SpellSlotChange, SpellSlots } from "./spell-slots";
+
 // CD, ataque, espacios y conjuros de cada clase que lanza conjuros.
 // SRD 5.2.1, tabla "Rasgos de mago", "Espacios de conjuro por cada nivel de
-// conjuro". Contar los espacios gastados queda para la fase 5 (partida).
+// conjuro". Con `onSlotChange` los espacios se pueden gastar (ADR 0028).
 // Los trucos, los preparados y el libro son las listas del personaje (ADR
 // 0021); se cambian con el panel de la hoja, no aquí.
 export function SpellcastingSummary({
   spellcasting,
+  slotsDisabled,
+  onSlotChange,
 }: {
   spellcasting: SpellcastingStats[];
+  slotsDisabled?: boolean;
+  onSlotChange?: (
+    classId: string,
+    level: number,
+    change: SpellSlotChange,
+  ) => void;
 }) {
   return (
     <div className="grid gap-3">
@@ -33,38 +43,14 @@ export function SpellcastingSummary({
               </b>
             </span>
           </p>
-          {stats.slots.length > 0 && (
-            <div className="grid gap-1">
-              <h3 className="font-medium">Espacios de conjuro</h3>
-              {/* Un círculo por espacio, para verlos de un vistazo. Todavía
-                  no se marcan como gastados (queda para más adelante). */}
-              <dl className="grid gap-1">
-                {stats.slots.map((count, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
-                    <dt className="w-16 text-muted-foreground">
-                      Nivel {i + 1}
-                    </dt>
-                    <dd className="flex items-center gap-1.5">
-                      <span className="sr-only">{count} espacios</span>
-                      {Array.from({ length: count }, (_, slot) => (
-                        <span
-                          key={slot}
-                          aria-hidden="true"
-                          className="size-3.5 rounded-full border-2 border-gold bg-gold/80"
-                        />
-                      ))}
-                      <span
-                        aria-hidden="true"
-                        className="ml-1 text-muted-foreground tabular-nums"
-                      >
-                        {count}
-                      </span>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
+          <SpellSlots
+            stats={stats}
+            disabled={slotsDisabled}
+            onChange={
+              onSlotChange &&
+              ((level, change) => onSlotChange(stats.classId, level, change))
+            }
+          />
           {stats.limits.cantrips > 0 && (
             <SpellList
               title="Trucos"

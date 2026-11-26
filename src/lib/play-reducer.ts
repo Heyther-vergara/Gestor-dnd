@@ -17,9 +17,11 @@ import {
   reduceMaxHp,
   removeExhaustion,
   restoreMaxHp,
+  recoverSpellSlot,
   rollDeathSave,
   spendHitDie,
   spendResource,
+  spendSpellSlot,
   stabilize,
 } from "@/rules-engine/engine/play-state";
 import type { Character, DamageType, HitDie } from "@/rules-engine/schemas";
@@ -43,6 +45,8 @@ export type PlayAction =
   | { type: "spend-hit-die"; die: HitDie; roll: number }
   | { type: "long-rest" }
   | { type: "spend-resource"; resourceId: string; amount: number }
+  | { type: "spend-spell-slot"; classId: string; level: number }
+  | { type: "recover-spell-slot"; classId: string; level: number }
   | { type: "reduce-max-hp"; amount: number }
   | { type: "restore-max-hp" }
   | { type: "gain-exhaustion" }
@@ -184,12 +188,16 @@ export function createPlayReducer(contentIndex: ContentIndex) {
           longRest(character, contentIndex),
           ({ playState }) => {
             // Los recursos de clase solo se nombran si había alguno gastado.
-            const recovered = Object.values(
+            const resources = Object.values(
               character.playState.resourcesSpent,
             ).some((spent) => spent > 0);
-            const restored = recovered
-              ? "PG, dados de golpe y recursos de clase al máximo"
-              : "PG y dados de golpe al máximo";
+            const slots = Object.values(
+              character.playState.spellSlotsSpent,
+            ).some((levels) => levels.some((spent) => spent > 0));
+            const parts = ["PG", "dados de golpe"];
+            if (resources) parts.push("recursos de clase");
+            if (slots) parts.push("espacios de conjuro");
+            const restored = `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)} al máximo`;
             return {
               tone: "info",
               text:
@@ -219,6 +227,28 @@ export function createPlayReducer(contentIndex: ContentIndex) {
             };
           },
         );
+      case "spend-spell-slot":
+      case "recover-spell-slot": {
+        const spend = action.type === "spend-spell-slot";
+        const result = (spend ? spendSpellSlot : recoverSpellSlot)(
+          character,
+          contentIndex,
+          action.classId,
+          action.level,
+        );
+        return apply(session, result, ({ playState }) => {
+          const remaining =
+            calculateSheet(
+              { ...character, playState },
+              contentIndex,
+            ).spellcasting.find((s) => s.classId === action.classId)
+              ?.slotsRemaining[action.level - 1] ?? 0;
+          return {
+            tone: "info",
+            text: `${spend ? "Gastaste" : "Recuperaste"} un espacio de nivel ${action.level}. Te ${remaining === 1 ? "queda" : "quedan"} ${remaining}.`,
+          };
+        });
+      }
       case "gain-exhaustion":
       case "remove-exhaustion": {
         const result =

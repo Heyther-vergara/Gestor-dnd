@@ -452,6 +452,7 @@ describe("longRest", () => {
       maxHpReduction: 0,
       exhaustion: 0,
       resourcesSpent: {},
+      spellSlotsSpent: {},
     });
   });
 
