@@ -115,9 +115,9 @@ describe("calculateSheet: wizard spells", () => {
     expect(stats?.spellbook).toHaveLength(6);
     // Ordenados por nivel y nombre.
     expect(stats?.prepared.map((s) => s.name)).toEqual([
-      "Mage Armor",
-      "Magic Missile",
-      "Sleep",
+      "Armadura de mago",
+      "Dormir",
+      "Proyectil mágico",
     ]);
   });
 
@@ -290,5 +290,71 @@ describe("calculateSheet: a class without spellbook", () => {
     expect(sheet.issues).toEqual([
       'La clase "healer" no usa libro de conjuros',
     ]);
+  });
+});
+
+// ADR 0031: nombres y textos copiados del SRD 5.2.1 en español con
+// `pnpm content:spells-es`, no traducidos a mano.
+describe("srd-2024 spells: texto oficial en español", () => {
+  const spells = classSpellList("wizard", index, ["srd-2024"]);
+  const spell = (id: string) => {
+    const found = spells.find((s) => s.id === id);
+    if (!found) throw new Error(`Falta el conjuro ${id}`);
+    return found;
+  };
+
+  it("has no English text left", () => {
+    for (const { name, description, data } of spells) {
+      const text = [
+        name,
+        description,
+        data.castingTime,
+        data.range,
+        data.duration,
+      ];
+      expect(text.join(" "), name).not.toMatch(
+        /\b(?:feet|Action|Instantaneous|Cantrip Upgrade|Higher-Level)\b/,
+      );
+    }
+  });
+
+  // SRD 5.2.1, "Descripciones de conjuros", "Bola de fuego".
+  it("copies Bola de fuego as in the SRD", () => {
+    const fireball = spell("fireball");
+    expect(fireball.name).toBe("Bola de fuego");
+    expect(fireball.data).toMatchObject({
+      castingTime: "Acción",
+      range: "45 m",
+      components: {
+        verbal: true,
+        somatic: true,
+        material: "una pelota de guano de murciélago y azufre",
+      },
+      duration: "Instantáneo",
+    });
+    expect(fireball.description).toContain("8d6 de daño de fuego");
+    expect(fireball.description).toContain(
+      "Con un espacio de conjuro de nivel superior. El daño aumenta en 1d6",
+    );
+  });
+
+  // "Detectar pensamientos": el PDF guarda su texto lejos del título.
+  it("keeps the text of Detectar pensamientos", () => {
+    expect(spell("detect-thoughts").description).toMatch(
+      /^Activas uno de los siguientes efectos\./,
+    );
+  });
+
+  // "Protección contra el bien y el mal": "Duración: Concentración, hasta
+  // 10 minutos". 5e-bits lo tenía sin concentración.
+  it("takes concentration and ritual from the Spanish SRD", () => {
+    expect(spell("protection-from-evil-and-good").data.concentration).toBe(
+      true,
+    );
+    // "Alarma": "Tiempo de lanzamiento: 1 minuto o un ritual".
+    expect(spell("alarm").data).toMatchObject({
+      castingTime: "1 minuto o un ritual",
+      ritual: true,
+    });
   });
 });

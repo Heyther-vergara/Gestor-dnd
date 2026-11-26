@@ -224,7 +224,7 @@ export const spellSchoolNames: Record<SpellContent["data"]["school"], string> =
     divination: "Adivinación",
     enchantment: "Encantamiento",
     evocation: "Evocación",
-    illusion: "Ilusión",
+    illusion: "Ilusionismo",
     necromancy: "Nigromancia",
     transmutation: "Transmutación",
   };
